@@ -4,11 +4,15 @@ export const negocio = {
   ciudad: "Mosquera, Cundinamarca",
   eslogan: "Barber Shop · Mosquera",
   enPreparacion: true,
-  whatsapp: "",
-  telefono: "",
-  direccion: "",
+  whatsapp: "573118162854",
+  telefono: "311 816 2854",
+  direccion: "Mosquera, Cundinamarca",
+  codigoPostal: "250040",
   instagram: "lamansionbarbers",
   horario: "",
+  mapaConsulta: "La Mansión Barber Shop, Mosquera, Cundinamarca",
+  mensajeWhatsApp: "Hola, quiero agendar una cita en La Mansión Barber Shop.",
+  mensajeProductos: "Hola, quiero preguntar por los productos de La Mansión Barber Shop.",
   supabase: { url: "", key: "" },
   sitio: "https://mateoisaza2299-star.github.io/La-mansion-barbers/",
   barbero: "",
@@ -66,6 +70,58 @@ export const negocio = {
     cierreReserva: "Reserva tu cita",
     cierreLlegar: "Cómo llegar",
     cifras: []
+  },
+  servicios: [
+    { id: "corte-clasico", categoria: "Cortes", nombre: "Corte clásico", descripcion: "Tijera o máquina, con el acabado que pidas.", precio: null },
+    { id: "degradado", categoria: "Cortes", nombre: "Degradado", descripcion: "Transición limpia, de corto a largo.", precio: null },
+    { id: "corte-barba", categoria: "Cortes", nombre: "Corte y barba", descripcion: "El corte y el arreglo de barba en la misma visita.", precio: null },
+    { id: "arreglo-barba", categoria: "Barba", nombre: "Arreglo de barba", descripcion: "Perfil, forma y definición.", precio: null },
+    { id: "barba-completa", categoria: "Barba", nombre: "Barba completa", descripcion: "Diseño y limpieza de toda la barba.", precio: null },
+    { id: "corte-ninos", categoria: "Niños", nombre: "Corte para niños", descripcion: "Con calma, a su ritmo y con quien los acompaña.", precio: null },
+    { id: "corte-mujer", categoria: "Mujer", nombre: "Corte para mujer", descripcion: "Escríbenos para consultar disponibilidad.", precio: null },
+    { id: "color", categoria: "Color", nombre: "Color", descripcion: "Consulta el tono y el proceso por WhatsApp.", precio: null },
+    { id: "disenos", categoria: "FreeStyle y diseños", nombre: "Diseños", descripcion: "Líneas, figuras y freestyle sobre el corte.", precio: null },
+    { id: "facial", categoria: "Cuidado facial", nombre: "Cuidado facial", descripcion: "Limpieza y cuidado de la piel del rostro.", precio: null }
+  ],
+  preguntas: [
+    { pregunta: "¿Cómo agendo mi cita?", respuesta: "Escríbenos por WhatsApp y te confirmamos el día y la hora." },
+    { pregunta: "¿Atienden niños?", respuesta: "Sí. Los cortes de niños se hacen con calma." },
+    { pregunta: "¿Hacen cortes para mujer?", respuesta: "Sí. Escríbenos para consultar disponibilidad." },
+    { pregunta: "¿Dónde están?", respuesta: "En Mosquera, Cundinamarca." }
+  ],
+  textos: {
+    heroEtiqueta: "BARBER SHOP · MOSQUERA",
+    heroAntes: "¡Los verdaderos ",
+    heroPalabra: "HOMBRES",
+    heroDespues: " van a la barbería!",
+    heroLead: "Cortes, barba y cuidado personal en Mosquera. Agenda abierta.",
+    agenda: "Agenda por WhatsApp",
+    verServicios: "Ver servicios",
+    datoAgenda: "Agenda abierta por WhatsApp",
+    datoEdades: "Niños, jóvenes y adultos",
+    confianzaEdades: "Para todas las edades",
+    confianzaCortes: "Cortes, barba y cuidado facial",
+    confianzaProductos: "Productos de barbería",
+    serviciosTitulo: "Menú de servicios",
+    consultar: "Consultar por WhatsApp",
+    serviciosNota: "Precios y duración por confirmar: escríbenos por WhatsApp",
+    galeriaEtiqueta: "Galería",
+    galeriaTitulo: "El lugar y el equipo",
+    verMas: "Ver más",
+    productos: "Cuidado en casa: aceite de barba y productos de barbería",
+    preguntaProductos: "Pregunta por WhatsApp",
+    horarioPendiente: "Horario por confirmar",
+    pista: "Busca el letrero luminoso de La Mansión.",
+    llegar: "Cómo llegar",
+    llamar: "Llamar",
+    reservasTitulo: "Agenda abierta · Escríbenos por WhatsApp",
+    reservasNota: "Muy pronto: reservas en línea",
+    faqTitulo: "Preguntas frecuentes",
+    filtroTodo: "Todo",
+    filtroLocal: "El local",
+    filtroCortes: "Cortes",
+    filtroEquipo: "Equipo",
+    filtroProductos: "Productos"
   }
 };
 
@@ -78,10 +134,18 @@ export function urlSitio(pagina) {
 export function enlaceMapa() {
   const guardado = String(negocio.mapsUrl || "").trim();
   if (guardado) return guardado;
-  const linea = direccionLinea();
-  if (!linea) return "";
-  const query = [negocio.nombre, linea].filter(Boolean).join(", ");
-  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(query);
+  const consulta = String(negocio.mapaConsulta || "").trim() || [negocio.nombre, direccionLinea()].filter(Boolean).join(", ");
+  if (!consulta) return "";
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(consulta);
+}
+
+export function enlaceTelefono() {
+  const wa = String(negocio.whatsapp || "").replace(/\D/g, "");
+  if (wa) return "tel:+" + wa;
+  let tel = String(negocio.telefono || "").replace(/\D/g, "");
+  if (!tel) return "";
+  if (tel.length === 10) tel = "57" + tel;
+  return "tel:+" + tel;
 }
 
 export function formatoPrecio(valor) {
@@ -123,10 +187,8 @@ export function enlaceWhatsapp(texto) {
   const numero = String(negocio.whatsapp || "").replace(/\D/g, "");
   if (!numero) return "";
   const base = "https://wa.me/" + numero;
-  const mensaje = texto || negocio.mensajeReserva || ("Hola, quiero reservar una cita en " + negocio.nombre + ".");
-  if (!texto && !negocio.mensajeReserva) return base;
-  if (!texto) return base + "?text=" + encodeURIComponent(mensaje);
-  return base + "?text=" + encodeURIComponent(texto);
+  const mensaje = texto || negocio.mensajeWhatsApp || negocio.mensajeReserva || ("Hola, quiero agendar una cita en " + negocio.nombre + ".");
+  return base + "?text=" + encodeURIComponent(mensaje);
 }
 
 export function diaSemana(iso) {

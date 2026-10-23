@@ -1,17 +1,12 @@
-const CACHE = "site-shell-v6";
+const CACHE = "site-shell-v7";
 
 const ADMIN_PAGES = ["admin.html", "admin-login.html"];
 const PUBLIC_PAGES = ["index.html", "historia.html", "privacidad.html", "404.html"];
 const ADMIN_JS = ["js/admin.js", "js/admin-login.js", "js/pwa.js"];
 const PUBLIC_JS = [
   "js/absoluto.js",
-  "js/cliente.js",
-  "js/contenido.js",
-  "js/faq.js",
-  "js/nosotros.js",
-  "js/main.js",
-  "js/movimiento.js",
-  "js/tracking.js"
+  "js/arranque.js",
+  "js/pagina.js"
 ];
 
 const SHELL = [
