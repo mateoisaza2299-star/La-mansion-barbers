@@ -207,8 +207,10 @@ let tarjetaTimer = 0;
 let tarjetaToken = 0;
 let supabasePromise = null;
 
+const enPreparacion = () => document.documentElement.classList.contains("is-preparacion");
+
 const supabaseClient = () => {
-  if (!supabasePromise) supabasePromise = import("./supabase.js").then((mod) => mod.supabase);
+  if (!supabasePromise) supabasePromise = import("./supabase.js").then((mod) => mod.obtenerSupabase());
   return supabasePromise;
 };
 
@@ -244,6 +246,7 @@ const pintarTarjeta = (row) => {
 };
 
 const cargarTarjeta = async () => {
+  if (enPreparacion()) return;
   const token = primerToken();
   const request = ++tarjetaToken;
   if (!token) {
@@ -252,6 +255,10 @@ const cargarTarjeta = async () => {
   }
   try {
     const supabase = await supabaseClient();
+    if (!supabase) {
+      pintarVacia();
+      return;
+    }
     const { data, error } = await supabase.rpc("mi_fidelidad", { p_token: token });
     if (request !== tarjetaToken) return;
     if (error) throw error;
@@ -274,6 +281,7 @@ const cerrarMenu = () => {
 };
 
 const abrirTarjeta = () => {
+  if (enPreparacion()) return;
   cerrarMenu();
   tarjeta.hidden = false;
   document.body.classList.add("is-locked");

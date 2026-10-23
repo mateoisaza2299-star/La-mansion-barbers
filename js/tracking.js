@@ -1,4 +1,5 @@
-import { supabase } from "./supabase.js";
+import { negocio } from "./config.js";
+import { obtenerSupabase } from "./supabase.js";
 
 const file = (window.location.pathname || "").split("/").pop() || "";
 const adminPage = file === "admin.html" || file === "admin-login.html";
@@ -41,28 +42,16 @@ const visitorId = () => {
   }
 };
 
-let allowPromise = null;
-const allow = () => {
-  if (!allowPromise) {
-    allowPromise = (async () => {
-      try {
-        const result = await Promise.race([
-          supabase.auth.getSession(),
-          new Promise((resolve) => window.setTimeout(() => resolve(null), 2000))
-        ]);
-        if (!result) return true;
-        return !(result.data && result.data.session);
-      } catch (error) {
-        return true;
-      }
-    })();
-  }
-  return allowPromise;
-};
-
 const insertRow = async (table, row) => {
   try {
-    if (!(await allow())) return;
+    if (negocio.enPreparacion) return;
+    const supabase = await obtenerSupabase();
+    if (!supabase) return;
+    const result = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise((resolve) => window.setTimeout(() => resolve(null), 2000))
+    ]);
+    if (result && result.data && result.data.session) return;
     const id = visitorId();
     if (!id) return;
     await supabase.from(table).insert({ ...row, visitor_id: id }, { returning: "minimal" });

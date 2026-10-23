@@ -1,4 +1,3 @@
-import { faq } from "./faq.js";
 import { servicios, pintarPrecio } from "./servicios.js";
 import {
   negocio,
@@ -6,12 +5,16 @@ import {
   direccionLinea,
   enlaceMapa,
   enlaceWhatsapp,
+  urlInstagram,
+  handleInstagram,
+  urlSitio,
   textoHorario,
   estadoApertura,
   avisoDuracion,
   horasDelDia,
   partesBogota
 } from "./config.js";
+import { faq, faqPreparacion } from "./faq.js";
 
 const file = (location.pathname || "").split("/").pop() || "index.html";
 
@@ -19,20 +22,20 @@ const pageKey = !file || file === "index.html" ? "index" : file.replace(/\.html$
 
 const seo = {
   index: {
-    title: negocio.nombre + " — Barbería en " + negocio.direccion.ciudad,
-    description: negocio.nombre + " en " + negocio.direccion.ciudad + ". Cortes, barba y cejas con calma. Reserva tu cita. " + direccionLinea() + "."
+    title: negocio.nombre + " | Barbería en " + negocio.ciudad,
+    description: negocio.nombre + ", barbería en " + negocio.ciudad + ". Cortes, barba y cuidado personal."
   },
   historia: {
     title: "Nuestra historia — " + negocio.nombre,
-    description: "La historia de " + negocio.nombre + " en " + negocio.direccion.ciudad + ". " + negocio.barbero + ", barbero."
+    description: negocio.nombre + ", barbería en " + negocio.ciudad + ". Por confirmar."
   },
   privacidad: {
     title: "Política de datos — " + negocio.nombre,
-    description: "Qué guarda " + negocio.nombre + " cuando reservas: nombre, celular, servicio y fecha. El celular también se usa para la tarjeta de fidelidad y el corte gratis."
+    description: "Qué guarda " + negocio.nombre + " cuando reservas: nombre, celular, servicio y fecha."
   },
   "404": {
     title: "Página no encontrada — " + negocio.nombre,
-    description: "Esta página no existe. Vuelve al inicio de " + negocio.nombre + " o reserva tu cita."
+    description: "Esta página no existe. Vuelve al inicio de " + negocio.nombre + "."
   }
 };
 
@@ -50,33 +53,67 @@ const applySeo = () => {
   setMeta('meta[name="twitter:title"]', entry.title);
   setMeta('meta[name="twitter:description"]', entry.description);
   setMeta('meta[property="og:site_name"]', negocio.nombre);
+  const alt = negocio.nombre + ", barbería en " + negocio.ciudad + ".";
+  setMeta('meta[property="og:image:alt"]', alt);
+  setMeta('meta[name="twitter:image:alt"]', alt);
+  if (pageKey !== "404") {
+    setMeta('meta[name="robots"]', negocio.enPreparacion ? "noindex, nofollow" : "index, follow");
+  }
+  const canon = urlSitio(pageKey === "index" ? "" : pageKey + ".html");
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical && canon) canonical.setAttribute("href", canon);
+  if (canon) setMeta('meta[property="og:url"]', canon);
+  const image = urlSitio("assets/og.jpg");
+  setMeta('meta[property="og:image"]', image);
+  setMeta('meta[property="og:image:secure_url"]', image);
+  setMeta('meta[name="twitter:image"]', image);
 };
 
 const applyLinks = () => {
-  document.querySelectorAll('a[href*="wa.me"]').forEach((link) => {
-    let text = "";
-    try {
-      text = new URL(link.getAttribute("href"), "https://wa.me").searchParams.get("text") || "";
-    } catch (error) {}
-    link.href = enlaceWhatsapp(text);
+  document.querySelectorAll("[data-wa]").forEach((link) => {
+    const href = enlaceWhatsapp(link.getAttribute("data-wa") || "");
+    const item = link.closest("li") || link;
+    if (!href) {
+      link.hidden = true;
+      if (item !== link) item.hidden = true;
+      return;
+    }
+    link.href = href;
+    link.hidden = false;
+    if (item !== link) item.hidden = false;
   });
   document.querySelectorAll("[data-tel]").forEach((link) => {
-    link.href = "tel:+" + negocio.whatsapp;
-    if (!link.querySelector("svg")) link.textContent = negocio.telefonoVisible;
+    const wrap = link.closest("[data-tel-wrap]") || link;
+    const visible = String(negocio.telefono || "").trim();
+    if (!visible) {
+      wrap.hidden = true;
+      return;
+    }
+    link.href = "tel:+" + visible.replace(/\D/g, "");
+    if (!link.querySelector("svg")) link.textContent = visible;
+    wrap.hidden = false;
   });
   document.querySelectorAll("[data-maps]").forEach((link) => {
-    link.href = enlaceMapa();
+    const href = enlaceMapa();
+    const wrap = link.closest("p") || link;
+    if (!href) {
+      wrap.hidden = true;
+      return;
+    }
+    link.href = href;
+    wrap.hidden = false;
   });
   document.querySelectorAll("[data-red]").forEach((link) => {
-    const href = negocio.redes[link.getAttribute("data-red")];
+    const red = link.getAttribute("data-red");
+    const href = red === "instagram" ? urlInstagram() : String((negocio.redes && negocio.redes[red]) || "");
     const item = link.closest("li") || link;
     if (!href) {
       item.hidden = true;
       return;
     }
     link.href = href;
-    if (link.getAttribute("data-red") === "instagram") {
-      const handle = "@" + href.replace(/\/+$/, "").split("/").pop();
+    if (red === "instagram") {
+      const handle = handleInstagram();
       [...link.childNodes].forEach((node) => {
         if (node.nodeType === 3 && node.textContent.trim()) node.textContent = " " + handle;
       });
@@ -108,15 +145,22 @@ const applyLinks = () => {
 };
 
 const applyDireccion = () => {
+  const linea = direccionLinea();
   document.querySelectorAll("[data-direccion]").forEach((node) => {
-    if (node.getAttribute("data-direccion") === "linea") {
-      node.textContent = direccionLinea();
+    if (!linea) {
+      node.textContent = "Por confirmar";
+      node.classList.add("is-pending");
+      return;
+    }
+    node.classList.remove("is-pending");
+    if (node.getAttribute("data-direccion") === "linea" || typeof negocio.direccion === "string") {
+      node.textContent = linea;
       return;
     }
     const d = negocio.direccion;
     const br = document.createElement("br");
     node.replaceChildren(
-      document.createTextNode(d.calle),
+      document.createTextNode(d.calle || ""),
       br,
       document.createTextNode([d.barrio, d.ciudad, d.region].filter(Boolean).join(", "))
     );
@@ -124,12 +168,37 @@ const applyDireccion = () => {
   document.querySelectorAll("[data-nombre]").forEach((node) => {
     node.textContent = negocio.nombre;
   });
+  document.querySelectorAll("[data-eslogan]").forEach((node) => {
+    const icon = node.querySelector("i");
+    if (icon) icon.remove();
+    node.textContent = "";
+    if (icon) node.appendChild(icon);
+    node.appendChild(document.createTextNode(negocio.eslogan));
+  });
+  document.querySelectorAll("[data-lugar]").forEach((node) => {
+    node.textContent = negocio.ciudad ? "Estamos en " + negocio.ciudad + "." : "Por confirmar";
+  });
+  document.querySelectorAll(".logo").forEach((node) => {
+    if (node.hasAttribute("aria-label")) node.setAttribute("aria-label", negocio.nombre + ", inicio");
+  });
 };
 
 const applyHorario = () => {
+  const reglas = Array.isArray(negocio.horario) ? negocio.horario : [];
   document.querySelectorAll("[data-horario]").forEach((list) => {
     list.replaceChildren();
-    negocio.horario.forEach((regla) => {
+    if (!reglas.length) {
+      const item = document.createElement("li");
+      const name = document.createElement("span");
+      name.textContent = "Horario";
+      const time = document.createElement("span");
+      time.className = "is-pending";
+      time.textContent = "Por confirmar";
+      item.append(name, time);
+      list.appendChild(item);
+      return;
+    }
+    reglas.forEach((regla) => {
       const item = document.createElement("li");
       const name = document.createElement("span");
       name.textContent = regla.etiqueta;
@@ -141,7 +210,13 @@ const applyHorario = () => {
   });
   document.querySelectorAll("[data-horario-resumen]").forEach((node) => {
     node.replaceChildren();
-    negocio.horario.forEach((regla, index) => {
+    if (!reglas.length) {
+      node.textContent = "Por confirmar";
+      node.classList.add("is-pending");
+      return;
+    }
+    node.classList.remove("is-pending");
+    reglas.forEach((regla, index) => {
       if (index) node.appendChild(document.createElement("br"));
       const cuando = textoHorario(regla);
       node.appendChild(document.createTextNode(regla.etiqueta + " · " + cuando));
@@ -159,8 +234,10 @@ const applyHorario = () => {
   pintarEstado(estado);
   const hoy = partesBogota().iso;
   const slots = horasDelDia(hoy);
-  if (!slots.length) return;
-  import("./supabase.js").then(async ({ supabase }) => {
+  if (negocio.enPreparacion || !slots.length) return;
+  import("./supabase.js").then(async ({ obtenerSupabase }) => {
+    const supabase = await obtenerSupabase();
+    if (!supabase) return;
     const { data, error } = await supabase.rpc("horas_ocupadas", { p_fecha: hoy });
     if (error) return;
     const taken = new Set((data || []).map((row) => String((row && row.hora) || row).slice(0, 5)));
@@ -216,10 +293,12 @@ const applyTextos = () => {
       p.textContent = paragraph;
       node.appendChild(p);
     });
+    const href = enlaceWhatsapp("Hola, quiero pedir que borren mis datos de " + negocio.nombre + ".");
+    if (!href) return;
     const p = document.createElement("p");
     const link = document.createElement("a");
     link.className = "btn btn-dark";
-    link.href = enlaceWhatsapp("Hola, quiero pedir que borren mis datos de " + negocio.nombre + ".");
+    link.href = href;
     link.target = "_blank";
     link.rel = "noopener";
     link.textContent = "Pedir la eliminación por WhatsApp";
@@ -227,7 +306,7 @@ const applyTextos = () => {
     node.appendChild(p);
   });
   document.querySelectorAll("[data-frase]").forEach((node) => {
-    node.textContent = "Corte con oficio, sin afán. Barbería en " + negocio.direccion.ciudad + ".";
+    node.textContent = negocio.eslogan;
   });
 };
 
@@ -252,31 +331,38 @@ const applySchema = () => {
     }
     return offer;
   });
-  const hours = negocio.horario.filter((regla) => !regla.cerrado && regla.abre && regla.cierra).map((regla) => ({
+  const reglas = Array.isArray(negocio.horario) ? negocio.horario : [];
+  const hours = reglas.filter((regla) => !regla.cerrado && regla.abre && regla.cierra).map((regla) => ({
     "@type": "OpeningHoursSpecification",
     dayOfWeek: regla.dias.map((dia) => dayNames[dia === 0 ? 6 : dia - 1]),
     opens: regla.abre,
     closes: regla.cierra
   }));
-  const folder = location.origin + (location.pathname || "/").replace(/[^/]*$/, "");
+  const partesCiudad = String(negocio.ciudad || "").split(",").map((parte) => parte.trim());
+  const postal = typeof negocio.direccion === "object" && negocio.direccion
+    ? negocio.direccion
+    : { calle: "", barrio: "", ciudad: partesCiudad[0] || "", region: partesCiudad[1] || "", pais: "CO" };
   const data = {
     "@context": "https://schema.org",
     "@type": ["HairSalon", "BarberShop"],
     name: negocio.nombre,
-    image: folder + "assets/og.jpg",
-    url: location.origin + location.pathname,
-    telephone: "+" + negocio.whatsapp,
+    image: urlSitio("assets/og.jpg"),
+    url: urlSitio(pageKey === "index" ? "" : pageKey + ".html"),
     currenciesAccepted: "COP",
     address: {
       "@type": "PostalAddress",
-      streetAddress: [negocio.direccion.calle, negocio.direccion.barrio].filter(Boolean).join(", "),
-      addressLocality: negocio.direccion.ciudad,
-      addressRegion: negocio.direccion.region,
-      addressCountry: negocio.direccion.pais
+      addressLocality: postal.ciudad || partesCiudad[0] || "",
+      addressRegion: postal.region || partesCiudad[1] || "",
+      addressCountry: postal.pais || "CO"
     },
-    makesOffer: offers,
-    hasMap: enlaceMapa()
+    makesOffer: offers
   };
+  const calle = [postal.calle, postal.barrio].filter(Boolean).join(", ");
+  if (calle) data.address.streetAddress = calle;
+  const mapa = enlaceMapa();
+  if (mapa) data.hasMap = mapa;
+  const telefono = String(negocio.whatsapp || negocio.telefono || "").replace(/\D/g, "");
+  if (telefono) data.telephone = "+" + telefono;
   const valores = servicios.map((item) => item.precioNumero).filter((n) => n > 0);
   if (valores.length) {
     const min = Math.min(...valores);
@@ -284,17 +370,19 @@ const applySchema = () => {
     data.priceRange = min === max ? formatoPrecio(min) : formatoPrecio(min) + "–" + formatoPrecio(max);
   }
   if (hours.length) data.openingHoursSpecification = hours;
-  if (/^https?:\/\//i.test(negocio.redes.instagram || "")) data.sameAs = [negocio.redes.instagram];
+  const instagram = urlInstagram();
+  if (instagram) data.sameAs = [instagram];
   if (negocio.email.includes("@")) data.email = negocio.email;
   node.textContent = JSON.stringify(data);
 };
 
 const applyFaq = () => {
   const root = document.querySelector("[data-faq]");
-  if (!root || !faq.length) return;
+  const preguntas = negocio.enPreparacion ? faqPreparacion : faq;
+  if (!root || !preguntas.length) return;
   const list = document.createElement("div");
   list.className = "faq-list";
-  faq.forEach((item, index) => {
+  preguntas.forEach((item, index) => {
     const wrap = document.createElement("div");
     wrap.className = "faq-item";
     const heading = document.createElement("h3");
@@ -343,10 +431,18 @@ const applyFaq = () => {
 const applyMap = () => {
   const frame = document.querySelector("[data-map]");
   if (!frame || frame.querySelector("iframe")) return;
+  if (!negocio.mapaEmbed) {
+    const note = frame.querySelector("[data-map-fallback]");
+    if (note) {
+      note.hidden = false;
+      note.textContent = "Por confirmar";
+    }
+    return;
+  }
   const load = () => {
     if (frame.querySelector("iframe")) return;
     const iframe = document.createElement("iframe");
-    iframe.title = "Mapa de " + negocio.nombre + " en " + negocio.direccion.ciudad;
+    iframe.title = "Mapa de " + negocio.nombre + " en " + negocio.ciudad;
     iframe.src = negocio.mapaEmbed;
     iframe.loading = "lazy";
     iframe.referrerPolicy = "no-referrer-when-downgrade";
@@ -407,6 +503,21 @@ document.querySelectorAll("[data-year]").forEach((node) => {
   node.textContent = String(new Date().getFullYear());
 });
 
+const applyPreparacion = () => {
+  document.documentElement.classList.toggle("is-preparacion", !!negocio.enPreparacion);
+  if (negocio.enPreparacion) return;
+  document.querySelectorAll("[data-panel-slot]").forEach((slot) => {
+    if (slot.querySelector("a")) return;
+    slot.appendChild(document.createTextNode(" · "));
+    const link = document.createElement("a");
+    link.className = "access-link";
+    link.href = "admin-login.html";
+    link.textContent = "Acceso";
+    slot.hidden = false;
+    slot.appendChild(link);
+  });
+};
+
 applySeo();
 applyLinks();
 applyDireccion();
@@ -419,5 +530,6 @@ applyMap();
 applyTop();
 applySkip();
 paintDuracion();
+applyPreparacion();
 
 export { formatoPrecio };

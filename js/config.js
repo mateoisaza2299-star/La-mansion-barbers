@@ -1,55 +1,49 @@
 export const negocio = {
-  nombre: "Miami Cuts",
-  barbero: "Brayan Andres Romero",
-  sitio: "",
-  telefonoVisible: "320 960 4364",
-  whatsapp: "573209604364",
+  nombre: "La Mansión Barber Shop",
+  nombreCorto: "La Mansión",
+  ciudad: "Mosquera, Cundinamarca",
+  eslogan: "Barber Shop · Mosquera",
+  enPreparacion: true,
+  whatsapp: "",
+  telefono: "",
+  direccion: "",
+  instagram: "lamansionbarbers",
+  horario: "",
+  supabase: { url: "", key: "" },
+  sitio: "https://mateoisaza2299-star.github.io/La-mansion-barbers/",
+  barbero: "",
   email: "",
-  direccion: {
-    calle: "Carrera 7 con Calle 17",
-    barrio: "",
-    ciudad: "Fusagasugá",
-    region: "Cundinamarca",
-    pais: "CO"
-  },
-  mapsUrl: "https://maps.google.com/?q=Carrera+7+con+Calle+17,+Fusagasug%C3%A1,+Cundinamarca",
-  mapaEmbed: "https://maps.google.com/maps?q=Carrera%207%20con%20Calle%2017%2C%20Fusagasug%C3%A1%2C%20Cundinamarca&z=16&output=embed",
+  mapsUrl: "",
+  mapaEmbed: "",
   zona: "America/Bogota",
   horasAntesDeCerrar: 1,
   bloqueMinutos: 60,
-  horario: [
-    { etiqueta: "Lun – Vie", dias: [1, 2, 3, 4, 5], abre: "09:00", cierra: "17:00" },
-    { etiqueta: "Sáb", dias: [6], abre: "12:00", cierra: "21:00" },
-    { etiqueta: "Dom", dias: [0], abre: "11:00", cierra: "19:00" }
-  ],
-  redes: {
-    instagram: "https://www.instagram.com/miami__cuts/",
-    resenas: ""
-  },
-  precios: {
-    "Corte básico": 22000,
-    "Corte + bebida": 24000,
-    "Corte especial": 30000,
-    "Corte Miami Cuts": 35000,
-    "Barba y cejas": 10000,
-    "Limpieza facial": 12000
-  },
+  redes: { resenas: "" },
+  precios: {},
   minutos: {},
   politicaReserva: "Para cancelar o cambiar la cita, avisa con al menos 2 horas de anticipación por WhatsApp.",
   avisoDatos: "Guardamos tu nombre, celular, servicio y fecha para agendar la cita. El celular también se usa para la tarjeta de fidelidad y el corte gratis. También usamos un identificador anónimo para estadísticas.",
   privacidad: [
-    "Cuando reservas guardamos tu nombre, tu celular, el servicio y la fecha. También la hora, la nota que escribas y que la cita es con Brayan Andres Romero. Los usamos para agendar la cita, confirmarla y avisarte si hay un cambio. El celular también se usa para la tarjeta de fidelidad y el corte gratis.",
-    "No vendemos esos datos. Los ve Brayan Andres Romero para atenderte.",
+    "Cuando reservas guardamos tu nombre, tu celular, el servicio y la fecha. También la hora y la nota que escribas. Los usamos para agendar la cita, confirmarla y avisarte si hay un cambio. El celular también se usa para la tarjeta de fidelidad y el corte gratis.",
+    "No vendemos esos datos. Los usa la barbería para atenderte.",
     "Para las estadísticas del sitio guardamos un identificador anónimo en tu navegador. No es tu nombre ni tu celular. Sirve para contar visitas y reservas sin identificarte.",
-    "Si quieres que borremos tu reserva o tus datos, escríbenos por WhatsApp y dinos el nombre y el celular con los que reservaste."
+    "Si quieres que borremos tu reserva o tus datos, escríbenos y dinos el nombre y el celular con los que reservaste."
   ],
-  mensajeReserva: "Hola, quiero reservar una cita en Miami Cuts."
+  mensajeReserva: ""
 };
+
+export function urlSitio(pagina) {
+  const base = String(negocio.sitio || "").replace(/\/+$/, "");
+  if (!pagina || pagina === "index" || pagina === "index.html") return base + "/";
+  return base + "/" + String(pagina).replace(/^\//, "");
+}
 
 export function enlaceMapa() {
   const guardado = String(negocio.mapsUrl || "").trim();
   if (guardado) return guardado;
-  const query = [negocio.nombre, direccionLinea()].filter(Boolean).join(", ");
+  const linea = direccionLinea();
+  if (!linea) return "";
+  const query = [negocio.nombre, linea].filter(Boolean).join(", ");
   return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(query);
 }
 
@@ -69,12 +63,32 @@ export function rangoPrecio() {
 
 export function direccionLinea() {
   const d = negocio.direccion;
+  if (!d) return "";
+  if (typeof d === "string") return d.trim();
   return [d.calle, d.barrio, d.ciudad, d.region].filter(Boolean).join(", ");
 }
 
+export function urlInstagram() {
+  const raw = String(negocio.instagram || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return "https://www.instagram.com/" + raw.replace(/^@/, "").replace(/\/+$/, "") + "/";
+}
+
+export function handleInstagram() {
+  const raw = String(negocio.instagram || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return "@" + raw.replace(/\/+$/, "").split("/").pop();
+  return "@" + raw.replace(/^@/, "");
+}
+
 export function enlaceWhatsapp(texto) {
-  const base = "https://wa.me/" + negocio.whatsapp;
-  if (!texto) return base;
+  const numero = String(negocio.whatsapp || "").replace(/\D/g, "");
+  if (!numero) return "";
+  const base = "https://wa.me/" + numero;
+  const mensaje = texto || negocio.mensajeReserva || ("Hola, quiero reservar una cita en " + negocio.nombre + ".");
+  if (!texto && !negocio.mensajeReserva) return base;
+  if (!texto) return base + "?text=" + encodeURIComponent(mensaje);
   return base + "?text=" + encodeURIComponent(texto);
 }
 
@@ -106,8 +120,16 @@ export function partesBogota(date) {
   };
 }
 
+function reglasHorario() {
+  return Array.isArray(negocio.horario) ? negocio.horario : [];
+}
+
+export function reglaDelDia(dia) {
+  return reglasHorario().find((item) => Array.isArray(item.dias) && item.dias.includes(dia)) || null;
+}
+
 function reglaDe(dia) {
-  return negocio.horario.find((item) => item.dias.includes(dia)) || null;
+  return reglaDelDia(dia);
 }
 
 function minutosReloj(hhmm) {
@@ -139,7 +161,7 @@ export function horasDelDia(iso) {
 }
 
 export function horarioPublicado() {
-  return negocio.horario.some((item) => !item.cerrado && item.abre && item.cierra);
+  return reglasHorario().some((item) => !item.cerrado && item.abre && item.cierra);
 }
 
 export function textoHorario(regla) {
@@ -149,7 +171,7 @@ export function textoHorario(regla) {
 }
 
 export function estadoApertura(date) {
-  if (!horarioPublicado()) return { abierto: false, texto: "Cita previa", pendiente: true };
+  if (!horarioPublicado()) return { abierto: false, texto: "Por confirmar", pendiente: true };
   const ahora = partesBogota(date);
   const hoy = reglaDe(ahora.dia);
   if (hoy && !hoy.cerrado && hoy.abre && hoy.cierra) {
@@ -180,7 +202,7 @@ export function celularColombia(valor) {
     return { ok: true, digitos: digits };
   }
   if (!digits) return { ok: false, mensaje: "Escribe tu celular." };
-  return { ok: false, mensaje: "El celular debe tener 10 dígitos y empezar por 3. Ejemplo: 320 960 4364." };
+  return { ok: false, mensaje: "El celular debe tener 10 dígitos y empezar por 3. Ejemplo: 300 123 4567." };
 }
 
 export function avisoDuracion(nombre) {

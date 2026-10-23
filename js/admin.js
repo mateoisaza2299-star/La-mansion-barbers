@@ -1,5 +1,7 @@
-import { supabase } from "./supabase.js";
-import { negocio, horasDelDia, diaSemana, direccionLinea } from "./config.js";
+import { obtenerSupabase } from "./supabase.js";
+import { negocio, horasDelDia, diaSemana, direccionLinea, reglaDelDia } from "./config.js";
+
+let supabase = null;
 import { servicios } from "./servicios.js";
 
 const EMPTY = "Aún no hay datos en este periodo";
@@ -1000,7 +1002,7 @@ const horasLocal = (fechas) => {
       seen.add(slot);
       bookable.push(slot);
     });
-    const regla = negocio.horario.find((item) => (item.dias || []).includes(diaSemana(iso)));
+    const regla = reglaDelDia(diaSemana(iso));
     const cierra = String((regla && regla.cierra) || "").slice(0, 5);
     if (cierra) cierre.add(cierra);
   });
@@ -1467,4 +1469,22 @@ if (logout) logout.addEventListener("click", async () => {
   window.location.replace("admin-login.html");
 });
 
-guard();
+const pintarCerrado = () => {
+  document.documentElement.classList.add("is-preparacion");
+};
+
+const boot = async () => {
+  if (negocio.enPreparacion) {
+    pintarCerrado();
+    return;
+  }
+  supabase = await obtenerSupabase();
+  if (!supabase) {
+    pintarCerrado();
+    return;
+  }
+  document.documentElement.classList.remove("is-preparacion");
+  guard();
+};
+
+boot();

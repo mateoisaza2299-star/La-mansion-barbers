@@ -1,9 +1,10 @@
-import { supabase } from "./supabase.js";
+import { obtenerSupabase } from "./supabase.js";
 import { initScrollChrome, initCounters } from "./movimiento.js";
 import {
   negocio,
   horasDelDia,
   diaSemana,
+  reglaDelDia,
   celularColombia,
   enlaceWhatsapp,
   minutosDe,
@@ -16,7 +17,6 @@ import {
   const nav = document.querySelector("[data-nav]");
   const toggle = document.querySelector("[data-nav-toggle]");
   const modal = document.querySelector("[data-modal]");
-  const whatsapp = negocio.whatsapp || document.body.dataset.whatsapp || "573209604364";
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const contactKey = "mc_contacto";
   let lastBooking = null;
@@ -27,7 +27,6 @@ import {
   initScrollChrome(header);
   initCounters(reduceMotion);
 
-  /* Menú móvil */
   const setMenu = (open) => {
     if (!nav || !toggle) return;
     nav.classList.toggle("is-open", open);
@@ -48,7 +47,6 @@ import {
     });
   }
 
-  /* Sección activa */
   const links = [...document.querySelectorAll(".nav-link")];
   const sections = links
     .map((link) => {
@@ -75,7 +73,6 @@ import {
     sections.forEach((section) => spy.observe(section));
   }
 
-  /* Aparición al scroll, una sola vez */
   const reveals = document.querySelectorAll(".reveal");
   if (reduceMotion || !("IntersectionObserver" in window)) {
     reveals.forEach((el) => el.classList.add("is-visible"));
@@ -94,7 +91,6 @@ import {
   }
   window.__mcMotion = "ready";
 
-  /* Carrusel de reseñas */
   const carousel = document.querySelector("[data-carousel]");
   if (carousel) {
     const slides = [...carousel.querySelectorAll(".quote")];
@@ -230,6 +226,7 @@ import {
 
   const citaTracker = (() => {
       const empty = { track() {}, hush() {}, revelar() {} };
+    if (negocio.enPreparacion) return empty;
     try {
       const card = document.querySelector("[data-cita]");
       const live = document.querySelector("[data-reserva-estado]");
@@ -467,6 +464,8 @@ import {
         for (let i = 0; i < snapshot.length; i += 1) {
           const token = snapshot[i];
           try {
+            const supabase = await obtenerSupabase();
+            if (!supabase) throw new Error("sin-servicio");
             const { data, error } = await supabase.rpc("estado_reserva", { p_token: token });
             if (error) throw error;
             const row = rowOf(data);
@@ -551,6 +550,8 @@ import {
           cancelBtn.disabled = true;
           cancelBtn.textContent = "Cancelando…";
           setNote("");
+          const supabase = await obtenerSupabase();
+          if (!supabase) throw new Error("sin-servicio");
           const result = await supabase.rpc("cancelar_reserva", { p_token: item.token });
           if (result.error) throw result.error;
           const denied = result.data === false || result.data === "false";
@@ -660,7 +661,7 @@ import {
     }
     const slots = slotsFor(iso);
     if (!slots.length) {
-      const regla = negocio.horario.find((item) => item.dias.includes(weekdayOf(iso)));
+      const regla = reglaDelDia(weekdayOf(iso));
       hoursNote.hidden = false;
       hoursNote.textContent = regla && regla.cerrado ? "Ese día no abrimos. Elige otro día." : "Ese día no hay horas. Elige otro día.";
       return;
@@ -707,6 +708,8 @@ import {
       const iso = sumarDias(desde, salto);
       const slots = slotsFor(iso);
       if (!slots.length) continue;
+      const supabase = await obtenerSupabase();
+      if (!supabase) throw new Error("sin-servicio");
       const { data, error } = await supabase.rpc("horas_ocupadas", { p_fecha: iso });
       if (request !== hoursToken) return null;
       if (error) throw error;
@@ -728,6 +731,8 @@ import {
     hoursBox.replaceChildren();
     chosenHour = "";
     try {
+      const supabase = await obtenerSupabase();
+      if (!supabase) throw new Error("sin-servicio");
       const { data, error } = await supabase.rpc("horas_ocupadas", { p_fecha: iso });
       if (request !== hoursToken) return;
       if (error) throw error;
@@ -882,7 +887,7 @@ import {
   let closeToken = 0;
 
   const openModal = (trigger) => {
-    if (!modal) return;
+    if (negocio.enPreparacion || !modal) return;
     closeToken += 1;
     closingModal = false;
     modal.classList.remove("is-closing");
@@ -1053,7 +1058,7 @@ import {
       return;
     }
     if (!slotsFor(fecha).length) {
-      const regla = negocio.horario.find((item) => item.dias.includes(weekdayOf(fecha)));
+      const regla = reglaDelDia(weekdayOf(fecha));
       showError(regla && regla.cerrado ? "Ese día no abrimos. Elige otro." : "Ese día no hay horas disponibles. Elige otro.");
       focusField("fecha");
       return;
@@ -1097,6 +1102,8 @@ import {
         estado: "pendiente"
       };
       if (token) payload.token = token;
+      const supabase = await obtenerSupabase();
+      if (!supabase) throw new Error("sin-servicio");
       const result = await supabase.from("reservas").insert(payload, { returning: "minimal" });
       error = result.error;
     } catch (err) {
@@ -1157,7 +1164,11 @@ import {
       minutos: minutosDe(servicio)
     };
     reservaSummary.textContent = nombre + " · " + servicio + " · " + fecha + " · " + hourLabel(chosenHour);
-    reservaWa.href = enlaceWhatsapp(lines.join("\n"));
+    const aviso = enlaceWhatsapp(lines.join("\n"));
+    if (reservaWa) {
+      reservaWa.hidden = !aviso;
+      if (aviso) reservaWa.href = aviso;
+    }
     const panel = modal && modal.querySelector(".modal-panel");
     if (panel) panel.setAttribute("aria-labelledby", "reserva-done-title");
     reservaIntro.hidden = true;
@@ -1186,11 +1197,11 @@ import {
   const downloadIcs = (booking) => {
     const start = icsStamp(booking.fecha, booking.hora);
     const end = icsEnd(booking.fecha, booking.hora, booking.minutos || 60);
-    const uid = (booking.token || "cita") + "@miamicuts";
+    const uid = (booking.token || "cita") + "@lamansion";
     const lines = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//Miami Cuts//Cita//ES",
+      "PRODID:-//La Mansion Barber Shop//Cita//ES",
       "CALSCALE:GREGORIAN",
       "METHOD:PUBLISH",
       "BEGIN:VTIMEZONE",
@@ -1217,7 +1228,7 @@ import {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "cita-miami-cuts.ics";
+    link.download = "cita-la-mansion.ics";
     document.body.appendChild(link);
     link.click();
     link.remove();

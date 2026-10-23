@@ -1,75 +1,34 @@
-import { negocio, formatoPrecio, enlaceWhatsapp } from "./config.js";
+import { formatoPrecio } from "./config.js";
+
+const pendiente = "Por confirmar";
 
 const base = [
   {
-    id: "corte-basico",
-    nombre: "Corte básico",
-    precio: 22000,
-    descripcion: "Asesoría, corte y cejas.",
-    experiencia: "Llegas, te sientas y Brayan te asesora el corte que va con tu cara y tu estilo. Rápido, cómodo y con las cejas listas para salir impecable.",
-    incluye: ["Asesoría", "Corte", "Cejas"],
-    fotos: [
-      { src: "assets/servicios/corte-basico/1.jpg", width: 1050, height: 1600, alt: "Araña rapada en el lateral de un corte corto." }
-    ]
+    id: "corte",
+    nombre: "Corte",
+    precio: 0,
+    descripcion: pendiente,
+    experiencia: pendiente,
+    incluye: [pendiente],
+    fotos: []
   },
   {
-    id: "corte-bebida",
-    nombre: "Corte + bebida",
-    precio: 24000,
-    descripcion: "Asesoría, corte y cejas, con una bebida para acompañar.",
-    experiencia: "Llegas, te sientas y te tomas algo mientras Brayan te asesora el corte que va con tu cara y tu estilo. Rápido, cómodo y con las cejas listas para salir impecable.",
-    incluye: ["Asesoría", "Corte", "Cejas", "Bebida"],
-    fotos: [
-      { src: "assets/servicios/corte-bebida/1.jpg", width: 1080, height: 1049, alt: "Degradado medio con el cabello peinado hacia atrás, visto de perfil." },
-      { src: "assets/servicios/corte-bebida/2.jpg", width: 1080, height: 1465, alt: "Línea curva rapada sobre un degradado." }
-    ]
+    id: "barba",
+    nombre: "Barba",
+    precio: 0,
+    descripcion: pendiente,
+    experiencia: pendiente,
+    incluye: [pendiente],
+    fotos: []
   },
   {
-    id: "corte-especial",
-    nombre: "Corte especial",
-    precio: 30000,
-    descripcion: "Corte con exfoliación, limpieza facial, cejas, mascarilla y barba.",
-    experiencia: "Más que un corte: un rato para ti. La exfoliación, la limpieza facial y la mascarilla te dejan la piel fresca, y el corte con barba y cejas cierra el look completo, sin afán.",
-    incluye: ["Corte", "Exfoliación", "Limpieza facial", "Cejas", "Mascarilla", "Barba"],
-    fotos: [
-      { src: "assets/servicios/corte-especial/1.jpg", width: 1170, height: 1595, alt: "Degradado con rulos arriba y puntas claras, visto de perfil." },
-      { src: "assets/servicios/corte-especial/2.jpg", width: 1079, height: 1437, alt: "Líneas rapadas en abanico sobre un degradado." }
-    ]
-  },
-  {
-    id: "corte-miami-cuts",
-    nombre: "Corte Miami Cuts",
-    precio: 35000,
-    descripcion: "Todo el corte especial, más lavado capilar, tratamiento capilar y bebida.",
-    experiencia: "La experiencia completa de la casa. Cuidado del rostro, lavado y tratamiento capilar, barba, cejas y una bebida para acompañar. Sales renovado de pies a cabeza.",
-    incluye: ["Corte", "Exfoliación", "Limpieza facial", "Cejas", "Mascarilla", "Barba", "Lavado capilar", "Tratamiento capilar", "Bebida"],
-    fotos: [
-      { src: "assets/servicios/corte-miami-cuts/1.jpg", width: 902, height: 1599, alt: "Degradado bajo con el cabello corto y texturizado, visto de perfil." },
-      { src: "assets/servicios/corte-miami-cuts/2.jpg", width: 1200, height: 1600, alt: "Perfil con la ceja y la mejilla visibles, y una flor rapada en el lateral." },
-      { src: "assets/servicios/corte-miami-cuts/3.jpg", width: 1170, height: 1194, alt: "Corazón rapado en la nuca, sobre un degradado." }
-    ]
-  },
-  {
-    id: "barba-cejas",
-    nombre: "Barba y cejas",
-    precio: 10000,
-    descripcion: "Asesoramiento, perfilado de barba y cejas.",
-    experiencia: "Barba y cejas con precisión. Te asesoramos la forma que va con tu rostro y las dejamos definidas, limpias y con un acabado natural.",
-    incluye: ["Asesoramiento", "Perfilado de barba", "Cejas"],
-    fotos: [
-      { src: "assets/servicios/barba-cejas/1.jpg", width: 1079, height: 1533, alt: "Perfil con la ceja visible y una mariposa rapada en el lateral." }
-    ]
-  },
-  {
-    id: "limpieza-facial",
-    nombre: "Limpieza facial",
-    precio: 12000,
-    descripcion: "Exfoliación, mascarilla y tratamiento facial.",
-    experiencia: "Un respiro para tu piel. Exfoliación, mascarilla y tratamiento facial que la dejan limpia, suave y fresca, en un momento cómodo y sin prisa.",
-    incluye: ["Exfoliación", "Mascarilla", "Tratamiento facial"],
-    fotos: [
-      { src: "assets/servicios/limpieza-facial/1.jpg", width: 1163, height: 1600, alt: "Perfil con la mejilla y la piel visibles, y un diseño en el lateral." }
-    ]
+    id: "cuidado",
+    nombre: "Cuidado personal",
+    precio: 0,
+    descripcion: pendiente,
+    experiencia: pendiente,
+    incluye: [pendiente],
+    fotos: []
   }
 ];
 
@@ -94,17 +53,12 @@ export const servicios = base.map((item) => {
 
 export function pintarPrecio(node, item) {
   node.replaceChildren();
-  if (item.precio) {
-    node.textContent = item.precio;
+  if (!item.precio) {
+    node.hidden = true;
     return;
   }
-  const link = document.createElement("a");
-  link.href = enlaceWhatsapp("Hola, quiero consultar el precio de " + item.nombre + " en " + negocio.nombre + ".");
-  link.target = "_blank";
-  link.rel = "noopener";
-  link.textContent = "Consultar precio";
-  link.addEventListener("click", (event) => event.stopPropagation());
-  node.appendChild(link);
+  node.hidden = false;
+  node.textContent = item.precio;
 }
 
 const pictureOf = (foto, sizes, lazy) => {

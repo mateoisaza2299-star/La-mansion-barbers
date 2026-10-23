@@ -1,4 +1,4 @@
-const CACHE = "site-shell-v3";
+const CACHE = "site-shell-v5";
 
 const ADMIN_PAGES = ["admin.html", "admin-login.html"];
 const PUBLIC_PAGES = ["index.html", "historia.html", "privacidad.html", "404.html"];
@@ -50,8 +50,7 @@ const relativePath = (url) => {
 
 const leaveAlone = (url, request) => {
   if (request.method !== "GET") return true;
-  const host = url.hostname;
-  if (host === "supabase.co" || host.endsWith(".supabase.co") || host.endsWith(".supabase.in")) return true;
+  if (url.origin !== self.location.origin) return true;
   const blob = url.pathname + url.search;
   if (/access_token|refresh_token|provider_token|code_verifier|token_type|apikey/i.test(blob)) return true;
   if (/\/auth\/v1\/|\/rest\/v1\/|\/realtime\/v1\//.test(url.pathname)) return true;
@@ -92,15 +91,14 @@ const canStore = (request, response) => {
   return type.includes("text/html") || type.includes("text/css") || type.includes("javascript") || type.includes("image/png");
 };
 
-const offlineAdmin = () => new Response(
-  "<!DOCTYPE html><html lang=\"es-CO\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"theme-color\" content=\"#161210\"><title>Panel</title><style>html,body{margin:0;height:100%;background:#f7f3eb;color:#1a1512}body{min-height:100%;display:grid;place-items:center;padding:2rem;text-align:center;font-family:Georgia,'Times New Roman',serif}p{margin:0;max-width:14rem;font-size:2rem;line-height:1.05}p::before{content:'';display:block;width:2rem;height:1px;margin:0 auto 1rem;background:#c9a24b}</style></head><body><p>Sin conexión. Conéctate para ver tus citas.</p><script>addEventListener('online',function(){location.reload()})</script></body></html>",
+const offlinePage = (title, message) => new Response(
+  "<!DOCTYPE html><html lang=\"es-CO\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"theme-color\" content=\"#0A0A0A\"><meta name=\"color-scheme\" content=\"dark\"><title>" + title + "</title><link rel=\"stylesheet\" href=\"css/styles.css\"></head><body class=\"offline-page\"><p>" + message + "</p></body></html>",
   { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } }
 );
 
-const offlinePublic = () => new Response(
-  "<!DOCTYPE html><html lang=\"es-CO\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"theme-color\" content=\"#161210\"><title>Sin conexión</title><style>html,body{margin:0;height:100%;background:#f7f3eb;color:#1a1512}body{min-height:100%;display:grid;place-items:center;padding:2rem;text-align:center;font-family:Georgia,'Times New Roman',serif}p{margin:0;max-width:14rem;font-size:2rem;line-height:1.05}p::before{content:'';display:block;width:2rem;height:1px;margin:0 auto 1rem;background:#c9a24b}</style></head><body><p>Sin conexión</p><script>addEventListener('online',function(){location.reload()})</script></body></html>",
-  { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } }
-);
+const offlineAdmin = () => offlinePage("Panel", "Sin conexión. Conéctate para ver tus citas.");
+
+const offlinePublic = () => offlinePage("Sin conexión", "Sin conexión");
 
 const networkFirst = async (request, lane) => {
   const path = relativePath(new URL(request.url));

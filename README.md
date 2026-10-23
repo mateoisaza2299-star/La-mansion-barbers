@@ -1,2 +1,3 @@
-D# landing-barberia
-Landing page del proyecto barberia 
+# La Mansión Barber Shop
+
+Barbería en Mosquera, Cundinamarca. El nombre, los textos y el contacto viven en `js/config.js`.

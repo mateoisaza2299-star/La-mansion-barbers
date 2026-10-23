@@ -1,12 +1,12 @@
 {
   "id": "./admin.html",
-  "name": "Panel Miami Cuts",
+  "name": "Panel La Mansión",
   "short_name": "Panel",
   "start_url": "./admin.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f7f3eb",
-  "theme_color": "#161210",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
   "orientation": "portrait",
   "lang": "es-CO",
   "icons": [

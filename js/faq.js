@@ -1,3 +1,30 @@
+export const faqPreparacion = [
+  {
+    pregunta: "¿Cómo reservo?",
+    respuesta: "Por confirmar. Muy pronto reservas en línea."
+  },
+  {
+    pregunta: "¿Cómo cancelo?",
+    respuesta: "Por confirmar."
+  },
+  {
+    pregunta: "¿Tengo que pagar por adelantado?",
+    respuesta: "Por confirmar."
+  },
+  {
+    pregunta: "¿Qué pasa si llego tarde?",
+    respuesta: "Por confirmar."
+  },
+  {
+    pregunta: "¿Qué medios de pago aceptan?",
+    respuesta: "Por confirmar."
+  },
+  {
+    pregunta: "¿Atienden sin cita?",
+    respuesta: "Por confirmar."
+  }
+];
+
 export const faq = [
   {
     pregunta: "¿Cómo reservo?",

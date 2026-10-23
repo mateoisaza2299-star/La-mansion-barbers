@@ -1,12 +1,12 @@
 {
   "id": "/",
-  "name": "Miami Cuts",
-  "short_name": "Miami Cuts",
+  "name": "La Mansión Barber Shop",
+  "short_name": "La Mansión",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f7f3eb",
-  "theme_color": "#161210",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
   "lang": "es-CO",
   "icons": [
     {

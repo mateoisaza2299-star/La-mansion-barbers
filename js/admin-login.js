@@ -1,4 +1,7 @@
-import { supabase } from "./supabase.js";
+import { negocio } from "./config.js";
+import { obtenerSupabase } from "./supabase.js";
+
+let supabase = null;
 
 const form = document.querySelector("[data-login]");
 const errorBox = document.querySelector("[data-login-error]");
@@ -53,4 +56,18 @@ form.addEventListener("submit", async (event) => {
   window.location.replace("admin.html");
 });
 
-gate();
+const boot = async () => {
+  if (negocio.enPreparacion) {
+    document.documentElement.classList.add("is-preparacion");
+    return;
+  }
+  supabase = await obtenerSupabase();
+  if (!supabase) {
+    document.documentElement.classList.add("is-preparacion");
+    return;
+  }
+  document.documentElement.classList.remove("is-preparacion");
+  gate();
+};
+
+boot();

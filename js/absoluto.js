@@ -8,11 +8,14 @@
   var page = location.origin + path;
   var folder = location.origin + (location.pathname || "/").replace(/[^/]*$/, "");
   var image = folder + "assets/og.jpg";
+  var absoluto = function (value) {
+    return /^https:\/\//i.test(value || "");
+  };
   var canon = document.querySelector('link[rel="canonical"]');
-  if (canon) canon.setAttribute("href", page);
+  if (canon && !absoluto(canon.getAttribute("href"))) canon.setAttribute("href", page);
   var set = function (selector, value) {
     document.querySelectorAll(selector).forEach(function (node) {
-      node.setAttribute("content", value);
+      if (!absoluto(node.getAttribute("content"))) node.setAttribute("content", value);
     });
   };
   set('meta[property="og:url"]', page);
@@ -23,8 +26,8 @@
   if (!schema) return;
   try {
     var data = JSON.parse(schema.textContent || "{}");
-    data.url = page;
-    data.image = image;
+    if (!absoluto(data.url)) data.url = page;
+    if (!absoluto(data.image)) data.image = image;
     schema.textContent = JSON.stringify(data);
   } catch (error) {}
 })();
