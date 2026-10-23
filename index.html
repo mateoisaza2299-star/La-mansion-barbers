@@ -78,6 +78,7 @@
     </div>
   </header>
   <div class="nav-panel" id="nav-panel" data-nav-panel hidden>
+    <div class="nav-foto" data-nav-foto hidden></div>
     <button class="nav-cerrar" type="button" data-nav-cerrar>Cerrar</button>
     <a class="nav-panel-link" href="#nosotros">Nosotros</a>
     <a class="nav-panel-link" href="#servicios">Servicios</a>
@@ -90,10 +91,12 @@
   </div>
 
   <main id="contenido" tabindex="-1">
-    <section class="hero" id="inicio">
+    <section class="hero is-partido" id="inicio">
       <div class="hero-fondo" data-hero-fondo></div>
+      <div class="hero-textura" data-hero-textura></div>
       <div class="hero-velo" aria-hidden="true"></div>
-      <div class="wrap hero-copy">
+      <div class="wrap hero-cuerpo">
+      <div class="hero-copy">
         <p class="etiqueta" data-texto="heroEtiqueta">BARBER SHOP · MOSQUERA</p>
         <h1>
           <span data-hero-antes>¡Los verdaderos </span><span class="oro-palabra"><span class="oro-texto" data-hero-palabra>HOMBRES</span></span><span data-hero-despues> van a la barbería!</span>
@@ -117,6 +120,15 @@
             <span data-texto="datoEdades">Niños, jóvenes y adultos</span>
           </li>
         </ul>
+      </div>
+      <div class="hero-marcos" data-hero-marcos>
+        <figure class="hero-marco hero-marco-principal">
+          <div class="hero-marco-foto" data-hero-principal></div>
+        </figure>
+        <figure class="hero-marco hero-marco-sec">
+          <div class="hero-marco-foto" data-hero-sec></div>
+        </figure>
+      </div>
       </div>
     </section>
 
@@ -146,7 +158,7 @@
           <div class="nosotros-pista" data-nosotros-pista>
             <figure class="nosotros-card d0" data-revelar>
               <div class="nosotros-media mate-nosotros-1">
-                <img src="assets/img/fotos/nosotros-1-800.webp" srcset="assets/img/fotos/nosotros-1-480.webp 480w, assets/img/fotos/nosotros-1-800.webp 800w" sizes="(max-width: 767px) 82vw, (max-width: 1023px) 46vw, 360px" width="781" height="861" alt="Un barbero le corta el cabello a un niño pequeño sentado en las piernas de su papá." loading="lazy" decoding="async">
+                <img src="assets/img/fotos/nosotros-1-480.webp" srcset="assets/img/fotos/nosotros-1-480.webp 480w" sizes="(max-width: 767px) 82vw, (max-width: 1023px) 46vw, 360px" width="781" height="861" alt="Un barbero le corta el cabello a un niño pequeño sentado en las piernas de su papá." loading="lazy" decoding="async">
               </div>
               <figcaption>
                 <h3 data-nosotros-h="0">La primera vez</h3>
@@ -155,7 +167,7 @@
             </figure>
             <figure class="nosotros-card d1" data-revelar>
               <div class="nosotros-media mate-nosotros-2">
-                <img src="assets/img/fotos/nosotros-2-800.webp" srcset="assets/img/fotos/nosotros-2-480.webp 480w, assets/img/fotos/nosotros-2-800.webp 800w" sizes="(max-width: 767px) 82vw, (max-width: 1023px) 46vw, 360px" width="685" height="882" alt="Un barbero con delantal de herramientas doradas peina con una brocha el cabello de un joven." loading="lazy" decoding="async">
+                <img src="assets/img/fotos/nosotros-2-480.webp" srcset="assets/img/fotos/nosotros-2-480.webp 480w" sizes="(max-width: 767px) 82vw, (max-width: 1023px) 46vw, 360px" width="685" height="882" alt="Un barbero con delantal de herramientas doradas peina con una brocha el cabello de un joven." loading="lazy" decoding="async">
               </div>
               <figcaption>
                 <h3 data-nosotros-h="1">El detalle que se nota</h3>
@@ -164,7 +176,7 @@
             </figure>
             <figure class="nosotros-card d2" data-revelar>
               <div class="nosotros-media mate-nosotros-3">
-                <img src="assets/img/fotos/nosotros-3-800.webp" srcset="assets/img/fotos/nosotros-3-480.webp 480w, assets/img/fotos/nosotros-3-800.webp 800w" sizes="(max-width: 767px) 82vw, (max-width: 1023px) 92vw, 360px" width="691" height="873" alt="Un barbero corta con tijeras el cabello de un señor mayor mientras otro hombre observa." loading="lazy" decoding="async">
+                <img src="assets/img/fotos/nosotros-3-480.webp" srcset="assets/img/fotos/nosotros-3-480.webp 480w" sizes="(max-width: 767px) 82vw, (max-width: 1023px) 92vw, 360px" width="691" height="873" alt="Un barbero corta con tijeras el cabello de un señor mayor mientras otro hombre observa." loading="lazy" decoding="async">
               </div>
               <figcaption>
                 <h3 data-nosotros-h="2">Un oficio que se comparte</h3>
@@ -202,12 +214,27 @@
       </div>
     </section>
 
+    <section class="seccion equipo" id="equipo" hidden>
+      <div class="wrap">
+        <header class="reveal" data-revelar>
+          <p class="etiqueta">El equipo</p>
+          <h2>El equipo</h2>
+        </header>
+        <div class="equipo-pista" data-equipo-pista></div>
+      </div>
+    </section>
+
     <section class="cita" aria-label="Cita">
       <div class="cita-fondo fondo-parallax" data-cita-fondo></div>
       <div class="wrap cita-caja reveal" data-revelar>
         <blockquote data-nosotros="cita">Un buen corte no cambia solo tu cabello: cambia cómo entras a cualquier lugar.</blockquote>
         <p class="cita-firma" data-nosotros="firma">La Mansión Barber Shop</p>
       </div>
+    </section>
+
+    <section class="banda" aria-label="Cortes, barba y cuidado personal">
+      <div class="banda-fondo" data-banda="oficio"></div>
+      <p class="banda-frase">Cortes, barba y cuidado personal</p>
     </section>
 
     <section class="seccion" id="servicios" aria-labelledby="servicios-titulo">
@@ -270,6 +297,11 @@
           <a class="btn" data-wa-productos href="https://wa.me/573118162854?text=Hola%2C%20quiero%20preguntar%20por%20los%20productos%20de%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">Pregunta por WhatsApp</a>
         </div>
       </div>
+    </section>
+
+    <section class="banda" aria-label="Tu turno te espera">
+      <div class="banda-fondo" data-banda="turno"></div>
+      <p class="banda-frase">Tu turno te espera</p>
     </section>
 
     <section class="seccion visita" id="visita" aria-labelledby="visita-titulo">

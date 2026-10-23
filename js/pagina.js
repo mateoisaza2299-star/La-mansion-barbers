@@ -46,9 +46,11 @@ const focoDe = (foto) => {
 const variantesDe = (foto) => (Array.isArray(foto.variantes) ? foto.variantes.filter((item) => item && item.ancho) : []);
 
 const urlDe = (foto, ancho) => carpeta + foto.id + "-" + ancho + ".webp";
-const urlFondo = (foto, ancho) => "../" + carpeta + foto.id + "-" + ancho + ".webp";
 
-const srcsetDe = (foto) => variantesDe(foto).map((item) => urlDe(foto, item.ancho) + " " + item.ancho + "w").join(", ");
+const srcsetDe = (foto, maximo) => variantesDe(foto)
+  .filter((item) => !maximo || item.ancho <= maximo)
+  .map((item) => urlDe(foto, item.ancho) + " " + item.ancho + "w")
+  .join(", ");
 
 const anchoDe = (foto, preferido) => {
   const lista = variantesDe(foto);
@@ -162,103 +164,248 @@ const pintarPrivacidad = () => {
   });
 };
 
+const usos = new Map();
+const puede = (foto) => !!(foto && esId(foto.id) && (usos.get(foto.id) || 0) < 2);
+const marcar = (foto) => {
+  if (!puede(foto)) return false;
+  usos.set(foto.id, (usos.get(foto.id) || 0) + 1);
+  return true;
+};
+const reservarApariciones = (fotos) => {
+  fotos.forEach((foto) => {
+    if (foto && esId(foto.id)) usos.set(foto.id, 1);
+  });
+};
+const ladoDe = (foto) => Math.max(Number(foto && foto.ancho) || 0, Number(foto && foto.alto) || 0);
+const proporcionDe = (foto) => (foto && foto.alto ? foto.ancho / foto.alto : 0);
+const menorEnPrimerPlano = (foto) => {
+  if (!foto) return false;
+  if (foto.id === "nosotros-1" || foto.id === "nosotros-2") return true;
+  return /niñ|niño|pequeñ/i.test(foto.alt || "");
+};
+const esHorizontalApta = (foto) => !!(
+  foto &&
+  foto.aptaFondo &&
+  proporcionDe(foto) >= 1.3 &&
+  ["fachada", "interior", "ambiente"].includes(foto.categoria) &&
+  !menorEnPrimerPlano(foto)
+);
+
+const crearImagen = (foto, opciones) => {
+  const preferido = opciones.ancho || 800;
+  const ancho = anchoDe(foto, preferido) || anchoDe(foto, 480);
+  if (!ancho) return null;
+  const img = document.createElement("img");
+  img.src = urlDe(foto, ancho);
+  img.srcset = opciones.maximo ? srcsetDe(foto, opciones.maximo) : srcsetDe(foto);
+  img.sizes = opciones.sizes || "100vw";
+  img.alt = opciones.alt || "";
+  img.width = foto.ancho;
+  img.height = foto.alto;
+  img.decoding = "async";
+  if (opciones.prioridad) img.setAttribute("fetchpriority", "high");
+  else img.loading = "lazy";
+  img.className = "mate-" + foto.id;
+  return img;
+};
+
+const precargar = (foto) => {
+  const ancho = anchoDe(foto, 800) || anchoDe(foto, 480);
+  if (!ancho || document.head.querySelector('link[data-hero-preload]')) return;
+  const link = document.createElement("link");
+  link.rel = "preload";
+  link.as = "image";
+  link.href = urlDe(foto, ancho);
+  link.setAttribute("fetchpriority", "high");
+  link.setAttribute("data-hero-preload", "");
+  document.head.appendChild(link);
+};
+
 const estilosFoto = (foto) => {
   if (!esId(foto.id) || !esColor(foto.colorMedio)) return;
   regla(".mate-" + foto.id + "{background-color:" + foto.colorMedio + "}");
   regla("img.mate-" + foto.id + ",.mate-" + foto.id + " img{object-position:" + focoDe(foto) + "}");
 };
 
-const fondoDe = (selector, foto) => {
-  if (!foto || !esId(foto.id)) return;
-  const ancho = anchoDe(foto, 800) || anchoDe(foto, 480);
-  if (!ancho) return;
-  regla(selector + "{--foto-fondo:url(\"" + urlFondo(foto, ancho) + "\");--foto-foco:" + focoDe(foto) + "}");
+const meterFoto = (contenedor, foto, opciones) => {
+  if (!contenedor || !foto || !marcar(foto)) return false;
+  const img = crearImagen(foto, opciones || {});
+  if (!img) return false;
+  contenedor.classList.add("tiene-foto", "mate-" + foto.id);
+  contenedor.appendChild(img);
+  return true;
 };
 
 const prepararHero = (fotos) => {
   const fondo = document.querySelector("[data-hero-fondo]");
-  if (!fondo) return;
-  const lista = fotos
-    .filter((foto) => foto.aptaFondo && ["fachada", "interior", "ambiente"].includes(foto.categoria))
-    .sort((a, b) => Number(b.destacada) - Number(a.destacada))
+  const hero = document.querySelector(".hero");
+  if (!fondo || !hero) return;
+  const horizontales = fotos
+    .filter((foto) => esHorizontalApta(foto) && puede(foto))
+    .sort((a, b) => Number(b.destacada) - Number(a.destacada) || ladoDe(b) - ladoDe(a))
     .slice(0, estatico ? 1 : 3);
-  if (!lista.length) return;
-  const primera = urlDe(lista[0], anchoDe(lista[0], 1200) || anchoDe(lista[0], 800));
-  const preload = document.createElement("link");
-  preload.rel = "preload";
-  preload.as = "image";
-  preload.href = primera;
-  preload.setAttribute("fetchpriority", "high");
-  document.head.appendChild(preload);
-  lista.forEach((foto, indice) => {
-    const capa = document.createElement("div");
-    capa.className = "hero-slide mate-" + foto.id + (indice === 0 ? " is-on" : "");
-    const img = document.createElement("img");
-    const ancho = anchoDe(foto, indice === 0 ? 1200 : 800);
-    img.src = urlDe(foto, ancho);
-    img.srcset = srcsetDe(foto);
-    img.sizes = "100vw";
-    img.alt = "";
-    img.width = foto.ancho;
-    img.height = foto.alto;
-    img.decoding = "async";
-    if (indice === 0) img.setAttribute("fetchpriority", "high");
-    else img.loading = "lazy";
-    capa.appendChild(img);
-    fondo.appendChild(capa);
-  });
-  if (lista.length > 1 && !estatico) {
-    fondo.classList.add("hero-anima");
-    let actual = 0;
-    window.setInterval(() => {
-      const capas = [...fondo.querySelectorAll(".hero-slide")];
-      if (capas.length < 2) return;
-      capas[actual].classList.remove("is-on");
-      actual = (actual + 1) % capas.length;
-      capas[actual].classList.add("is-on");
-    }, 7000);
+  if (horizontales.length) {
+    hero.classList.remove("is-partido");
+    const textura = document.querySelector("[data-hero-textura]");
+    const marcos = document.querySelector("[data-hero-marcos]");
+    if (textura) textura.hidden = true;
+    if (marcos) marcos.hidden = true;
+    precargar(horizontales[0]);
+    horizontales.forEach((foto, indice) => {
+      if (!marcar(foto)) return;
+      const capa = document.createElement("div");
+      capa.className = "hero-slide mate-" + foto.id + (indice === 0 ? " is-on" : "");
+      const img = crearImagen(foto, {
+        alt: "",
+        sizes: "100vw",
+        ancho: indice === 0 ? 1800 : 1200,
+        prioridad: indice === 0
+      });
+      if (!img) return;
+      capa.appendChild(img);
+      fondo.appendChild(capa);
+    });
+    if (horizontales.length > 1 && !estatico) {
+      fondo.classList.add("hero-anima");
+      let actual = 0;
+      window.setInterval(() => {
+        const capas = [...fondo.querySelectorAll(".hero-slide")];
+        if (capas.length < 2) return;
+        capas[actual].classList.remove("is-on");
+        actual = (actual + 1) % capas.length;
+        capas[actual].classList.add("is-on");
+      }, 7000);
+    }
+    return;
+  }
+  hero.classList.add("is-partido");
+  const ordenAmbiente = { interior: 0, ambiente: 1, fachada: 2 };
+  const texturaFoto = fotos
+    .filter((foto) => ["interior", "ambiente", "fachada"].includes(foto.categoria) && !menorEnPrimerPlano(foto) && puede(foto))
+    .sort((a, b) => (ordenAmbiente[a.categoria] ?? 9) - (ordenAmbiente[b.categoria] ?? 9) || ladoDe(b) - ladoDe(a))[0];
+  const preferencia = ["corte-barba", "corte-facial", "corte-spray", "corte-capa"];
+  const marcos = fotos
+    .filter((foto) => foto.categoria === "corte" && foto.orientacion === "vertical" && !menorEnPrimerPlano(foto) && ladoDe(foto) >= 640 && puede(foto) && (!texturaFoto || foto.id !== texturaFoto.id))
+    .sort((a, b) => {
+      const ia = preferencia.indexOf(a.id);
+      const ib = preferencia.indexOf(b.id);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || ladoDe(b) - ladoDe(a);
+    })
+    .slice(0, 2);
+  const principal = marcos[0];
+  const secundaria = marcos[1];
+  if (principal) {
+    precargar(principal);
+    const caja = document.querySelector("[data-hero-principal]");
+    if (caja) {
+      caja.classList.add("mate-" + principal.id);
+      const img = crearImagen(principal, {
+        alt: principal.alt,
+        sizes: "(max-width: 899px) 92vw, 38vw",
+        ancho: 1200,
+        prioridad: true
+      });
+      if (img && marcar(principal)) caja.appendChild(img);
+    }
+  }
+  if (secundaria) {
+    const caja = document.querySelector("[data-hero-sec]");
+    if (caja) {
+      caja.classList.add("mate-" + secundaria.id);
+      const img = crearImagen(secundaria, {
+        alt: secundaria.alt,
+        sizes: "(min-width: 900px) 22vw, 1px",
+        ancho: 800
+      });
+      if (img && marcar(secundaria)) caja.appendChild(img);
+    }
+  }
+  const textura = document.querySelector("[data-hero-textura]");
+  if (textura && texturaFoto) {
+    const img = crearImagen(texturaFoto, { alt: "", sizes: "100vw", ancho: 480, maximo: 480 });
+    if (img && marcar(texturaFoto)) {
+      textura.classList.add("tiene-foto", "mate-" + texturaFoto.id);
+      textura.appendChild(img);
+    }
   }
 };
 
-const prepararAmbiente = (fotos) => {
-  const ambiente = fotos.find((foto) => foto.categoria === "ambiente" && foto.tono === "oscuro") || fotos.find((foto) => foto.categoria === "ambiente");
+const elegirLibre = (fotos, filtro) => fotos
+  .filter((foto) => filtro(foto) && puede(foto) && !menorEnPrimerPlano(foto))
+  .sort((a, b) => Number(b.tono === "oscuro") - Number(a.tono === "oscuro") || Number(b.destacada) - Number(a.destacada) || ladoDe(b) - ladoDe(a))[0];
+
+const prepararFondos = (fotos) => {
   const cita = document.querySelector("[data-cita-fondo]");
-  const panel = document.querySelector("[data-nav-panel]");
-  if (ambiente && cita) {
-    cita.classList.add("tiene-foto");
-    fondoDe(".cita-fondo.tiene-foto", ambiente);
+  const ambiente = elegirLibre(fotos, (foto) => foto.categoria === "ambiente");
+  if (cita && ambiente) meterFoto(cita, ambiente, { alt: "", sizes: "100vw", ancho: 1200 });
+  document.querySelectorAll("[data-banda]").forEach((banda) => {
+    const foto = elegirLibre(fotos, (item) => item.categoria === "ambiente");
+    if (foto) meterFoto(banda, foto, { alt: "", sizes: "100vw", ancho: 1200 });
+  });
+  const panel = document.querySelector("[data-nav-foto]");
+  const menu = elegirLibre(fotos, (foto) => foto.categoria === "ambiente");
+  if (panel && menu && meterFoto(panel, menu, { alt: "", sizes: "100vw", ancho: 800 })) {
+    panel.hidden = false;
+    const nav = document.querySelector("[data-nav-panel]");
+    if (nav) nav.classList.add("tiene-foto");
   }
-  if (ambiente && panel && esId(ambiente.id)) {
-    const ancho = anchoDe(ambiente, 800);
-    if (ancho) {
-      panel.classList.add("tiene-foto");
-      regla("#nav-panel.tiene-foto{--foto-nav:url(\"" + urlFondo(ambiente, ancho) + "\");--foto-foco:" + focoDe(ambiente) + "}");
-    }
-  }
-  const visitaFoto = fotos
-    .filter((foto) => foto.categoria === "fachada" || foto.categoria === "interior")
-    .sort((a, b) => Number(b.tono === "oscuro") - Number(a.tono === "oscuro"))[0];
   const visita = document.querySelector("[data-visita-fondo]");
-  if (visitaFoto && visita) {
-    visita.classList.add("tiene-foto");
-    fondoDe(".visita-fondo.tiene-foto", visitaFoto);
+  const visitaFoto = elegirLibre(fotos, (foto) => foto.categoria === "fachada" || foto.categoria === "interior");
+  if (visita && visitaFoto && meterFoto(visita, visitaFoto, { alt: "", sizes: "(min-width: 900px) 62vw, 100vw", ancho: 1200 })) {
+    if (visitaFoto.orientacion === "vertical") visita.classList.add("es-panel");
   }
   const pista = document.querySelector("[data-pista]");
   if (pista && fotos.some((foto) => foto.categoria === "fachada")) {
     pista.hidden = false;
     if (textos.pista) pista.textContent = textos.pista;
   }
-  const productos = fotos.filter((foto) => foto.categoria === "producto");
+  const productos = fotos.filter((foto) => foto.categoria === "producto" && puede(foto));
   const seccion = document.getElementById("productos");
   const fondoProductos = document.querySelector("[data-productos-fondo]");
   if (seccion && productos.length) {
     seccion.hidden = false;
-    if (fondoProductos) {
-      fondoProductos.classList.add("tiene-foto");
-      fondoDe(".productos-fondo.tiene-foto", productos[0]);
-    }
+    if (fondoProductos) meterFoto(fondoProductos, productos[0], { alt: "", sizes: "100vw", ancho: 1200 });
   }
-  return ambiente ? ambiente.id : "";
+};
+
+const prepararEquipo = (fotos) => {
+  const seccion = document.getElementById("equipo");
+  const pista = document.querySelector("[data-equipo-pista]");
+  if (!seccion || !pista) return;
+  const lista = fotos.filter((foto) => foto.categoria === "equipo" && puede(foto) && ladoDe(foto) >= 480 && !menorEnPrimerPlano(foto));
+  lista.forEach((foto) => {
+    const img = crearImagen(foto, {
+      alt: foto.alt,
+      sizes: "(max-width: 699px) 72vw, 240px",
+      ancho: 800
+    });
+    if (!img || !marcar(foto)) return;
+    const card = document.createElement("article");
+    card.className = "equipo-card";
+    const media = document.createElement("div");
+    media.className = "equipo-media mate-" + foto.id;
+    media.appendChild(img);
+    const nombre = document.createElement("h3");
+    nombre.textContent = "Barbero de La Mansión";
+    const rol = document.createElement("p");
+    rol.className = "equipo-rol";
+    rol.textContent = "Por confirmar";
+    card.append(media, nombre, rol);
+    pista.appendChild(card);
+  });
+  if (pista.children.length) seccion.hidden = false;
+};
+
+const refrescarNosotros = (fotos) => {
+  fotos.filter((foto) => foto.categoria === "nosotros" && esId(foto.id)).forEach((foto) => {
+    const img = document.querySelector(".mate-" + foto.id + " img");
+    const ancho = anchoDe(foto, 800) || anchoDe(foto, 480);
+    if (!img || !ancho) return;
+    img.src = urlDe(foto, ancho);
+    img.srcset = srcsetDe(foto);
+    img.width = foto.ancho;
+    img.height = foto.alto;
+  });
 };
 
 const servicioNodo = (servicio) => {
@@ -290,33 +437,68 @@ const prepararServicios = (fotos) => {
   negocio.servicios.forEach((item) => {
     if (item.categoria && !presentes.includes(item.categoria)) presentes.push(item.categoria);
   });
-  const banco = fotos.filter((foto) => ["corte", "equipo", "producto"].includes(foto.categoria));
+  const banco = fotos.filter((foto) => ["corte", "equipo", "producto", "interior", "nosotros"].includes(foto.categoria) && ladoDe(foto) >= 480);
   const tabs = carta.querySelector("[data-carta-tabs]");
   const paneles = carta.querySelector("[data-carta-paneles]");
   const movil = carta.querySelector("[data-carta-movil]");
   const hueco = carta.querySelector("[data-carta-foto]");
+  const enServicio = new Set();
+  const asignadas = new Map();
+  let previa = "";
+  const candidatas = (nombre) => banco.filter((foto) => {
+    if (nombre === "Niños") return foto.id === "nosotros-1" || /niñ|niño/i.test(foto.alt || "");
+    if (menorEnPrimerPlano(foto)) return false;
+    if (nombre === "Barba") return foto.categoria === "corte" || foto.categoria === "equipo";
+    if (nombre === "Cuidado facial") return ["producto", "interior", "corte"].includes(foto.categoria);
+    return foto.categoria === "corte";
+  }).filter((foto) => foto.id !== previa);
+  presentes.forEach((nombre) => {
+    const pool = candidatas(nombre).filter((foto) => puede(foto) || enServicio.has(foto.id));
+    const lista = (pool.length ? pool : candidatas(nombre).filter((foto) => enServicio.has(foto.id)))
+      .slice()
+      .sort((a, b) => Number(a.categoria !== "corte") - Number(b.categoria !== "corte") || a.id.localeCompare(b.id));
+    const foto = lista[0];
+    if (!foto) return;
+    if (!enServicio.has(foto.id)) {
+      if (!marcar(foto)) return;
+      enServicio.add(foto.id);
+    }
+    asignadas.set(nombre, foto);
+    previa = foto.id;
+  });
+  if (hueco && !asignadas.size) hueco.hidden = true;
   let fotoNodo = null;
-  const fotoDe = (indice) => (banco.length ? banco[indice % banco.length] : null);
+  let fotoActual = "";
   const ponerFoto = (nombre) => {
-    const foto = fotoDe(presentes.indexOf(nombre));
+    const foto = asignadas.get(nombre);
     const estrecha = window.matchMedia("(max-width: 899px)").matches;
     const destino = estrecha ? carta.querySelector(".acordeon-item.is-open .acordeon-foto") : hueco;
     if (!foto || !destino) return;
     const ancho = anchoDe(foto, 800);
     if (!ancho) return;
-    if (!fotoNodo) {
-      fotoNodo = document.createElement("img");
-      fotoNodo.decoding = "async";
-      fotoNodo.loading = "lazy";
+    const aplicar = () => {
+      if (!fotoNodo) {
+        fotoNodo = document.createElement("img");
+        fotoNodo.decoding = "async";
+        fotoNodo.loading = "lazy";
+      }
+      fotoNodo.src = urlDe(foto, ancho);
+      fotoNodo.srcset = srcsetDe(foto);
+      fotoNodo.sizes = estrecha ? "100vw" : "(min-width: 900px) 40vw, 100vw";
+      fotoNodo.alt = foto.alt;
+      fotoNodo.width = foto.ancho;
+      fotoNodo.height = foto.alto;
+      fotoNodo.className = "mate-" + foto.id;
+      destino.replaceChildren(fotoNodo);
+      fotoActual = foto.id;
+      window.requestAnimationFrame(() => fotoNodo.classList.remove("is-out"));
+    };
+    if (!fotoNodo || fotoActual === foto.id || reduce || estatico) {
+      aplicar();
+      return;
     }
-    fotoNodo.src = urlDe(foto, ancho);
-    fotoNodo.srcset = srcsetDe(foto);
-    fotoNodo.sizes = estrecha ? "100vw" : "(min-width: 900px) 40vw, 100vw";
-    fotoNodo.alt = foto.alt;
-    fotoNodo.width = foto.ancho;
-    fotoNodo.height = foto.alto;
-    fotoNodo.className = "mate-" + foto.id;
-    destino.replaceChildren(fotoNodo);
+    fotoNodo.classList.add("is-out");
+    window.setTimeout(aplicar, 220);
   };
   const seleccionar = (nombre) => {
     tabs.querySelectorAll("[role='tab']").forEach((tab) => {
@@ -400,14 +582,14 @@ const prepararServicios = (fotos) => {
   carta.hidden = false;
 };
 
-const prepararGaleria = (fotos, reservada) => {
+const prepararGaleria = (fotos) => {
   const seccion = document.getElementById("galeria");
   const mosaico = document.querySelector("[data-mosaico]");
   const filtros = document.querySelector("[data-filtros]");
   const mas = document.querySelector("[data-mas]");
   const visor = document.querySelector("[data-visor]");
   if (!seccion || !mosaico || !filtros || !mas || !visor) return;
-  const lista = fotos.filter((foto) => foto.alt && foto.id !== reservada && foto.categoria);
+  const lista = fotos.filter((foto) => foto.alt && foto.categoria && foto.categoria !== "nosotros" && !String(foto.id).startsWith("nosotros-"));
   document.querySelectorAll("[data-nav-link][href='#galeria'], .nav-panel-link[href='#galeria'], .footer-nav a[href='#galeria']").forEach((nodo) => {
     if (lista.length < 4) nodo.hidden = true;
   });
@@ -476,7 +658,7 @@ const prepararGaleria = (fotos, reservada) => {
     actuales.forEach((foto, posicion) => {
       const boton = document.createElement("button");
       boton.type = "button";
-      boton.className = "mosaico-item mate-" + foto.id + (posicion === 0 ? " ancho" : "");
+      boton.className = "mosaico-item mate-" + foto.id + (posicion % 5 === 0 ? " ancho" : "") + (foto.orientacion === "vertical" && posicion % 3 === 1 ? " alto" : "");
       if (posicion >= cupo) boton.hidden = true;
       const img = document.createElement("img");
       const ancho = anchoDe(foto, 800);
@@ -765,11 +947,14 @@ const iniciar = async () => {
     fotos = [];
   }
   fotos.forEach(estilosFoto);
+  reservarApariciones(fotos);
+  refrescarNosotros(fotos);
   prepararHero(fotos);
-  const reservada = prepararAmbiente(fotos);
+  prepararEquipo(fotos);
+  prepararFondos(fotos);
   prepararServicios(fotos);
   const visor = document.querySelector("[data-visor]");
-  prepararGaleria(fotos, reservada);
+  prepararGaleria(fotos);
   prepararMovimiento(visor);
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});

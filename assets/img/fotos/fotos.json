@@ -1,9 +1,9 @@
 [
   {
     "id": "ambiente-letrero",
-    "archivo": "ambiente-letrero.png",
+    "archivo": "ambiente-letrero.jpg",
     "categoria": "ambiente",
-    "orientacion": "vertical",
+    "orientacion": "cuadrada",
     "ancho": 671,
     "alto": 784,
     "foco": {
@@ -11,27 +11,49 @@
       "y": 0.62
     },
     "tono": "oscuro",
-    "colorMedio": "#5c403b",
+    "colorMedio": "#5d413c",
+    "calidad": "baja",
     "alt": "Letrero de neón de La Mansión Barber Shop sobre una pared negra, entre globos rojos, plateados y negros.",
     "aptaFondo": false,
     "destacada": true,
     "variantes": [
       {
         "ancho": 480,
-        "peso": 31186
-      },
-      {
-        "ancho": 800,
-        "peso": 56184
+        "peso": 29222
       }
     ],
-    "huella": "35737c05f738cfec"
+    "huella": "e122e8d6ca45b93e"
+  },
+  {
+    "id": "corte-barba",
+    "archivo": "corte-barba.jpg",
+    "categoria": "corte",
+    "orientacion": "vertical",
+    "ancho": 666,
+    "alto": 885,
+    "foco": {
+      "x": 0.58,
+      "y": 0.08
+    },
+    "tono": "claro",
+    "colorMedio": "#7c8884",
+    "calidad": "baja",
+    "alt": "Detalle de un arreglo de barba con peine negro de La Mansión y máquina de corte.",
+    "aptaFondo": false,
+    "destacada": true,
+    "variantes": [
+      {
+        "ancho": 480,
+        "peso": 23798
+      }
+    ],
+    "huella": "f93913d0bb390c31"
   },
   {
     "id": "corte-capa",
-    "archivo": "corte-capa.png",
+    "archivo": "corte-capa.jpg",
     "categoria": "corte",
-    "orientacion": "vertical",
+    "orientacion": "cuadrada",
     "ancho": 709,
     "alto": 819,
     "foco": {
@@ -39,25 +61,47 @@
       "y": 0.28
     },
     "tono": "oscuro",
-    "colorMedio": "#434b45",
+    "colorMedio": "#434a44",
+    "calidad": "baja",
     "alt": "Cliente con capa verde de La Mansión Barber Shop, barba recortada y cabello peinado hacia atrás.",
     "aptaFondo": false,
     "destacada": false,
     "variantes": [
       {
         "ancho": 480,
-        "peso": 17658
-      },
-      {
-        "ancho": 800,
-        "peso": 34306
+        "peso": 17044
       }
     ],
-    "huella": "256f23a3ca7b340d"
+    "huella": "50028fa87f959df9"
+  },
+  {
+    "id": "corte-facial",
+    "archivo": "corte-facial.jpg",
+    "categoria": "corte",
+    "orientacion": "vertical",
+    "ancho": 670,
+    "alto": 890,
+    "foco": {
+      "x": 0.46,
+      "y": 0.46
+    },
+    "tono": "claro",
+    "colorMedio": "#938a88",
+    "calidad": "baja",
+    "alt": "Un barbero con guantes azules sostiene el rostro de un cliente durante un cuidado de barba.",
+    "aptaFondo": false,
+    "destacada": true,
+    "variantes": [
+      {
+        "ancho": 480,
+        "peso": 22026
+      }
+    ],
+    "huella": "ebf18594fccdd271"
   },
   {
     "id": "corte-manchas",
-    "archivo": "corte-manchas.png",
+    "archivo": "corte-manchas.jpg",
     "categoria": "corte",
     "orientacion": "vertical",
     "ancho": 311,
@@ -67,51 +111,103 @@
       "y": 0.38
     },
     "tono": "oscuro",
-    "colorMedio": "#545254",
+    "colorMedio": "#5b595b",
+    "calidad": "baja",
     "alt": "Corte rapado con manchas rosadas y azules sobre cabello decolorado, y lentes oscuros.",
     "aptaFondo": false,
     "destacada": false,
     "variantes": [
       {
         "ancho": 311,
-        "peso": 12738
+        "peso": 11406
       }
     ],
-    "huella": "181172c76284f27d"
+    "huella": "bea926bfe88eb691"
+  },
+  {
+    "id": "corte-spray",
+    "archivo": "corte-spray.jpg",
+    "categoria": "corte",
+    "orientacion": "vertical",
+    "ancho": 651,
+    "alto": 852,
+    "foco": {
+      "x": 0.5,
+      "y": 0.46
+    },
+    "tono": "claro",
+    "colorMedio": "#7f706a",
+    "calidad": "baja",
+    "alt": "Un barbero aplica un producto en aerosol sobre la barba de un cliente recostado.",
+    "aptaFondo": false,
+    "destacada": false,
+    "variantes": [
+      {
+        "ancho": 480,
+        "peso": 18808
+      }
+    ],
+    "huella": "0054463c6026eac4"
   },
   {
     "id": "equipo-barberos",
-    "archivo": "equipo-barberos.png",
+    "archivo": "equipo-barberos.jpg",
     "categoria": "equipo",
-    "orientacion": "horizontal",
+    "orientacion": "cuadrada",
     "ancho": 886,
     "alto": 811,
     "foco": {
       "x": 0.5,
-      "y": 0.4
+      "y": 0.42
     },
     "tono": "oscuro",
     "colorMedio": "#484c45",
+    "calidad": "baja",
     "alt": "Equipo de barberos de La Mansión posando juntos en sillas talladas de la barbería.",
     "aptaFondo": false,
     "destacada": true,
     "variantes": [
       {
         "ancho": 480,
-        "peso": 26410
+        "peso": 25462
       },
       {
         "ancho": 800,
-        "peso": 49414
+        "peso": 47104
       }
     ],
-    "huella": "f055f9c300a2ef3c"
+    "huella": "99aafe3d09b55ad8"
+  },
+  {
+    "id": "interior-sala",
+    "archivo": "interior-sala.jpg",
+    "categoria": "interior",
+    "orientacion": "vertical",
+    "ancho": 507,
+    "alto": 855,
+    "foco": {
+      "x": 0.5,
+      "y": 0.46
+    },
+    "tono": "claro",
+    "colorMedio": "#777981",
+    "calidad": "baja",
+    "alt": "Interior de La Mansión Barber Shop, con espejos de madera, sillas y un barbero atendiendo a un cliente.",
+    "aptaFondo": false,
+    "destacada": true,
+    "variantes": [
+      {
+        "ancho": 480,
+        "peso": 26006
+      }
+    ],
+    "huella": "5eaf9ae764a96a0b"
   },
   {
     "id": "nosotros-1",
-    "archivo": "nosotros-1.png",
+    "archivo": "nosotros-1.jpg",
     "categoria": "nosotros",
-    "orientacion": "vertical",
+    "orientacion": "cuadrada",
     "ancho": 781,
     "alto": 861,
     "foco": {
@@ -119,27 +215,24 @@
       "y": 0.34
     },
     "tono": "claro",
-    "colorMedio": "#7e7771",
+    "colorMedio": "#7e7872",
+    "calidad": "baja",
     "alt": "Un barbero le corta el cabello a un niño pequeño sentado en las piernas de su papá.",
     "aptaFondo": false,
     "destacada": true,
     "variantes": [
       {
         "ancho": 480,
-        "peso": 45728
-      },
-      {
-        "ancho": 800,
-        "peso": 84240
+        "peso": 43690
       }
     ],
-    "huella": "1e9ca132e3ca9357"
+    "huella": "119e329024c567d7"
   },
   {
     "id": "nosotros-2",
-    "archivo": "nosotros-2.png",
+    "archivo": "nosotros-2.jpg",
     "categoria": "nosotros",
-    "orientacion": "vertical",
+    "orientacion": "cuadrada",
     "ancho": 685,
     "alto": 882,
     "foco": {
@@ -147,27 +240,24 @@
       "y": 0.36
     },
     "tono": "claro",
-    "colorMedio": "#97857a",
-    "alt": "Un barbero con delantal de herramientas doradas peina con una brocha el cabello de un joven.",
+    "colorMedio": "#97867b",
+    "calidad": "baja",
+    "alt": "Un barbero con delantal de herramientas doradas peina con una brocha el cabello de un niño.",
     "aptaFondo": false,
     "destacada": false,
     "variantes": [
       {
         "ancho": 480,
-        "peso": 29328
-      },
-      {
-        "ancho": 800,
-        "peso": 51108
+        "peso": 28402
       }
     ],
-    "huella": "308786431b942212"
+    "huella": "3d08907d09ff8f80"
   },
   {
     "id": "nosotros-3",
-    "archivo": "nosotros-3.png",
+    "archivo": "nosotros-3.jpg",
     "categoria": "nosotros",
-    "orientacion": "vertical",
+    "orientacion": "cuadrada",
     "ancho": 691,
     "alto": 873,
     "foco": {
@@ -175,20 +265,17 @@
       "y": 0.4
     },
     "tono": "claro",
-    "colorMedio": "#8a7a75",
+    "colorMedio": "#8b7b76",
+    "calidad": "baja",
     "alt": "Un barbero corta con tijeras el cabello de un señor mayor mientras otro hombre observa.",
     "aptaFondo": false,
     "destacada": false,
     "variantes": [
       {
         "ancho": 480,
-        "peso": 35780
-      },
-      {
-        "ancho": 800,
-        "peso": 65962
+        "peso": 34272
       }
     ],
-    "huella": "e99383dce484f9ce"
+    "huella": "ee742396e6f1d9d8"
   }
 ]

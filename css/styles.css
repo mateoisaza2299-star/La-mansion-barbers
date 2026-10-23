@@ -320,26 +320,59 @@ body:not(.admin-body) h3 {
   justify-content: flex-end;
   gap: 0.4rem;
   padding: 5.5rem 1.4rem calc(1.6rem + env(safe-area-inset-bottom));
-  background: rgba(10, 10, 10, 0.96);
+  background:
+    radial-gradient(ellipse at 80% 18%, rgba(201, 162, 75, 0.16), transparent 46%),
+    linear-gradient(180deg, var(--grafito), var(--negro));
   overflow: auto;
 }
 
-.nav-panel.tiene-foto {
-  background-image:
-    linear-gradient(180deg, rgba(10, 10, 10, 0.9), rgba(10, 10, 10, 0.88) 48%, rgba(10, 10, 10, 0.94)),
-    var(--foto-nav);
-  background-size: cover;
-  background-position: center, var(--foto-foco, center);
+.nav-foto {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
 }
 
-.cita-fondo.tiene-foto,
-.productos-fondo.tiene-foto,
-.visita-fondo.tiene-foto {
-  background-image:
-    linear-gradient(180deg, rgba(10, 10, 10, 0.82), rgba(10, 10, 10, 0.9)),
-    var(--foto-fondo);
-  background-size: cover;
-  background-position: center, var(--foto-foco, center);
+.nav-foto img,
+.cita-fondo img,
+.productos-fondo img,
+.visita-fondo img,
+.banda-fondo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nav-panel.tiene-foto::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(10, 10, 10, 0.88), rgba(10, 10, 10, 0.92));
+}
+
+.nav-panel > :not(.nav-foto) { position: relative; z-index: 2; }
+
+.cita-fondo.tiene-foto::after,
+.productos-fondo.tiene-foto::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10, 10, 10, 0.86), rgba(10, 10, 10, 0.93));
+}
+
+.visita-fondo.tiene-foto::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10, 10, 10, 0.86), rgba(10, 10, 10, 0.93));
+}
+
+.visita-fondo.es-panel { inset: 0 0 0 40%; }
+
+.visita-fondo.es-panel::after {
+  background: linear-gradient(to left, rgba(10, 10, 10, 0.5), rgba(10, 10, 10, 0.94));
 }
 
 .nav-cerrar {
@@ -413,6 +446,170 @@ body:not(.admin-body) h3 {
   height: 100%;
   object-fit: cover;
 }
+
+.hero-textura {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.hero-textura img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(22px);
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+.hero-textura::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(10, 10, 10, 0.88) 0%, rgba(10, 10, 10, 0.8) 42%, rgba(10, 10, 10, 0.62) 100%);
+}
+
+.hero.is-partido {
+  flex-direction: column;
+  align-items: center;
+}
+
+.hero.is-partido .hero-velo {
+  z-index: 1;
+  background: linear-gradient(90deg, rgba(10, 10, 10, 0.35) 0%, rgba(10, 10, 10, 0) 46%);
+}
+
+.hero.is-partido .hero-cuerpo {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  justify-content: flex-start;
+  width: min(1160px, calc(100% - 2.5rem));
+}
+
+@media (max-width: 767px) {
+  .hero.is-partido {
+    padding-top: calc(var(--header) + 0.35rem);
+    padding-bottom: calc(1rem + 72px);
+  }
+  .hero.is-partido .hero-marco-principal { width: 86%; }
+}
+
+.hero:not(.is-partido) .hero-marcos,
+.hero:not(.is-partido) .hero-textura { display: none; }
+
+.hero-marcos { position: relative; margin-top: 1.1rem; }
+
+.hero-marco { margin: 0; }
+
+.hero-marco-sec { display: none; }
+
+.hero-marco-principal { position: relative; margin: 0 12px 12px 0; }
+
+.hero-marco-principal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--oro);
+  border-radius: 20px;
+  transform: translate(10px, 10px);
+  z-index: 0;
+}
+
+.hero-marco-foto {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--grafito);
+}
+
+.hero-marco-principal .hero-marco-foto { aspect-ratio: 4 / 3; }
+
+.hero-marco-foto img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.banda {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 240px;
+  overflow: hidden;
+  padding: 1rem;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(201, 162, 75, 0.16), transparent 52%),
+    linear-gradient(180deg, var(--grafito), var(--negro));
+}
+
+.banda-fondo { position: absolute; inset: 0; }
+
+.banda-fondo img {
+  filter: grayscale(1) sepia(0.45);
+  opacity: 0.35;
+}
+
+.banda-fondo::before,
+.banda-fondo::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 80px;
+  z-index: 1;
+}
+
+.banda-fondo::before { top: 0; background: linear-gradient(to bottom, var(--negro), transparent); }
+.banda-fondo::after { bottom: 0; background: linear-gradient(to top, var(--negro), transparent); }
+
+.banda-frase {
+  position: relative;
+  z-index: 1;
+  max-width: 18em;
+  margin: 0;
+  text-align: center;
+  font-family: var(--display);
+  font-size: clamp(1.2rem, 2.2vw, 1.7rem);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.03em;
+}
+
+.equipo-pista {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 0.4rem;
+}
+
+.equipo-card {
+  flex: 0 0 min(240px, 72vw);
+  scroll-snap-align: start;
+}
+
+.equipo-media {
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--grafito);
+}
+
+.equipo-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.equipo-card h3 { margin: 0.75rem 0 0.2rem; }
+
+.equipo-rol { margin: 0; color: var(--hueso); }
 
 .hero-velo {
   background:
@@ -752,7 +949,11 @@ main section[id],
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: opacity 0.45s linear;
 }
+
+.carta-foto img.is-out,
+.acordeon-foto img.is-out { opacity: 0; }
 
 .acordeon-item { border-bottom: 1px solid var(--linea); }
 
@@ -830,6 +1031,7 @@ main section[id],
 }
 
 .mosaico-item.ancho { grid-column: span 2; }
+.mosaico-item.alto { grid-row: span 2; }
 
 .mosaico-item img {
   width: 100%;
@@ -1178,6 +1380,51 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
     top: 96px;
     aspect-ratio: 4 / 5;
   }
+  .hero.is-partido .hero-cuerpo {
+    display: grid;
+    grid-template-columns: 55% 45%;
+    grid-template-rows: 1fr;
+    align-items: stretch;
+  }
+  .hero.is-partido .hero-copy { align-self: end; }
+  .hero.is-partido .hero-marcos {
+    height: 100%;
+    min-height: 420px;
+    margin-top: 0;
+  }
+  .hero-marco-sec { display: block; }
+  .hero-marco-principal {
+    position: absolute;
+    top: 0;
+    right: 12px;
+    bottom: 12px;
+    width: auto;
+    height: auto;
+    margin: 0;
+    aspect-ratio: 4 / 5;
+    max-width: calc(100% - 8px);
+  }
+  .hero-marco-principal .hero-marco-foto {
+    height: 100%;
+    aspect-ratio: auto;
+  }
+  .hero-marco-sec {
+    position: absolute;
+    top: 48px;
+    left: 0;
+    width: 60%;
+    aspect-ratio: 4 / 5;
+    z-index: 2;
+    overflow: hidden;
+    border: 4px solid var(--negro);
+    border-radius: 16px;
+  }
+  .hero-marco-sec .hero-marco-foto {
+    height: 100%;
+    aspect-ratio: auto;
+    border-radius: 12px;
+  }
+  .visita-fondo.es-panel { inset: 0 0 0 42%; }
   .carta-movil { display: none; }
   .mosaico { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 220px; }
   .mosaico-item.ancho { grid-row: span 2; }
@@ -1189,6 +1436,10 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
 }
 
 @media (max-width: 899px) {
+  .visita-fondo.es-panel { inset: -8px 0; }
+  .visita-fondo.es-panel::after {
+    background: linear-gradient(180deg, rgba(10, 10, 10, 0.88), rgba(10, 10, 10, 0.94));
+  }
   .carta-lado { display: none; }
   .btn-largo { display: none; }
   .btn-corto { display: inline; }
@@ -1504,6 +1755,8 @@ body.reserva-lock { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .hero-slide,
+  .carta-foto img,
+  .acordeon-foto img,
   .barra-movil,
   .acordeon-panel,
   .faq-panel,
