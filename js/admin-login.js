@@ -1,73 +1,85 @@
-import { negocio } from "./config.js";
-import { obtenerSupabase } from "./supabase.js";
-
-let supabase = null;
+import { reservasEnLinea } from "./config.js";
+import { obtenerAdmin } from "./admin-cliente.js";
 
 const form = document.querySelector("[data-login]");
 const errorBox = document.querySelector("[data-login-error]");
 const submit = document.querySelector("[data-login-submit]");
 
-const fail = (message) => {
-  errorBox.hidden = !message;
-  errorBox.textContent = message || "";
+const fail = (mensaje) => {
+  if (!errorBox) return;
+  errorBox.hidden = !mensaje;
+  errorBox.textContent = mensaje || "";
 };
 
-const isAdmin = async () => {
-  const { data, error } = await supabase.from("admins").select("id").limit(1);
+const listo = async (supabase) => {
+  const { data, error } = await supabase.from("admins").select("rol").limit(1);
   return !error && Array.isArray(data) && data.length > 0;
 };
 
-const gate = async () => {
-  if (!navigator.onLine) return;
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!navigator.onLine) return;
-  if (session && await isAdmin()) {
-    if (!navigator.onLine) return;
+const gate = async (supabase) => {
+  const { data } = await supabase.auth.getSession();
+  const session = data && data.session;
+  if (session && await listo(supabase)) {
     window.location.replace("admin.html");
     return;
   }
-  if (!navigator.onLine) return;
   document.documentElement.dataset.panelReady = "1";
+  document.documentElement.classList.remove("is-preparacion");
 };
 
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  fail("");
-  const data = new FormData(form);
-  submit.disabled = true;
-  submit.textContent = "Entrando…";
-  const { error } = await supabase.auth.signInWithPassword({
-    email: String(data.get("email") || "").trim(),
-    password: String(data.get("password") || "")
+if (form) {
+  form.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+    fail("");
+    const datos = new FormData(form);
+    if (submit) {
+      submit.disabled = true;
+      submit.textContent = "Entrando…";
+    }
+    const supabase = await obtenerAdmin();
+    if (!supabase) {
+      if (submit) {
+        submit.disabled = false;
+        submit.textContent = "Entrar";
+      }
+      return;
+    }
+    const { error } = await supabase.auth.signInWithPassword({
+      email: String(datos.get("email") || "").trim(),
+      password: String(datos.get("password") || "")
+    });
+    if (error) {
+      if (submit) {
+        submit.disabled = false;
+        submit.textContent = "Entrar";
+      }
+      fail("Correo o contraseña incorrectos.");
+      return;
+    }
+    if (!(await listo(supabase))) {
+      await supabase.auth.signOut();
+      if (submit) {
+        submit.disabled = false;
+        submit.textContent = "Entrar";
+      }
+      fail("Esta cuenta no tiene acceso al panel.");
+      return;
+    }
+    window.location.replace("admin.html");
   });
-  if (error) {
-    submit.disabled = false;
-    submit.textContent = "Entrar";
-    fail("Correo o contraseña incorrectos.");
-    return;
-  }
-  if (!(await isAdmin())) {
-    await supabase.auth.signOut();
-    submit.disabled = false;
-    submit.textContent = "Entrar";
-    fail("Esta cuenta no tiene acceso al panel.");
-    return;
-  }
-  window.location.replace("admin.html");
-});
+}
 
 const boot = async () => {
-  if (negocio.enPreparacion) {
+  if (!reservasEnLinea()) {
     document.documentElement.classList.add("is-preparacion");
     return;
   }
-  supabase = await obtenerSupabase();
+  const supabase = await obtenerAdmin();
   if (!supabase) {
     document.documentElement.classList.add("is-preparacion");
     return;
   }
-  document.documentElement.classList.remove("is-preparacion");
-  gate();
+  gate(supabase);
 };
 
 boot();

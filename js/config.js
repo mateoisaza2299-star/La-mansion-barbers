@@ -28,10 +28,7 @@ export const negocio = {
   politicaReserva: "Para cancelar o cambiar la cita, avisa con al menos 2 horas de anticipación por WhatsApp.",
   avisoDatos: "Guardamos tu nombre, celular, servicio y fecha para agendar la cita. El celular también se usa para la tarjeta de fidelidad y el corte gratis. También usamos un identificador anónimo para estadísticas.",
   privacidad: [
-    "Cuando reservas guardamos tu nombre, tu celular, el servicio y la fecha. También la hora y la nota que escribas. Los usamos para agendar la cita, confirmarla y avisarte si hay un cambio. El celular también se usa para la tarjeta de fidelidad y el corte gratis.",
-    "No vendemos esos datos. Los usa la barbería para atenderte.",
-    "Para las estadísticas del sitio guardamos un identificador anónimo en tu navegador. No es tu nombre ni tu celular. Sirve para contar visitas y reservas sin identificarte.",
-    "Si quieres que borremos tu reserva o tus datos, escríbenos y dinos el nombre y el celular con los que reservaste."
+    "Documento en preparación. Muy pronto publicaremos la política completa de tratamiento de datos personales de La Mansión Barber Shop (Ley 1581 de 2012)."
   ],
   mensajeReserva: "",
   nosotros: {
@@ -181,6 +178,12 @@ export function handleInstagram() {
   if (!raw) return "";
   if (/^https?:\/\//i.test(raw)) return "@" + raw.replace(/\/+$/, "").split("/").pop();
   return "@" + raw.replace(/^@/, "");
+}
+
+export function reservasEnLinea() {
+  if (negocio.enPreparacion) return false;
+  const caja = negocio.supabase || {};
+  return Boolean(String(caja.url || "").trim() && String(caja.key || "").trim());
 }
 
 export function enlaceWhatsapp(texto) {

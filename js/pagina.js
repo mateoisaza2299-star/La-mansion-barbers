@@ -4,7 +4,8 @@ import {
   enlaceTelefono,
   enlaceMapa,
   urlInstagram,
-  formatoPrecio
+  formatoPrecio,
+  reservasEnLinea
 } from "./config.js";
 
 const textos = negocio.textos || {};
@@ -772,6 +773,10 @@ const iniciar = async () => {
   prepararMovimiento(visor);
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
+  }
+  if (reservasEnLinea()) {
+    const modulo = await import("./reservas.js");
+    await modulo.iniciarReservas();
   }
 };
 

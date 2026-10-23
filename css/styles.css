@@ -1219,15 +1219,303 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
   to { transform: translateY(8px); }
 }
 
+.acceso-equipo {
+  color: var(--gris);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
+body.reserva-lock { overflow: hidden; }
+
+.reserva-pasos {
+  margin-top: 1.2rem;
+}
+
+.reserva-top,
+.cita-acciones,
+.reserva-confirma-acciones,
+.chips,
+.hora-fila,
+.opciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.reserva-top h3 { flex: 1; }
+
+.progreso { margin: 0.8rem 0 1rem; }
+
+.progreso-texto {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--oro);
+  font-family: var(--impacto);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.progreso-pista {
+  display: block;
+  height: 2px;
+  background: var(--linea);
+  overflow: hidden;
+}
+
+.progreso-relleno {
+  display: block;
+  height: 100%;
+  background: var(--oro);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.4s var(--ease);
+}
+
+.opcion,
+.dia-btn,
+.hora-btn,
+.chip {
+  min-height: 48px;
+  border: 1px solid var(--linea);
+  border-radius: 16px;
+  background: var(--grafito);
+  color: var(--hueso);
+  text-align: left;
+}
+
+.chip,
+.hora-btn,
+.dia-btn {
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  font-family: var(--impacto);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.opcion {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.opcion strong { font-family: var(--impacto); letter-spacing: 0.04em; text-transform: uppercase; }
+
+.opcion img {
+  width: 72px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.opcion.is-on,
+.chip.is-on,
+.dia-btn.is-on,
+.hora-btn.is-on {
+  border-color: var(--oro);
+  color: var(--oro-claro);
+}
+
+.dias-tira {
+  display: flex;
+  gap: 0.5rem;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 0.4rem;
+}
+
+.dia-btn {
+  flex: none;
+  width: 4.4rem;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: start;
+}
+
+.dia-numero { font-family: var(--display); font-size: 1.15rem; }
+
+.hora-titulo {
+  margin: 0.8rem 0 0.3rem;
+  color: var(--oro);
+  font-family: var(--impacto);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.campo,
+.reserva-check { display: grid; gap: 0.3rem; }
+
+.campo input,
+.campo textarea,
+.campo select,
+.pa-form input,
+.pa-form textarea,
+.pa-form select,
+.login-card input {
+  min-height: 48px;
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--linea);
+  border-radius: 8px;
+  background: var(--grafito-2);
+  color: var(--hueso);
+  font: inherit;
+}
+
+.reserva-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  min-height: 44px;
+}
+
+.reserva-check input { width: 1.2rem; height: 1.2rem; margin-top: 0.3rem; flex: none; }
+
+.reserva-check span { min-width: 0; }
+
+.ayuda,
+.legales,
+.form-error { margin: 0.2rem 0 0; font-size: 0.92rem; }
+
+.form-error { color: #e7b4a8; }
+
+.legales a { color: var(--oro); }
+
+.reserva-datos { display: grid; gap: 1rem; }
+
+.reserva-resumen {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 1rem;
+  border: 1px solid var(--linea);
+  border-radius: 16px;
+  background: rgba(22, 22, 22, 0.92);
+}
+
+.reserva-campos { display: grid; gap: 0.8rem; }
+
+.cita-card,
+.fid-card {
+  margin: 0 auto 1.2rem;
+  max-width: 40rem;
+  padding: 1.2rem;
+  border: 1px solid var(--linea);
+  border-radius: 16px;
+  background: var(--grafito);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24);
+}
+
+.cita-numero { font-family: var(--impacto); letter-spacing: 0.08em; text-transform: uppercase; }
+
+.cita-gracias { color: var(--oro-claro); }
+
+.fid-sellos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
+  gap: 0.4rem;
+  margin: 0.8rem 0;
+}
+
+.sello {
+  aspect-ratio: 1;
+  border: 1px solid var(--oro);
+  border-radius: 50%;
+}
+
+.sello.is-on { background: var(--degradado-oro); }
+
+.fid-gratis { color: var(--oro-claro); font-family: var(--display); }
+
+.esqueleto {
+  height: 48px;
+  margin: 0.4rem 0;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--grafito), var(--grafito-2), var(--grafito));
+  background-size: 200% 100%;
+  animation: pulso 1s linear infinite;
+}
+
+.check { width: 64px; height: 64px; }
+
+.check-anillo,
+.check-palo {
+  fill: none;
+  stroke: var(--oro);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.check-anillo { stroke-dasharray: 170; stroke-dashoffset: 170; animation: check-aro 360ms ease forwards; }
+.check-palo { stroke-dasharray: 48; stroke-dashoffset: 48; animation: check-palo 280ms 180ms ease forwards; }
+
+.reserva-confirma {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(10, 10, 10, 0.72);
+}
+
+.reserva-confirma-card,
+.pa-modal-card {
+  width: min(28rem, 100%);
+  padding: 1.2rem;
+  border: 1px solid var(--linea);
+  border-radius: 16px;
+  background: var(--grafito);
+}
+
+@keyframes pulso { to { background-position: -200% 0; } }
+@keyframes check-aro { to { stroke-dashoffset: 0; } }
+@keyframes check-palo { to { stroke-dashoffset: 0; } }
+
+@media (max-width: 767px) {
+  .reserva-pasos.abierta {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    overflow: auto;
+    background: var(--negro);
+    padding: calc(12px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (min-width: 800px) {
+  .reserva-datos { grid-template-columns: minmax(0, 1fr) 16rem; align-items: start; }
+  .reserva-resumen { top: 92px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .hero-slide,
   .barra-movil,
   .acordeon-panel,
   .faq-panel,
-  .site-header { transition: none; }
+  .site-header,
+  .progreso-relleno,
+  .esqueleto { transition: none; animation: none; }
   html.motion .oro-palabra::after,
-  html.motion .hero-anima .hero-slide.is-on img { animation: none; transform: none; }
+  html.motion .hero-anima .hero-slide.is-on img,
+  .check-anillo,
+  .check-palo { animation: none; transform: none; }
+  .check-anillo,
+  .check-palo { stroke-dashoffset: 0; }
   html.motion .reveal,
   html.motion .nosotros-media { opacity: 1; transform: none; clip-path: none; }
 }

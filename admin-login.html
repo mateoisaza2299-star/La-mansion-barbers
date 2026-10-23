@@ -2,19 +2,15 @@
 <html lang="es-CO" class="is-preparacion">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://*.supabase.co; font-src 'self'; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#0A0A0A">
   <meta name="color-scheme" content="dark">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <title>Acceso — La Mansión Barber Shop</title>
-  <link rel="manifest" href="admin.webmanifest">
   <link rel="icon" href="assets/favicon.ico" sizes="any">
   <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" sizes="180x180">
-  <link rel="icon" href="assets/icons/icon-512.png" type="image/png" sizes="512x512">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/admin.css">
 </head>
@@ -28,28 +24,23 @@
   </div>
   <header class="admin-bar">
     <a class="logo" href="index.html">
-      <picture class="brand-logo brand-logo-header">
-        <source type="image/webp" srcset="assets/logo/logo-256.webp 1x, assets/logo/logo-512.webp 2x">
-        <img src="assets/logo/logo-256.png" srcset="assets/logo/logo-256.png 1x, assets/logo/logo-512.png 2x" width="256" height="124" alt="La Mansión Barber Shop">
-      </picture>
+      <img src="assets/logo/logo-256.webp" width="256" height="124" alt="La Mansión Barber Shop">
     </a>
   </header>
   <main class="login-main">
     <div class="login-card">
-      <p class="kicker">Panel</p>
+      <p class="etiqueta">Panel</p>
       <h1>Acceso</h1>
       <p>Solo para el equipo de la barbería.</p>
       <form data-login>
-        <label>
-          Correo
+        <label class="campo">Correo
           <input name="email" type="email" autocomplete="username" required>
         </label>
-        <label>
-          Contraseña
+        <label class="campo">Contraseña
           <input name="password" type="password" autocomplete="current-password" required>
         </label>
         <p class="form-error" data-login-error role="alert" hidden></p>
-        <button class="btn btn-dark btn-block" type="submit" data-login-submit>Entrar</button>
+        <button class="btn btn-block" type="submit" data-login-submit>Entrar</button>
       </form>
     </div>
   </main>

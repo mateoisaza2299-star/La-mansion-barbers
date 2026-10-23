@@ -1,1490 +1,1414 @@
-import { obtenerSupabase } from "./supabase.js";
-import { negocio, horasDelDia, diaSemana, direccionLinea, reglaDelDia } from "./config.js";
+import { reservasEnLinea, formatoPrecio } from "./config.js";
+import { obtenerAdmin } from "./admin-cliente.js";
+import { traducir, celularValido, nombreValido } from "./errores.js";
+import { hoyISO, sumarDias, fechaLegible, horaLegible, aMinutos, minutosAhora, lunesDe, diaSemanaISO } from "./tiempo.js";
+import { nodo, hojaEstilos } from "./dom.js";
 
-let supabase = null;
-import { servicios } from "./servicios.js";
+const SONIDO = "lamansion-sonido";
+const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const NAV = [
+  { id: "agenda", texto: "Agenda", roles: ["dueno", "barbero"] },
+  { id: "reservas", texto: "Reservas", roles: ["dueno", "barbero"] },
+  { id: "equipo", texto: "Equipo y horarios", roles: ["dueno"] },
+  { id: "horarios", texto: "Horarios", roles: ["barbero"] },
+  { id: "servicios", texto: "Servicios", roles: ["dueno"] },
+  { id: "fidelidad", texto: "Fidelidad", roles: ["dueno", "barbero"] },
+  { id: "resumen", texto: "Resumen", roles: ["dueno", "barbero"] },
+  { id: "ajustes", texto: "Ajustes", roles: ["dueno"] }
+];
 
-const EMPTY = "Aún no hay datos en este periodo";
-const COLS = "id, nombre, telefono, servicio, barbero, fecha, hora, nota, estado, gratis, avisado, token";
-const WEEKDAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-const STATUS = {
-  pendiente: "Pendiente",
-  confirmada: "Confirmada",
-  cancelada: "Cancelada",
-  completada: "Completada"
-};
-
-const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const errorBox = document.querySelector("[data-admin-error]");
-const rangeBox = document.querySelector("[data-range]");
-const rangeError = document.querySelector("[data-range-error]");
-const desdeInput = document.querySelector("[data-desde]");
-const hastaInput = document.querySelector("[data-hasta]");
-
-const state = {
-  period: "hoy",
-  reservas: [],
-  reservasReady: false,
-  pendingKnown: null,
-  diaModo: "hoy",
-  diaFecha: "",
-  fidelidad: [],
-  fidelidadLista: false,
-  meta: 10,
-  serviciosFidelidad: null,
+const estado = {
+  supabase: null,
+  rol: "",
+  barberoId: "",
+  correo: "",
+  config: null,
+  sedes: [],
+  barberos: [],
+  servicios: [],
+  horarios: [],
   bloqueos: [],
-  servicioFilas: []
+  reservas: [],
+  fotos: [],
+  nav: "agenda",
+  agendaFecha: "",
+  agendaSede: "",
+  agendaModo: "dia",
+  agendaBarbero: "",
+  horarioBarbero: "",
+  horarioModelo: null,
+  periodo: "hoy",
+  conocidas: null,
+  fichas: new Map(),
+  sonido: true,
+  marca: Date.now()
 };
 
-const charts = new Map();
-const pendingCharts = new Map();
-let resToken = 0;
-let svcToken = 0;
-let lastFetch = 0;
-let saving = false;
-let askResolve = null;
-let sheetId = null;
-let sheetPhone = "";
-let copyTimer = 0;
-const hitos = new Map();
+const hoja = hojaEstilos();
 
-const el = (tag, className, text) => {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text != null) node.textContent = text;
-  return node;
-};
+function limpiarHoja() {
+  if (!hoja) return;
+  while (hoja.cssRules && hoja.cssRules.length) hoja.deleteRule(0);
+}
 
-const bogotaParts = () => new Intl.DateTimeFormat("en-CA", {
-  timeZone: "America/Bogota",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23"
-}).formatToParts(new Date());
-
-const bogotaToday = () => {
-  const parts = bogotaParts();
-  const pick = (type) => parts.find((item) => item.type === type).value;
-  return pick("year") + "-" + pick("month") + "-" + pick("day");
-};
-
-const addDays = (iso, days) => {
-  const [year, month, day] = iso.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day + days));
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return y + "-" + m + "-" + d;
-};
-
-const dayCount = (desde, hasta) => {
-  const start = Date.parse(desde + "T00:00:00Z");
-  const end = Date.parse(hasta + "T00:00:00Z");
-  return Math.round((end - start) / 86400000) + 1;
-};
-
-const num = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const integer = (value) => new Intl.NumberFormat("es-CO").format(num(value));
-
-const shortDay = (iso) => new Intl.DateTimeFormat("es-CO", {
-  timeZone: "UTC",
-  day: "numeric",
-  month: "short"
-}).format(new Date(iso + "T00:00:00Z"));
-
-const diaTexto = (iso) => {
-  const clean = String(iso || "").slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
-  const text = new Intl.DateTimeFormat("es-CO", {
-    timeZone: "UTC",
-    weekday: "long",
-    day: "numeric",
-    month: "long"
-  }).format(new Date(clean + "T00:00:00Z"));
-  return text.replace(/,/g, "").replace(/\s+/g, " ").trim();
-};
-
-const tituloDia = (iso) => {
-  const today = bogotaToday();
-  if (iso === today) return "Hoy";
-  if (iso === addDays(today, 1)) return "Mañana";
-  const text = diaTexto(iso);
-  return text ? text.charAt(0).toUpperCase() + text.slice(1) : iso;
-};
-
-const hourKey = (value) => {
-  const match = String(value ?? "").match(/\d{1,2}/);
-  if (!match) return null;
-  const hour = Number(match[0]);
-  if (hour < 0 || hour > 23) return null;
-  return hour;
-};
-
-const hourLabel = (value) => {
-  const hour = typeof value === "number" ? value : hourKey(value);
-  if (hour == null) return String(value || "");
-  const suffix = hour < 12 ? "am" : "pm";
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-  return hour12 + ":00 " + suffix;
-};
-
-const capitalizar = (value) => {
-  const text = String(value || "").replace(/\./g, "");
-  return text ? text.charAt(0).toUpperCase() + text.slice(1) : "";
-};
-
-const fechaCita = (iso) => {
-  const clean = String(iso || "").slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(clean)) return "Sin fecha";
-  const parts = new Intl.DateTimeFormat("es-CO", {
-    timeZone: "UTC",
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric"
-  }).formatToParts(new Date(clean + "T00:00:00Z"));
-  const pick = (type) => {
-    const part = parts.find((item) => item.type === type);
-    return part ? part.value : "";
-  };
-  return capitalizar(pick("weekday")) + ", " + pick("day") + " " + capitalizar(pick("month")) + " " + pick("year");
-};
-
-const horaCita = (value) => {
-  const match = String(value ?? "").trim().match(/^(\d{1,2}):(\d{2})/);
-  if (!match) return "Sin hora";
-  const hour = Number(match[1]);
-  if (hour < 0 || hour > 23) return "Sin hora";
-  const suffix = hour < 12 ? "AM" : "PM";
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-  return String(hour12).padStart(2, "0") + ":" + match[2] + " " + suffix;
-};
-
-const refCita = (row) => {
-  const id = String((row && row.id) ?? "").trim();
-  if (!id) return "";
-  if (/^\d+$/.test(id)) return "#" + id;
-  return "#" + id.replace(/-/g, "").slice(0, 4).toUpperCase();
-};
-
-const fechaDe = (row) => String(row.fecha || "").slice(0, 10);
-
-const nombreDe = (row) => String((row && row.nombre) || "").trim() || "cliente";
-
-const fail = (message) => {
-  if (!errorBox) return;
-  errorBox.hidden = !message;
-  errorBox.textContent = message || "";
-};
-
-const digitos = (telefono) => String(telefono || "").replace(/\D/g, "").slice(-10);
-
-const waNumero = (telefono) => "https://wa.me/57" + digitos(telefono);
-
-const waMensaje = (telefono, texto) => waNumero(telefono) + "?text=" + encodeURIComponent(texto);
-
-const numeroCliente = (telefono) => {
-  const limpio = String(telefono || "").replace(/[\s()+-]/g, "");
-  if (!/^\d+$/.test(limpio)) return "";
-  if (limpio.length === 10) return "57" + limpio;
-  if (limpio.length === 12 && limpio.startsWith("57")) return limpio;
-  return "";
-};
-
-const enlaceWhatsappCliente = (telefono, texto) => {
-  const numero = numeroCliente(telefono);
-  if (!numero) return "";
-  return "https://wa.me/" + numero + "?text=" + encodeURIComponent(texto);
-};
-
-const precioTexto = (row) => {
-  if (row.gratis === true) return "Gratis 🎁";
-  const nombre = String(row.servicio || "").trim().toLowerCase();
-  const item = servicios.find((entry) => String(entry.nombre || "").trim().toLowerCase() === nombre);
-  return item && item.precio ? item.precio : "";
-};
-
-const lineaServicio = (row) => {
-  const servicio = String(row.servicio || "").trim() || "servicio";
-  const precio = precioTexto(row);
-  return precio ? servicio + " (" + precio + ")" : servicio;
-};
-
-const fichaFidelidad = (telefono) => state.fidelidad.find((item) => digitos(item.telefono) === digitos(telefono)) || null;
-
-const cuentaServicio = (nombre) => {
-  const lista = state.serviciosFidelidad;
-  if (lista == null) return true;
-  if (!Array.isArray(lista)) return false;
-  const key = String(nombre || "").trim().toLowerCase();
-  return lista.some((item) => String(item || "").trim().toLowerCase() === key);
-};
-
-const mensajeConfirmacion = (row, hechos) => {
-  const nombre = nombreDe(row);
-  const lineas = [
-    "Hola " + nombre + " 👋, tu cita en " + negocio.nombre + " quedó *confirmada*.",
-    "",
-    "📅 " + diaTexto(fechaDe(row)) + " a las " + hourLabel(row.hora),
-    "✂️ " + lineaServicio(row)
-  ];
-  const direccion = direccionLinea();
-  if (direccion) lineas.push("📍 " + direccion);
-  lineas.push("", "Si necesitas cancelarla o cambiarla, avísanos por aquí. ¡Te esperamos!");
-  if (hechos) lineas.push("🎉 Con esta cita completas " + hechos + " cortes: ¡tu próximo corte es gratis!");
-  return lineas.join("\n");
-};
-
-const mensajeCancelacion = (row) => {
-  const nombre = nombreDe(row);
-  const servicio = String(row.servicio || "").trim() || "servicio";
-  return "Hola " + nombre + ", lamentamos avisarte que tu cita del " + diaTexto(fechaDe(row)) + " a las " + hourLabel(row.hora) + " (" + servicio + ") en " + negocio.nombre + " fue *cancelada*. ¿Quieres que la reagendemos? Respóndenos por aquí.";
-};
-
-const mensajeGratis = (row, hechos) => {
-  const nombre = nombreDe(row);
-  return "¡Hola " + nombre + "! 🎉 Completaste " + hechos + " cortes en " + negocio.nombre + " y tu próximo corte es gratis. Cuando quieras reservarlo, escríbenos por aquí.";
-};
-
-const mensajeBloqueo = (row) => {
-  const nombre = String((row && row.nombre) || "").trim() || "cliente";
-  return "Hola " + nombre + ", por un imprevisto no podremos atenderte el " + diaTexto(fechaDe(row)) + " a las " + hourLabel(row.hora) + " en " + negocio.nombre + ". Disculpa las molestias, ¿te reagendamos? Respóndenos por aquí.";
-};
-
-const diaSeleccionado = () => {
-  const today = bogotaToday();
-  if (state.diaModo === "manana") return addDays(today, 1);
-  if (state.diaModo === "fecha" && /^\d{4}-\d{2}-\d{2}$/.test(state.diaFecha)) return state.diaFecha;
-  return today;
-};
-
-const currentRange = () => {
-  const today = bogotaToday();
-  if (state.period === "hoy") return { desde: today, hasta: today };
-  if (state.period === "7") return { desde: addDays(today, -6), hasta: today };
-  if (state.period === "30") return { desde: addDays(today, -29), hasta: today };
-  return { desde: desdeInput ? desdeInput.value : "", hasta: hastaInput ? hastaInput.value : "" };
-};
-
-const validRange = (range) => {
-  if (!range.desde || !range.hasta) return false;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(range.desde) || !/^\d{4}-\d{2}-\d{2}$/.test(range.hasta)) return false;
-  if (range.desde > range.hasta) return false;
-  if (dayCount(range.desde, range.hasta) > 366) return false;
-  return true;
-};
-
-const vibrar = () => {
+function regla(texto) {
+  if (!hoja) return;
   try {
-    if (navigator.vibrate) navigator.vibrate([220, 80, 220]);
+    hoja.insertRule(texto, hoja.cssRules.length);
   } catch (error) {}
-};
+}
 
-const paintHeader = () => {
-  const parts = bogotaParts();
-  const hour = Number(parts.find((item) => item.type === "hour").value);
-  const greet = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
-  const greetNode = document.querySelector("[data-greet]");
-  if (greetNode) greetNode.textContent = greet;
-  const label = new Intl.DateTimeFormat("es-CO", {
-    timeZone: "America/Bogota",
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  }).format(new Date());
-  const todayNode = document.querySelector("[data-today-label]");
-  if (todayNode) todayNode.textContent = label.charAt(0).toUpperCase() + label.slice(1);
-  const clock = new Intl.DateTimeFormat("es-CO", {
-    timeZone: "America/Bogota",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(new Date());
-  const time = document.querySelector("[data-updated]");
-  if (time) {
-    time.textContent = clock;
-    time.dateTime = new Date().toISOString();
+function fail(mensaje) {
+  const caja = document.querySelector("[data-pa-error]");
+  if (!caja) return;
+  caja.hidden = !mensaje;
+  caja.textContent = mensaje || "";
+}
+
+function dueno() {
+  return estado.rol === "dueno";
+}
+
+function nombreBarbero(id) {
+  const barbero = estado.barberos.find((item) => item.id === id);
+  return barbero ? barbero.nombre : "";
+}
+
+function nombreServicio(id) {
+  const servicio = estado.servicios.find((item) => item.id === id);
+  return servicio ? servicio.nombre : "";
+}
+
+function nombreSede(id) {
+  const sede = estado.sedes.find((item) => item.id === id);
+  return sede ? sede.nombre : "";
+}
+
+function digitos(valor) {
+  let numero = String(valor || "").replace(/\D/g, "");
+  if (numero.startsWith("57") && numero.length === 12) numero = numero.slice(2);
+  return numero;
+}
+
+function waCliente(telefono, texto) {
+  const numero = digitos(telefono);
+  if (numero.length !== 10) return "";
+  return "https://wa.me/57" + numero + "?text=" + encodeURIComponent(texto);
+}
+
+function mensajeAviso(reserva) {
+  const cuando = fechaLegible(reserva.fecha) + " a las " + horaLegible(reserva.hora);
+  const servicio = nombreServicio(reserva.servicio_id);
+  if (reserva.estado === "cancelada") {
+    return "Hola " + reserva.nombre + ", tu cita " + reserva.numero + " del " + cuando + " en La Mansión fue cancelada.";
   }
-};
-
-const paintPendientes = () => {
-  const total = state.reservas.filter((row) => row.estado === "pendiente").length;
-  document.querySelectorAll("[data-pendientes]").forEach((node) => {
-    node.hidden = total < 1;
-    node.textContent = total > 99 ? "99+" : String(total);
-  });
-  document.querySelectorAll("[data-view='reservas']").forEach((button) => {
-    if (total > 0) button.setAttribute("aria-label", "Reservas, " + total + (total === 1 ? " pendiente" : " pendientes"));
-    else button.removeAttribute("aria-label");
-  });
-};
-
-const anunciarNueva = (cantidad) => {
-  const box = document.querySelector("[data-nueva]");
-  const text = document.querySelector("[data-nueva-text]");
-  if (box && text) {
-    text.textContent = cantidad === 1 ? "Llegó una reserva nueva." : "Llegaron " + cantidad + " reservas nuevas.";
-    box.hidden = false;
+  if (reserva.estado === "confirmada") {
+    return "Hola " + reserva.nombre + ", te recordamos tu cita " + reserva.numero + " en La Mansión: " + servicio + " el " + cuando + ".";
   }
-  vibrar();
-};
+  return "Hola " + reserva.nombre + ", tu cita " + reserva.numero + " en La Mansión quedó confirmada: " + servicio + " el " + cuando + ".";
+}
 
-const syncDia = () => {
-  document.querySelectorAll("[data-dia]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(button.getAttribute("data-dia") === state.diaModo));
-  });
-  const pick = document.querySelector("[data-dia-pick]");
-  const input = document.querySelector("[data-dia-input]");
-  if (pick) pick.hidden = state.diaModo !== "fecha";
-  if (input && state.diaModo === "fecha") {
-    if (!state.diaFecha) state.diaFecha = bogotaToday();
-    input.value = state.diaFecha;
-  }
-};
-
-const ordenar = (rows) => rows.slice().sort((a, b) => {
-  const byDate = fechaDe(a).localeCompare(fechaDe(b));
-  if (byDate) return byDate;
-  return String(a.hora || "").localeCompare(String(b.hora || ""));
-});
-
-const abrirAviso = (row, hechos) => {
-  const cancelada = row.estado === "cancelada";
-  const cortes = hechos || hitos.get(row.id) || 0;
-  abrirHoja({
-    id: row.id,
-    titulo: cancelada ? "Cita cancelada" : "Cita confirmada",
-    texto: cancelada ? mensajeCancelacion(row) : mensajeConfirmacion(row, cortes),
-    telefono: row.telefono
-  });
-};
-
-const whenBlock = (label, value, dateTime) => {
-  const block = el("div", "when-block");
-  block.appendChild(el("span", "when-label", label));
-  const time = document.createElement("time");
-  time.className = "when-value";
-  time.textContent = value;
-  if (dateTime) time.dateTime = dateTime;
-  block.appendChild(time);
-  return block;
-};
-
-const bookingCard = (row) => {
-  const article = el("article", "booking");
-  const header = el("header", "booking-head");
-  const fecha = fechaDe(row);
-  const hora = String(row.hora || "").slice(0, 5);
-  const when = el("div", "booking-when");
-  when.append(
-    whenBlock("Fecha", fechaCita(fecha), /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? fecha : ""),
-    whenBlock("Hora", horaCita(row.hora), fecha && hora ? fecha + "T" + hora : "")
-  );
-  const badges = el("div", "badges");
-  badges.appendChild(el("span", "badge badge-" + (row.estado || ""), STATUS[row.estado] || row.estado || ""));
-  if (row.gratis === true) badges.appendChild(el("span", "badge badge-gratis", "Gratis"));
-  header.append(when, badges);
-  article.append(header, el("h3", null, row.nombre || "Sin nombre"));
-  const ref = refCita(row);
-  if (ref) article.appendChild(el("p", "booking-id", "Cita " + ref));
-  if (String(row.servicio || "").trim()) article.appendChild(el("p", "booking-service", String(row.servicio).trim()));
-  const phone = el("p", "booking-phone");
-  const link = document.createElement("a");
-  link.href = waNumero(row.telefono);
-  link.target = "_blank";
-  link.rel = "noopener";
-  link.textContent = row.telefono || "WhatsApp";
-  link.setAttribute("aria-label", "WhatsApp de " + nombreDe(row));
-  phone.appendChild(link);
-  article.appendChild(phone);
-  if (String(row.nota || "").trim()) article.appendChild(el("p", "note", String(row.nota).trim()));
-  const cancelBtn = () => {
-    const cancel = el("button", "act act-no", "Cancelar");
-    cancel.type = "button";
-    cancel.addEventListener("click", () => cancelarCita(row, cancel));
-    return cancel;
-  };
-  if (row.estado === "pendiente") {
-    const actions = el("div", "booking-actions is-split");
-    const ok = el("button", "act act-ok", "Confirmar");
-    ok.type = "button";
-    ok.addEventListener("click", () => confirmar(row, ok));
-    actions.append(ok, cancelBtn());
-    article.appendChild(actions);
-  }
-  if (row.estado === "confirmada" || row.estado === "cancelada") {
-    const avisado = row.avisado === true;
-    article.appendChild(el("p", avisado ? "aviso-ok" : "aviso-falta", avisado ? "Cliente avisado ✓" : "Falta avisar al cliente"));
-    const actions = el("div", "booking-actions");
-    const send = el("button", "act act-send", "Enviar WhatsApp");
-    send.type = "button";
-    send.addEventListener("click", () => abrirAviso(row));
-    actions.appendChild(send);
-    if (row.estado === "confirmada") actions.appendChild(cancelBtn());
-    article.appendChild(actions);
-  }
-  return article;
-};
-
-const seccion = (titulo, rows, clase, vacio) => {
-  const box = el("section", "queue" + (clase ? " " + clase : ""));
-  box.appendChild(el("h2", null, titulo));
-  if (!rows.length) {
-    box.appendChild(el("p", "empty-note", vacio));
-    return box;
-  }
-  rows.forEach((row) => box.appendChild(bookingCard(row)));
-  return box;
-};
-
-const paintReservas = () => {
-  const host = document.querySelector("[data-reservas]");
-  if (!host) return;
-  paintPendientes();
-  if (!state.reservasReady) return;
-  const selected = diaSeleccionado();
-  const pendientes = ordenar(state.reservas.filter((row) => row.estado === "pendiente"));
-  const delDia = ordenar(state.reservas.filter((row) => fechaDe(row) === selected && row.estado !== "pendiente"));
-  const proximas = ordenar(state.reservas.filter((row) => fechaDe(row) > selected && row.estado !== "pendiente" && row.estado !== "completada"));
-  host.replaceChildren(
-    seccion("Pendientes por confirmar", pendientes, "queue-hot", "No hay citas pendientes."),
-    seccion(tituloDia(selected), delDia, "", "No hay citas este día."),
-    seccion("Próximas", proximas, "", "No hay citas próximas.")
-  );
-};
-
-const chartBase = () => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  animation: reduceMotion ? false : { duration: 520 },
-  plugins: {
-    legend: { labels: { color: "#5c5148", font: { family: "Outfit, sans-serif", size: 14 } } },
-    tooltip: { backgroundColor: "#161210", titleFont: { family: "Outfit, sans-serif" }, bodyFont: { family: "Outfit, sans-serif" } }
-  }
-});
-
-const renderChart = (key) => {
-  const host = document.querySelector(`[data-chart="${key}"]`);
-  if (!host) return;
-  const panel = host.closest(".dash-panel");
-  if (panel && panel.hidden) return;
-  const config = pendingCharts.get(key);
-  const prev = charts.get(key);
-  if (prev) {
-    prev.destroy();
-    charts.delete(key);
-  }
-  host.replaceChildren();
-  if (!config) {
-    host.appendChild(el("p", "empty-note", EMPTY));
-    return;
-  }
-  if (!globalThis.Chart) {
-    host.appendChild(el("p", "empty-note", "No se pudo cargar el gráfico."));
-    return;
-  }
-  const canvas = document.createElement("canvas");
-  canvas.setAttribute("role", "img");
-  canvas.setAttribute("aria-label", config.ariaLabel || "Gráfico");
-  host.appendChild(canvas);
-  try {
-    charts.set(key, new globalThis.Chart(canvas, {
-      type: config.type,
-      data: config.data,
-      options: config.options || {}
-    }));
-  } catch (error) {
-    host.replaceChildren(el("p", "empty-note", "No se pudo cargar el gráfico."));
-  }
-};
-
-const renderVisibleCharts = () => {
-  document.querySelectorAll("[data-chart]").forEach((host) => {
-    const panel = host.closest(".dash-panel");
-    if (panel && panel.hidden) return;
-    renderChart(host.getAttribute("data-chart"));
-  });
-};
-
-const paintServicios = () => {
-  const host = document.querySelector("[data-servicios]");
-  if (!host) return;
-  host.replaceChildren();
-  const grouped = new Map();
-  state.servicioFilas.forEach((row) => {
-    const name = String(row.servicio || "").trim() || "Sin servicio";
-    const key = name.toLowerCase();
-    const item = grouped.get(key) || { name, total: 0, confirmadas: 0, canceladas: 0 };
-    item.total += 1;
-    if (row.estado === "confirmada") item.confirmadas += 1;
-    if (row.estado === "cancelada") item.canceladas += 1;
-    grouped.set(key, item);
-  });
-  const rows = [...grouped.values()].sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, "es"));
-  if (!rows.length) host.appendChild(el("p", "empty-note", EMPTY));
-  else {
-    const booked = Math.max(...rows.map((row) => row.total));
-    const table = document.createElement("table");
-    table.className = "svc-table";
-    const head = document.createElement("tr");
-    ["Servicio", "Reservas", "Confirmadas", "Canceladas"].forEach((label) => {
-      head.appendChild(el("th", null, label));
-    });
-    const thead = document.createElement("thead");
-    thead.appendChild(head);
-    const tbody = document.createElement("tbody");
-    rows.forEach((row) => {
-      const tr = document.createElement("tr");
-      const name = document.createElement("td");
-      name.dataset.label = "Servicio";
-      name.appendChild(el("span", "svc-name", row.name));
-      if (booked > 0 && row.total === booked) {
-        const tags = el("span", "svc-tags");
-        tags.appendChild(el("span", "tag", "Más reservado"));
-        name.appendChild(tags);
-      }
-      const cell = (label, value) => {
-        const td = el("td", null, integer(value));
-        td.dataset.label = label;
-        return td;
-      };
-      tr.append(name, cell("Reservas", row.total), cell("Confirmadas", row.confirmadas), cell("Canceladas", row.canceladas));
-      tbody.appendChild(tr);
-    });
-    table.append(thead, tbody);
-    host.appendChild(table);
-  }
-
-  const hours = new Map();
-  state.servicioFilas.forEach((row) => {
-    const hour = hourKey(row.hora);
-    if (hour == null) return;
-    hours.set(hour, (hours.get(hour) || 0) + 1);
-  });
-  const hourEntries = [...hours.entries()].sort((a, b) => a[0] - b[0]);
-  if (!hourEntries.length) pendingCharts.set("horas", null);
-  else {
-    const base = chartBase();
-    pendingCharts.set("horas", {
-      type: "bar",
-      ariaLabel: "Horas con más reservas",
-      data: {
-        labels: hourEntries.map((entry) => hourLabel(entry[0])),
-        datasets: [{
-          label: "Reservas",
-          data: hourEntries.map((entry) => entry[1]),
-          backgroundColor: "#c9a24b",
-          borderRadius: 2,
-          maxBarThickness: 28
-        }]
-      },
-      options: {
-        ...base,
-        plugins: { ...base.plugins, legend: { display: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { color: "#5c5148", font: { size: 14 } } },
-          y: { beginAtZero: true, ticks: { precision: 0, color: "#5c5148" }, grid: { color: "rgba(26, 21, 18, 0.06)" } }
-        }
-      }
-    });
-  }
-
-  const week = [0, 0, 0, 0, 0, 0, 0];
-  state.servicioFilas.forEach((row) => {
-    const iso = fechaDe(row);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
-    const day = new Date(iso + "T00:00:00Z").getUTCDay();
-    const index = (day + 6) % 7;
-    week[index] += 1;
-  });
-  if (!week.some((value) => value > 0)) pendingCharts.set("dias", null);
-  else {
-    const base = chartBase();
-    pendingCharts.set("dias", {
-      type: "bar",
-      ariaLabel: "Reservas de lunes a domingo",
-      data: {
-        labels: WEEKDAYS,
-        datasets: [{
-          label: "Reservas",
-          data: week,
-          backgroundColor: "#241c17",
-          borderRadius: 2,
-          maxBarThickness: 32
-        }]
-      },
-      options: {
-        ...base,
-        plugins: { ...base.plugins, legend: { display: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { color: "#5c5148", maxRotation: 0, autoSkip: false, font: { size: 13 } } },
-          y: { beginAtZero: true, ticks: { precision: 0, color: "#5c5148" }, grid: { color: "rgba(26, 21, 18, 0.06)" } }
-        }
-      }
-    });
-  }
-  renderChart("horas");
-  renderChart("dias");
-};
-
-const loadServicios = async () => {
-  const range = currentRange();
-  if (state.period === "rango" && !validRange(range)) {
-    if (rangeError) rangeError.hidden = false;
-    return;
-  }
-  if (rangeError) rangeError.hidden = true;
-  const token = ++svcToken;
-  try {
-    const { data, error } = await supabase
-      .from("reservas")
-      .select("servicio, estado, fecha, hora")
-      .gte("fecha", range.desde)
-      .lte("fecha", range.hasta)
-      .limit(5000);
-    if (token !== svcToken) return;
-    if (error) throw error;
-    state.servicioFilas = data || [];
-    paintServicios();
-  } catch (error) {
-    if (token !== svcToken) return;
-    state.servicioFilas = [];
-    const host = document.querySelector("[data-servicios]");
-    if (host) host.replaceChildren(el("p", "empty-note", "No pudimos cargar los servicios."));
-    pendingCharts.set("horas", null);
-    pendingCharts.set("dias", null);
-    renderChart("horas");
-    renderChart("dias");
-  }
-};
-
-const loadReservas = async () => {
-  const token = ++resToken;
-  const selected = diaSeleccionado();
-  const today = bogotaToday();
-  const desde = selected < today ? selected : today;
-  try {
-    const [lista, atras] = await Promise.all([
-      supabase.from("reservas").select(COLS).gte("fecha", desde).order("fecha").order("hora").limit(800),
-      supabase.from("reservas").select(COLS).eq("estado", "pendiente").lt("fecha", desde).order("fecha").order("hora").limit(200)
-    ]);
-    if (token !== resToken) return;
-    if (lista.error) throw lista.error;
-    if (atras.error) throw atras.error;
-    const merged = new Map();
-    [...(lista.data || []), ...(atras.data || [])].forEach((row) => merged.set(row.id, row));
-    state.reservas = [...merged.values()];
-    state.reservasReady = true;
-    const pendingIds = state.reservas.filter((row) => row.estado === "pendiente").map((row) => row.id);
-    if (state.pendingKnown) {
-      const fresh = pendingIds.filter((id) => !state.pendingKnown.has(id));
-      if (fresh.length) anunciarNueva(fresh.length);
-    }
-    state.pendingKnown = new Set(pendingIds);
-    fail("");
-    paintReservas();
-    lastFetch = Date.now();
-  } catch (error) {
-    if (token !== resToken) return;
-    fail("No pudimos cargar las reservas.");
-    if (!state.reservasReady) {
-      const host = document.querySelector("[data-reservas]");
-      if (host) host.replaceChildren(el("p", "empty-note", "No pudimos cargar las reservas."));
-    }
-  }
-};
-
-const paintFidelidad = () => {
-  const host = document.querySelector("[data-fid-table]");
-  const input = document.querySelector("[data-fid-q]");
-  if (!host) return;
-  const query = input ? input.value.trim().toLowerCase() : "";
-  const digits = query.replace(/\D/g, "");
-  const meta = state.meta || 10;
-  const rows = state.fidelidad.filter((row) => {
-    if (!query) return true;
-    const name = String(row.nombre || "").toLowerCase();
-    const phone = digitos(row.telefono);
-    if (name.includes(query)) return true;
-    if (digits && phone.includes(digits)) return true;
-    return phone.includes(query);
-  });
-  host.replaceChildren();
-  if (!rows.length) {
-    host.appendChild(el("p", "empty-note", state.fidelidad.length ? "Nadie coincide con esa búsqueda." : "Aún no hay clientes en la tarjeta."));
-    return;
-  }
-  const table = document.createElement("table");
-  table.className = "res-table";
-  const head = document.createElement("tr");
-  ["Cliente", "Celular", "Cortes", "Gratis", "Última visita"].forEach((label) => {
-    head.appendChild(el("th", null, label));
-  });
-  const thead = document.createElement("thead");
-  thead.appendChild(head);
-  const tbody = document.createElement("tbody");
-  rows.forEach((row) => {
-    const tr = document.createElement("tr");
-    const hechos = num(row.hechos);
-    const resto = meta ? hechos % meta : 0;
-    const llenos = hechos > 0 && resto === 0 ? meta : resto;
-    const cliente = document.createElement("td");
-    cliente.dataset.label = "Cliente";
-    cliente.appendChild(document.createTextNode(row.nombre || ""));
-    if (num(row.gratis_disponibles) > 0) {
-      const link = document.createElement("a");
-      link.className = "act act-wa";
-      link.href = waMensaje(row.telefono, mensajeGratis(row, hechos));
-      link.target = "_blank";
-      link.rel = "noopener";
-      link.textContent = "Avisar por WhatsApp";
-      cliente.appendChild(link);
-    }
-    const tel = document.createElement("td");
-    tel.dataset.label = "Celular";
-    const phoneLink = document.createElement("a");
-    phoneLink.href = waNumero(row.telefono);
-    phoneLink.target = "_blank";
-    phoneLink.rel = "noopener";
-    const phone = digitos(row.telefono);
-    phoneLink.textContent = phone ? phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3") : "WhatsApp";
-    tel.appendChild(phoneLink);
-    const cortes = document.createElement("td");
-    cortes.dataset.label = "Cortes";
-    const bar = el("div", "fid-bar");
-    const fill = el("span", "fid-fill");
-    fill.style.width = (meta ? Math.round((llenos / meta) * 100) : 0) + "%";
-    bar.appendChild(fill);
-    cortes.append(bar, el("span", "fid-count", hechos + "/" + meta));
-    const gratis = el("td", null, String(num(row.gratis_disponibles)));
-    gratis.dataset.label = "Gratis";
-    const ultima = String(row.ultima || "").slice(0, 10);
-    const visita = el("td", null, /^\d{4}-\d{2}-\d{2}$/.test(ultima) ? shortDay(ultima) : "—");
-    visita.dataset.label = "Última visita";
-    tr.append(cliente, tel, cortes, gratis, visita);
-    tbody.appendChild(tr);
-  });
-  table.append(thead, tbody);
-  host.appendChild(table);
-};
-
-const loadFidelidad = async () => {
-  const host = document.querySelector("[data-fid-table]");
-  try {
-    const [list, cfg] = await Promise.all([
-      supabase.rpc("fidelidad_admin"),
-      supabase.from("fidelidad_config").select("meta, servicios").limit(1)
-    ]);
-    if (list.error) throw list.error;
-    state.fidelidad = Array.isArray(list.data) ? list.data : [];
-    let serviciosCfg = null;
-    if (!cfg.error && cfg.data && cfg.data[0]) {
-      const meta = num(cfg.data[0].meta);
-      state.meta = meta > 0 ? meta : 10;
-      serviciosCfg = cfg.data[0].servicios;
-      if (typeof serviciosCfg === "string") {
-        try { serviciosCfg = JSON.parse(serviciosCfg); } catch (error) { serviciosCfg = null; }
-      }
-    } else {
-      state.meta = 10;
-    }
-    state.serviciosFidelidad = serviciosCfg == null ? null : serviciosCfg;
-    state.fidelidadLista = true;
-    paintFidelidad();
-  } catch (error) {
-    state.fidelidadLista = false;
-    if (host) host.replaceChildren(el("p", "empty-note", "No pudimos cargar la fidelidad."));
-  }
-};
-
-const cerrarAsk = (value) => {
-  const box = document.querySelector("[data-ask]");
-  if (box) box.hidden = true;
-  const resolve = askResolve;
-  askResolve = null;
-  if (resolve) resolve(value);
-};
-
-const preguntar = (texto, si, no, tono) => {
-  const box = document.querySelector("[data-ask]");
-  const text = document.querySelector("[data-ask-text]");
-  const yes = document.querySelector("[data-ask-yes]");
-  const noBtn = document.querySelector("[data-ask-no]");
-  if (!box || !text || !yes || !noBtn) return Promise.resolve(false);
-  text.textContent = texto;
-  yes.textContent = si;
-  noBtn.textContent = no;
-  yes.className = "act " + (tono === "no" ? "act-no" : "act-ok");
-  noBtn.className = "act act-quiet";
-  box.hidden = false;
-  yes.focus();
+function preguntar(texto, si, no) {
+  const capa = document.querySelector("[data-confirmar]");
+  const copia = document.querySelector("[data-confirmar-texto]");
+  const botonSi = document.querySelector("[data-confirmar-si]");
+  const botonNo = document.querySelector("[data-confirmar-no]");
+  if (!capa || !copia || !botonSi || !botonNo) return Promise.resolve(false);
+  copia.textContent = texto;
+  botonSi.textContent = si || "Sí";
+  botonNo.textContent = no || "No";
+  capa.hidden = false;
+  botonSi.focus();
   return new Promise((resolve) => {
-    askResolve = resolve;
+    const cerrar = (valor) => {
+      capa.hidden = true;
+      botonSi.removeEventListener("click", alSi);
+      botonNo.removeEventListener("click", alNo);
+      resolve(valor);
+    };
+    const alSi = () => cerrar(true);
+    const alNo = () => cerrar(false);
+    botonSi.addEventListener("click", alSi);
+    botonNo.addEventListener("click", alNo);
   });
-};
+}
 
-const refrescarEnlaceHoja = () => {
-  const area = document.querySelector("[data-sheet-text]");
-  const link = document.querySelector("[data-sheet-wa]");
-  if (!area || !link || link.hidden) return;
-  const href = enlaceWhatsappCliente(sheetPhone, area.value);
-  if (href) link.href = href;
-};
+function llenarSelect(select, opciones, valor) {
+  if (!select) return;
+  select.replaceChildren();
+  opciones.forEach((opcion) => {
+    const nodoOpcion = document.createElement("option");
+    nodoOpcion.value = opcion.valor;
+    nodoOpcion.textContent = opcion.texto;
+    select.appendChild(nodoOpcion);
+  });
+  if (valor != null) select.value = valor;
+}
 
-const abrirHoja = ({ id, titulo, texto, telefono }) => {
-  const sheet = document.querySelector("[data-sheet]");
-  const title = document.querySelector("[data-sheet-title]");
-  const area = document.querySelector("[data-sheet-text]");
-  const link = document.querySelector("[data-sheet-wa]");
-  const error = document.querySelector("[data-sheet-error]");
-  const copy = document.querySelector("[data-sheet-copy]");
-  if (!sheet || !title || !area || !link) return;
-  sheetId = id;
-  sheetPhone = telefono || "";
-  title.textContent = titulo;
-  area.value = texto;
-  const valido = Boolean(numeroCliente(sheetPhone));
-  if (error) error.hidden = valido;
-  link.hidden = !valido;
-  if (valido) link.href = enlaceWhatsappCliente(sheetPhone, area.value);
-  if (copy) copy.textContent = "Copiar mensaje";
-  sheet.hidden = false;
-  const foco = valido ? link : copy;
-  if (foco) foco.focus();
-};
+function vistaDe(nav) {
+  return nav === "horarios" ? "equipo" : nav;
+}
 
-const marcarAvisado = async (id) => {
-  const { error } = await supabase.from("reservas").update({ avisado: true }).eq("id", id);
+function abrir(nav) {
+  estado.nav = nav;
+  const vista = vistaDe(nav);
+  document.querySelectorAll("[data-panel]").forEach((panel) => {
+    panel.hidden = panel.dataset.panel !== vista;
+  });
+  document.querySelectorAll("[data-vista]").forEach((boton) => {
+    if (boton.dataset.vista === nav) boton.setAttribute("aria-current", "page");
+    else boton.removeAttribute("aria-current");
+  });
+  if (vista === "agenda") pintarAgenda();
+  if (vista === "reservas") pintarReservas();
+  if (vista === "equipo") pintarEquipo();
+  if (vista === "servicios") pintarServicios();
+  if (vista === "resumen") cargarResumen();
+  if (vista === "ajustes") pintarAjustes();
+}
+
+function montarNav() {
+  document.querySelectorAll("[data-nav]").forEach((nav) => {
+    nav.replaceChildren();
+    NAV.filter((item) => item.roles.includes(estado.rol)).forEach((item) => {
+      const boton = nodo("button", "pa-tab", item.texto);
+      boton.type = "button";
+      boton.dataset.vista = item.id;
+      boton.addEventListener("click", () => abrir(item.id));
+      nav.appendChild(boton);
+    });
+  });
+  document.querySelectorAll("[data-solo]").forEach((el) => {
+    el.hidden = el.dataset.solo === "dueno" ? !dueno() : dueno();
+  });
+  abrir("agenda");
+}
+
+function avisoServicios() {
+  const aviso = document.querySelector("[data-servicios-aviso]");
+  if (!aviso) return;
+  const hay = dueno() && estado.servicios.some((item) => !item.activo);
+  aviso.hidden = !hay;
+}
+
+async function cargarBase() {
+  const supabase = estado.supabase;
+  const [config, sedes, barberos, servicios, horarios, bloqueos] = await Promise.all([
+    supabase.from("config").select("*").eq("id", 1).limit(1),
+    supabase.from("sedes").select("*").order("orden"),
+    supabase.from("barberos").select("*").order("orden"),
+    supabase.from("servicios").select("*").order("orden"),
+    supabase.from("horarios").select("*"),
+    supabase.from("bloqueos").select("*").order("fecha")
+  ]);
+  if (config.error || sedes.error || barberos.error || servicios.error || horarios.error || bloqueos.error) {
+    throw config.error || sedes.error || barberos.error || servicios.error || horarios.error || bloqueos.error;
+  }
+  estado.config = (config.data && config.data[0]) || null;
+  estado.sedes = sedes.data || [];
+  estado.barberos = barberos.data || [];
+  estado.servicios = servicios.data || [];
+  estado.horarios = horarios.data || [];
+  estado.bloqueos = bloqueos.data || [];
+  try {
+    const respuesta = await fetch("assets/img/fotos/fotos.json", { credentials: "same-origin" });
+    const fotos = respuesta.ok ? await respuesta.json() : [];
+    estado.fotos = Array.isArray(fotos) ? fotos.filter((foto) => foto.categoria === "equipo") : [];
+  } catch (error) {
+    estado.fotos = [];
+  }
+}
+
+async function cargarReservas(anunciar) {
+  const { data, error } = await estado.supabase.from("reservas").select("*").order("fecha").order("hora").limit(800);
+  if (error) {
+    fail("No pudimos cargar las reservas.");
+    return;
+  }
+  const anteriores = estado.conocidas;
+  estado.reservas = data || [];
+  const ids = new Set(estado.reservas.map((item) => item.id));
+  if (anunciar && anteriores) {
+    const nuevas = estado.reservas.filter((item) => !anteriores.has(item.id));
+    if (nuevas.length) avisarNuevas(nuevas);
+  }
+  estado.conocidas = ids;
+  const pendientes = estado.reservas.filter((item) => item.estado === "pendiente").length;
+  document.title = (pendientes ? "(" + pendientes + ") " : "") + "Panel — La Mansión Barber Shop";
+  if (estado.nav === "agenda" || estado.nav === "reservas") {
+    if (vistaDe(estado.nav) === "agenda") pintarAgenda();
+    if (estado.nav === "reservas") pintarReservas();
+  }
+}
+
+function avisarNuevas(nuevas) {
+  if (estado.sonido) {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.04, ctx.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.16);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.18);
+        osc.onended = () => ctx.close();
+      }
+    } catch (error) {}
+  }
+  try {
+    if (navigator.vibrate) navigator.vibrate([120, 40, 120]);
+  } catch (error) {}
+  try {
+    if (window.Notification && Notification.permission === "granted") {
+      new Notification("Nueva reserva", { body: "Hay una cita nueva en la agenda." });
+    }
+  } catch (error) {}
+  nuevas.forEach((reserva) => {
+    document.querySelectorAll('[data-id="' + reserva.id + '"]').forEach((el) => el.classList.add("is-nueva"));
+  });
+  window.setTimeout(() => {
+    document.querySelectorAll(".is-nueva").forEach((el) => el.classList.remove("is-nueva"));
+  }, 5000);
+}
+
+function barberosDeSede(sedeId) {
+  return estado.barberos.filter((item) => !sedeId || item.sede_id === sedeId);
+}
+
+function pintarAgenda() {
+  const host = document.querySelector("[data-agenda]");
+  if (!host) return;
+  const sedeSelect = document.querySelector("[data-agenda-sede]");
+  const fechaInput = document.querySelector("[data-agenda-fecha]");
+  const barberoSelect = document.querySelector("[data-agenda-barbero]");
+  if (!estado.agendaFecha) estado.agendaFecha = hoyISO();
+  if (!estado.agendaSede) estado.agendaSede = (estado.sedes.find((item) => item.activa !== false) || estado.sedes[0] || {}).id || "";
+  llenarSelect(sedeSelect, estado.sedes.map((item) => ({ valor: item.id, texto: item.nombre })), estado.agendaSede);
+  if (fechaInput && fechaInput.value !== estado.agendaFecha) fechaInput.value = estado.agendaFecha;
+  const deSede = barberosDeSede(estado.agendaSede).filter((item) => dueno() || item.id === estado.barberoId);
+  if (!estado.agendaBarbero || !deSede.some((item) => item.id === estado.agendaBarbero)) {
+    estado.agendaBarbero = (deSede[0] || {}).id || "";
+  }
+  llenarSelect(barberoSelect, deSede.map((item) => ({ valor: item.id, texto: item.nombre })), estado.agendaBarbero);
+  host.removeAttribute("aria-busy");
+  host.replaceChildren();
+  const titulo = nodo("h2", "solo-impresion", "Agenda del " + fechaLegible(estado.agendaFecha));
+  host.appendChild(titulo);
+  if (estado.agendaModo === "semana") pintarSemana(host);
+  else pintarDia(host, deSede);
+}
+
+function reservasEn(fecha, sedeId) {
+  const ids = new Set(barberosDeSede(sedeId).map((item) => item.id));
+  return estado.reservas.filter((item) => item.fecha === fecha && ids.has(item.barbero_id) && (dueno() || item.barbero_id === estado.barberoId));
+}
+
+function pintarDia(host, deSede) {
+  const columnas = window.matchMedia("(max-width: 899px)").matches
+    ? deSede.filter((item) => item.id === estado.agendaBarbero)
+    : deSede;
+  if (!columnas.length) {
+    host.appendChild(nodo("p", "vacio", "No hay barberos en esta sede."));
+    return;
+  }
+  const citas = reservasEn(estado.agendaFecha, estado.agendaSede);
+  if (!citas.length) host.appendChild(nodo("p", "vacio", "No hay citas este día."));
+  const rejilla = nodo("div", "agenda-rejilla");
+  const eje = nodo("div", "agenda-eje");
+  for (let hora = 8; hora < 20; hora += 1) eje.appendChild(nodo("span", null, String(hora) + ":00"));
+  const cols = nodo("div", "agenda-cols");
+  limpiarHoja();
+  let indice = 0;
+  columnas.forEach((barbero) => {
+    const col = nodo("div", "agenda-col");
+    col.appendChild(nodo("h3", null, barbero.nombre));
+    const lienzo = nodo("div", "agenda-horas");
+    citas.filter((item) => item.barbero_id === barbero.id).forEach((reserva) => {
+      const bloque = nodo("button", "bloque estado-" + reserva.estado + " blq-" + indice, "");
+      bloque.type = "button";
+      bloque.dataset.id = reserva.id;
+      const fila = Math.max(1, Math.floor((aMinutos(reserva.hora) - 8 * 60) / 30) + 1);
+      const span = Math.max(1, Math.ceil((Number(reserva.duracion_min) || 30) / 30));
+      regla(".blq-" + indice + "{grid-row:" + fila + " / span " + span + "}");
+      bloque.append(nodo("strong", null, horaLegible(reserva.hora)), nodo("span", null, reserva.nombre), nodo("span", null, nombreServicio(reserva.servicio_id)));
+      bloque.addEventListener("click", () => abrirCita(reserva));
+      lienzo.appendChild(bloque);
+      indice += 1;
+    });
+    col.appendChild(lienzo);
+    cols.appendChild(col);
+  });
+  rejilla.append(eje, cols);
+  host.appendChild(rejilla);
+}
+
+function pintarSemana(host) {
+  const inicio = lunesDe(estado.agendaFecha);
+  const scroll = nodo("div", "semana-scroll");
+  const grilla = nodo("div", "semana");
+  for (let i = 0; i < 7; i += 1) {
+    const fecha = sumarDias(inicio, i);
+    const col = nodo("div", "semana-col");
+    const titulo = nodo("button", "btn btn-sec", DIAS[diaSemanaISO(fecha)] + " " + Number(fecha.slice(8)));
+    titulo.type = "button";
+    titulo.addEventListener("click", () => {
+      estado.agendaFecha = fecha;
+      estado.agendaModo = "dia";
+      document.querySelectorAll("[data-agenda-modo]").forEach((boton) => {
+        boton.setAttribute("aria-pressed", boton.dataset.agendaModo === "dia" ? "true" : "false");
+      });
+      pintarAgenda();
+    });
+    col.appendChild(titulo);
+    const citas = reservasEn(fecha, estado.agendaSede);
+    if (!citas.length) col.appendChild(nodo("p", "vacio", "Sin citas"));
+    citas.forEach((reserva) => {
+      const boton = nodo("button", "bloque estado-" + reserva.estado, horaLegible(reserva.hora) + " " + reserva.nombre);
+      boton.type = "button";
+      boton.dataset.id = reserva.id;
+      boton.addEventListener("click", () => abrirCita(reserva));
+      col.appendChild(boton);
+    });
+    grilla.appendChild(col);
+  }
+  scroll.appendChild(grilla);
+  host.appendChild(scroll);
+}
+
+function abrirCita(reserva) {
+  const modal = document.querySelector("[data-cita-modal]");
+  const cuerpo = document.querySelector("[data-cita-modal-cuerpo]");
+  if (!modal || !cuerpo) return;
+  cuerpo.replaceChildren();
+  cuerpo.append(
+    nodo("p", null, reserva.nombre),
+    nodo("p", null, digitos(reserva.telefono)),
+    nodo("p", null, nombreServicio(reserva.servicio_id) + " · " + nombreBarbero(reserva.barbero_id)),
+    nodo("p", null, fechaLegible(reserva.fecha) + " · " + horaLegible(reserva.hora)),
+    nodo("p", "cita-estado estado-" + reserva.estado, etiquetaEstado(reserva.estado)),
+    nodo("p", null, reserva.notas || "")
+  );
+  cuerpo.appendChild(accionesDe(reserva));
+  modal.hidden = false;
+  const cerrar = modal.querySelector("[data-cita-cerrar]");
+  if (cerrar) cerrar.focus();
+}
+
+function etiquetaEstado(valor) {
+  return { pendiente: "Pendiente", confirmada: "Confirmada", completada: "Completada", cancelada: "Cancelada", no_asistio: "No asistió" }[valor] || valor;
+}
+
+function accionesDe(reserva) {
+  const caja = nodo("div", "cita-acciones");
+  const poner = (texto, accion, clase) => {
+    const boton = nodo("button", clase || "btn btn-sec", texto);
+    boton.type = "button";
+    boton.dataset.accion = accion;
+    boton.dataset.id = reserva.id;
+    boton.addEventListener("click", () => ejecutar(reserva, accion, boton));
+    caja.appendChild(boton);
+    return boton;
+  };
+  if (reserva.estado === "pendiente") poner("Confirmar", "confirmar", "btn");
+  if (reserva.estado === "pendiente" || reserva.estado === "confirmada") {
+    poner("Marcar completada", "completada");
+    poner("No asistió", "no_asistio");
+    poner("Cancelar", "cancelar");
+  }
+  if (!reserva.gratis && (reserva.estado === "pendiente" || reserva.estado === "confirmada")) {
+    const gratis = poner("Aplicar corte gratis", "gratis");
+    gratis.hidden = true;
+    fichaDe(reserva.telefono).then((ficha) => {
+      if (ficha && ficha.gratis_disponible && gratis.isConnected) gratis.hidden = false;
+    });
+  }
+  if (reserva.estado === "pendiente" || reserva.estado === "confirmada" || reserva.estado === "cancelada") {
+    const href = waCliente(reserva.telefono, mensajeAviso(reserva));
+    if (href) {
+      const enlace = nodo("a", "btn", "Avisar por WhatsApp");
+      enlace.href = href;
+      enlace.target = "_blank";
+      enlace.rel = "noopener";
+      enlace.dataset.accion = "avisar";
+      enlace.addEventListener("click", () => marcarAvisado(reserva));
+      caja.appendChild(enlace);
+    }
+  }
+  if ((reserva.estado === "pendiente" || reserva.estado === "confirmada") && !reserva.avisado) {
+    caja.appendChild(nodo("span", "falta-avisar", "Falta avisar"));
+  }
+  if (reserva.gratis) caja.appendChild(nodo("span", "fid-gratis", "Corte gratis"));
+  return caja;
+}
+
+async function fichaDe(telefono) {
+  const clave = digitos(telefono);
+  if (estado.fichas.has(clave)) return estado.fichas.get(clave);
+  const { data, error } = await estado.supabase.rpc("mi_fidelidad", { p_telefono: clave });
+  if (error) return null;
+  const ficha = Array.isArray(data) ? data[0] : data;
+  estado.fichas.set(clave, ficha);
+  return ficha;
+}
+
+async function ejecutar(reserva, accion, boton) {
+  if (accion === "cancelar") {
+    const ok = await preguntar("¿Cancelar la cita de " + reserva.nombre + "?", "Cancelar cita", "Volver");
+    if (!ok) return;
+  }
+  if (boton) boton.disabled = true;
+  try {
+    if (accion === "gratis") {
+      const { error } = await estado.supabase.rpc("aplicar_gratis", { p_reserva: reserva.id });
+      if (error) throw error;
+      reserva.gratis = true;
+      estado.fichas.delete(digitos(reserva.telefono));
+    } else if (accion !== "avisar") {
+      const campos = { estado: accion === "confirmar" ? "confirmada" : accion };
+      const { error } = await estado.supabase.from("reservas").update(campos).eq("id", reserva.id);
+      if (error) throw error;
+      reserva.estado = campos.estado;
+    }
+    fail("");
+    const modal = document.querySelector("[data-cita-modal]");
+    if (modal) modal.hidden = true;
+    pintarAgenda();
+    pintarReservas();
+  } catch (error) {
+    fail(traducir(error));
+  } finally {
+    if (boton) boton.disabled = false;
+  }
+}
+
+async function marcarAvisado(reserva) {
+  const { error } = await estado.supabase.from("reservas").update({ avisado: true }).eq("id", reserva.id);
   if (error) {
     fail("No se pudo marcar el aviso.");
     return;
   }
-  fail("");
-  const row = state.reservas.find((item) => item.id === id);
-  if (row) row.avisado = true;
-  paintReservas();
-};
+  reserva.avisado = true;
+  pintarReservas();
+  pintarAgenda();
+}
 
-const guardarEstado = async (row, payload) => {
-  const { error } = await supabase.from("reservas").update(payload).eq("id", row.id);
-  if (error) {
-    fail("No se pudo actualizar la cita.");
-    return false;
-  }
-  fail("");
-  Object.assign(row, payload);
-  return true;
-};
-
-const confirmar = async (row, control) => {
-  if (saving) return;
-  saving = true;
-  if (control) control.disabled = true;
-  try {
-    if (!state.fidelidadLista) await loadFidelidad();
-    let aplicar = false;
-    if (row.gratis !== true) {
-      const ficha = fichaFidelidad(row.telefono);
-      if (ficha && num(ficha.gratis_disponibles) > 0 && cuentaServicio(row.servicio)) {
-        aplicar = await preguntar(
-          nombreDe(row) + " tiene un corte gratis disponible. ¿Aplicarlo a esta cita?",
-          "Sí, aplicar",
-          "No, cobrar normal",
-          "ok"
-        );
-      }
-    }
-    const antes = fichaFidelidad(row.telefono);
-    const hechosAntes = antes ? num(antes.hechos) : 0;
-    const listaAntes = state.fidelidadLista;
-    const payload = { estado: "confirmada", avisado: false };
-    if (aplicar) payload.gratis = true;
-    const ok = await guardarEstado(row, payload);
-    if (!ok) return;
-    await Promise.all([loadReservas(), loadFidelidad()]);
-    let hechosHito = 0;
-    if (listaAntes) {
-      const despues = fichaFidelidad(row.telefono);
-      const hechos = despues ? num(despues.hechos) : 0;
-      const meta = state.meta || 10;
-      if (hechos > hechosAntes && meta > 0 && hechos % meta === 0) {
-        hechosHito = hechos;
-        hitos.set(row.id, hechos);
-      }
-    }
-    const actual = state.reservas.find((item) => item.id === row.id) || { ...row, ...payload };
-    abrirAviso(actual, hechosHito);
-  } finally {
-    saving = false;
-    if (control) control.disabled = false;
-  }
-};
-
-const cancelarCita = async (row, control) => {
-  if (saving) return;
-  const aceptar = await preguntar("¿Cancelar la cita de " + nombreDe(row) + "?", "Sí", "No", "no");
-  if (!aceptar) return;
-  saving = true;
-  if (control) control.disabled = true;
-  try {
-    const ok = await guardarEstado(row, { estado: "cancelada", avisado: false });
-    if (!ok) return;
-    await Promise.all([loadReservas(), loadFidelidad()]);
-    const actual = state.reservas.find((item) => item.id === row.id) || { ...row, estado: "cancelada", avisado: false };
-    abrirAviso(actual);
-  } finally {
-    saving = false;
-    if (control) control.disabled = false;
-  }
-};
-
-const showView = (name) => {
-  document.querySelectorAll("[data-panel]").forEach((panel) => {
-    const on = panel.getAttribute("data-panel") === name;
-    panel.hidden = !on;
-    panel.classList.toggle("is-on", on);
-    if (on && !reduceMotion) {
-      panel.classList.remove("is-enter");
-      void panel.offsetWidth;
-      panel.classList.add("is-enter");
-    }
+function reservasFiltradas() {
+  const buscar = (document.querySelector("[data-buscar]") || {}).value || "";
+  const texto = buscar.trim().toLowerCase();
+  const numeros = texto.replace(/\D/g, "");
+  const desde = (document.querySelector("[data-filtro-desde]") || {}).value || "";
+  const hasta = (document.querySelector("[data-filtro-hasta]") || {}).value || "";
+  const barbero = (document.querySelector("[data-filtro-barbero]") || {}).value || "";
+  const situacion = (document.querySelector("[data-filtro-estado]") || {}).value || "";
+  const servicio = (document.querySelector("[data-filtro-servicio]") || {}).value || "";
+  return estado.reservas.filter((item) => {
+    if (desde && item.fecha < desde) return false;
+    if (hasta && item.fecha > hasta) return false;
+    if (barbero && item.barbero_id !== barbero) return false;
+    if (situacion && item.estado !== situacion) return false;
+    if (servicio && item.servicio_id !== servicio) return false;
+    if (!texto) return true;
+    const nombre = String(item.nombre || "").toLowerCase();
+    const tel = digitos(item.telefono);
+    const numero = String(item.numero || "").toLowerCase();
+    return nombre.includes(texto) || numero.includes(texto) || (numeros && tel.includes(numeros));
   });
-  document.querySelectorAll("[data-view]").forEach((button) => {
-    if (button.getAttribute("data-view") === name) button.setAttribute("aria-current", "page");
-    else button.removeAttribute("aria-current");
+}
+
+function pintarReservas() {
+  const host = document.querySelector("[data-reservas-lista]");
+  if (!host || document.querySelector("[data-panel=reservas]").hidden) return;
+  const barbero = document.querySelector("[data-filtro-barbero]");
+  const servicio = document.querySelector("[data-filtro-servicio]");
+  const situacion = document.querySelector("[data-filtro-estado]");
+  if (barbero && !barbero.options.length) {
+    llenarSelect(barbero, [{ valor: "", texto: "Todos" }, ...estado.barberos.map((item) => ({ valor: item.id, texto: item.nombre }))]);
+  }
+  if (servicio && !servicio.options.length) {
+    llenarSelect(servicio, [{ valor: "", texto: "Todos" }, ...estado.servicios.map((item) => ({ valor: item.id, texto: item.nombre }))]);
+  }
+  if (situacion && !situacion.options.length) {
+    llenarSelect(situacion, ["", "pendiente", "confirmada", "completada", "cancelada", "no_asistio"].map((valor) => ({
+      valor,
+      texto: valor ? etiquetaEstado(valor) : "Todos"
+    })));
+  }
+  host.removeAttribute("aria-busy");
+  host.replaceChildren();
+  const filas = reservasFiltradas();
+  if (!filas.length) {
+    host.appendChild(nodo("p", "vacio", estado.reservas.length ? "Nadie coincide con ese filtro." : "Aún no hay citas."));
+    return;
+  }
+  filas.forEach((reserva) => {
+    const card = nodo("article", "pa-cita estado-" + reserva.estado);
+    card.dataset.id = reserva.id;
+    card.append(
+      nodo("h3", null, reserva.nombre),
+      nodo("p", null, reserva.numero + " · " + digitos(reserva.telefono)),
+      nodo("p", null, fechaLegible(reserva.fecha) + " · " + horaLegible(reserva.hora)),
+      nodo("p", null, nombreServicio(reserva.servicio_id) + " · " + nombreBarbero(reserva.barbero_id)),
+      nodo("p", "cita-estado", etiquetaEstado(reserva.estado))
+    );
+    card.appendChild(accionesDe(reserva));
+    host.appendChild(card);
   });
-  renderVisibleCharts();
-};
+}
 
-const setPeriod = (period) => {
-  state.period = period;
-  document.querySelectorAll("[data-period]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(button.getAttribute("data-period") === period));
+async function exportarCsv() {
+  const ok = await preguntar("Esta exportación contiene datos personales. ¿Descargarla?", "Descargar", "Cancelar");
+  if (!ok) return;
+  const filas = reservasFiltradas();
+  const encabezado = ["numero", "fecha", "hora", "nombre", "celular", "servicio", "barbero", "estado"];
+  const lineas = [encabezado.join(",")];
+  filas.forEach((reserva) => {
+    const valores = [reserva.numero, reserva.fecha, reserva.hora, reserva.nombre, digitos(reserva.telefono), nombreServicio(reserva.servicio_id), nombreBarbero(reserva.barbero_id), reserva.estado];
+    lineas.push(valores.map((valor) => /[",\n]/.test(String(valor || "")) ? '"' + String(valor).replace(/"/g, '""') + '"' : String(valor || "")).join(","));
   });
-  if (rangeBox) rangeBox.hidden = period !== "rango";
-  if (period === "rango") {
-    const today = bogotaToday();
-    if (desdeInput && !desdeInput.value) desdeInput.value = addDays(today, -6);
-    if (hastaInput && !hastaInput.value) hastaInput.value = today;
+  const blob = new Blob([lineas.join("\n")], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const enlace = nodo("a");
+  enlace.href = url;
+  enlace.download = "reservas.csv";
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function pintarEquipo() {
+  if (dueno()) {
+    pintarSedes();
+    pintarBarberos();
+    prepararFormulariosDueno();
   }
-  loadServicios();
-};
+  const select = document.querySelector("[data-horario-barbero]");
+  const lista = dueno() ? estado.barberos : estado.barberos.filter((item) => item.id === estado.barberoId);
+  if (!estado.horarioBarbero || !lista.some((item) => item.id === estado.horarioBarbero)) estado.horarioBarbero = (lista[0] || {}).id || "";
+  llenarSelect(select, lista.map((item) => ({ valor: item.id, texto: item.nombre })), estado.horarioBarbero);
+  if (select) select.disabled = !dueno();
+  cargarModelo();
+  pintarEditor();
+  pintarBloqueos();
+  const sede = document.querySelector("[data-bloqueo-sede]");
+  const barbero = document.querySelector("[data-bloqueo-barbero]");
+  llenarSelect(sede, estado.sedes.map((item) => ({ valor: item.id, texto: item.nombre })));
+  const opciones = [];
+  if (dueno()) opciones.push({ valor: "", texto: "Toda la sede" });
+  (dueno() ? estado.barberos : lista).forEach((item) => opciones.push({ valor: item.id, texto: item.nombre }));
+  llenarSelect(barbero, opciones, dueno() ? "" : estado.barberoId);
+  if (barbero && !dueno()) barbero.disabled = true;
+}
 
-const fechasBloqueo = () => {
-  const form = document.querySelector("[data-bloqueo-form]");
-  const desde = form ? String(new FormData(form).get("desde") || "") : "";
-  const hasta = form ? String(new FormData(form).get("hasta") || "") : "";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(desde)) return [bogotaToday()];
-  const fin = /^\d{4}-\d{2}-\d{2}$/.test(hasta) && hasta >= desde ? hasta : desde;
-  const fechas = [];
-  let cursor = desde;
-  for (let i = 0; i < 366 && cursor <= fin; i += 1) {
-    fechas.push(cursor);
-    cursor = addDays(cursor, 1);
-  }
-  return fechas.length ? fechas : [bogotaToday()];
-};
-
-const horasLocal = (fechas) => {
-  const bookable = [];
-  const seen = new Set();
-  const cierre = new Set();
-  fechas.forEach((iso) => {
-    horasDelDia(iso).forEach((slot) => {
-      if (seen.has(slot)) return;
-      seen.add(slot);
-      bookable.push(slot);
-    });
-    const regla = reglaDelDia(diaSemana(iso));
-    const cierra = String((regla && regla.cierra) || "").slice(0, 5);
-    if (cierra) cierre.add(cierra);
-  });
-  bookable.sort();
-  const slots = bookable.slice();
-  cierre.forEach((slot) => {
-    if (!slots.includes(slot)) slots.push(slot);
-  });
-  slots.sort();
-  return {
-    inicio: bookable.length ? bookable : ["09:00"],
-    slots: slots.length ? slots : ["09:00"]
-  };
-};
-
-const llenarHorasBloqueo = () => {
-  const desde = document.querySelector("[data-bloqueo-form] select[name='hora_desde']");
-  const hasta = document.querySelector("[data-bloqueo-form] select[name='hora_hasta']");
-  if (!desde || !hasta) return;
-  const prevDesde = desde.value;
-  const prevHasta = hasta.value;
-  const { inicio, slots } = horasLocal(fechasBloqueo());
-  const fill = (select, values) => {
-    select.replaceChildren();
-    values.forEach((slot) => {
-      const option = el("option", null, hourLabel(slot));
-      option.value = slot;
-      select.appendChild(option);
-    });
-  };
-  fill(desde, inicio);
-  fill(hasta, slots);
-  desde.value = inicio.includes(prevDesde) ? prevDesde : inicio[0];
-  hasta.value = slots.includes(prevHasta) ? prevHasta : (inicio[inicio.length - 1] || slots[slots.length - 1]);
-};
-
-const bloqueoError = (message) => {
-  const node = document.querySelector("[data-bloqueo-error]");
-  if (!node) return;
-  node.hidden = !message;
-  node.textContent = message || "";
-};
-
-const leerBloqueo = () => {
-  const form = document.querySelector("[data-bloqueo-form]");
-  const data = new FormData(form);
-  return {
-    desde: String(data.get("desde") || ""),
-    hasta: String(data.get("hasta") || ""),
-    todo: String(data.get("modo") || "dia") !== "horas",
-    horaDesde: String(data.get("hora_desde") || ""),
-    horaHasta: String(data.get("hora_hasta") || ""),
-    motivo: String(data.get("motivo") || "").trim()
-  };
-};
-
-const bloqueoValido = (bloqueo) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(bloqueo.desde) || !/^\d{4}-\d{2}-\d{2}$/.test(bloqueo.hasta)) {
-    bloqueoError("Elige la fecha de inicio y la de fin.");
-    return false;
-  }
-  if (bloqueo.desde > bloqueo.hasta) {
-    bloqueoError("La fecha final es anterior a la inicial.");
-    return false;
-  }
-  if (!bloqueo.todo && (!bloqueo.horaDesde || !bloqueo.horaHasta || bloqueo.horaDesde > bloqueo.horaHasta)) {
-    bloqueoError("Elige un rango de horas del local.");
-    return false;
-  }
-  bloqueoError("");
-  return true;
-};
-
-const horaEnRango = (hora, bloqueo) => {
-  if (bloqueo.todo) return true;
-  const hhmm = String(hora || "").slice(0, 5);
-  return hhmm >= bloqueo.horaDesde && hhmm <= bloqueo.horaHasta;
-};
-
-let citasEnBloqueo = [];
-
-const ocultarChoques = () => {
-  citasEnBloqueo = [];
-  const box = document.querySelector("[data-bloqueo-citas]");
-  const cancelar = document.querySelector("[data-bloqueo-cancelar-citas]");
-  const conservar = document.querySelector("[data-bloqueo-conservar]");
-  const guardar = document.querySelector("[data-bloqueo-guardar]");
-  if (box) {
-    box.hidden = true;
-    box.replaceChildren();
-  }
-  if (cancelar) cancelar.hidden = true;
-  if (conservar) conservar.hidden = true;
-  if (guardar) guardar.hidden = false;
-};
-
-const pintarChoques = (rows) => {
-  const box = document.querySelector("[data-bloqueo-citas]");
-  const cancelar = document.querySelector("[data-bloqueo-cancelar-citas]");
-  const conservar = document.querySelector("[data-bloqueo-conservar]");
-  const guardar = document.querySelector("[data-bloqueo-guardar]");
-  if (!box) return;
-  citasEnBloqueo = rows;
-  box.hidden = false;
-  box.replaceChildren(el("p", "block-note", "Hay citas en ese horario."));
-  rows.forEach((row) => {
-    box.appendChild(el("p", "block-cita", [row.nombre || "Sin nombre", fechaCita(fechaDe(row)), horaCita(row.hora)].filter(Boolean).join(" · ")));
-  });
-  if (cancelar) cancelar.hidden = false;
-  if (conservar) conservar.hidden = false;
-  if (guardar) guardar.hidden = true;
-};
-
-const citasDelBloqueo = async (bloqueo) => {
-  const { data, error } = await supabase
-    .from("reservas")
-    .select("id, nombre, telefono, fecha, hora, estado")
-    .in("estado", ["pendiente", "confirmada"])
-    .gte("fecha", bloqueo.desde)
-    .lte("fecha", bloqueo.hasta);
-  if (error) throw error;
-  return (data || []).filter((row) => horaEnRango(row.hora, bloqueo));
-};
-
-const pintarAvisos = (rows) => {
-  const host = document.querySelector("[data-bloqueo-avisos]");
+function pintarSedes() {
+  const host = document.querySelector("[data-sedes]");
   if (!host) return;
-  host.hidden = false;
-  host.replaceChildren(el("p", "block-note", "Bloqueo guardado. Avisa a estos clientes:"));
-  rows.forEach((row) => {
-    const line = el("p", "block-aviso");
-    const texto = mensajeBloqueo(row);
-    const link = document.createElement("a");
-    link.href = waMensaje(row.telefono, texto);
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.textContent = "Avisar por WhatsApp";
-    line.append(document.createTextNode((row.nombre || "Cliente") + " · "), link);
-    host.appendChild(line);
+  host.replaceChildren();
+  if (!estado.sedes.length) host.appendChild(nodo("p", "vacio", "Aún no hay sedes."));
+  estado.sedes.forEach((sede) => {
+    const fila = nodo("article", "pa-cita");
+    fila.append(nodo("h3", null, sede.nombre), nodo("p", null, sede.direccion || ""), nodo("p", null, sede.activa ? "Activa" : "Inactiva"));
+    const editar = nodo("button", "btn btn-sec", "Editar");
+    editar.type = "button";
+    editar.addEventListener("click", () => {
+      const form = document.querySelector("[data-sede-form]");
+      form.elements.id.value = sede.id;
+      form.elements.nombre.value = sede.nombre || "";
+      form.elements.direccion.value = sede.direccion || "";
+      form.elements.telefono.value = sede.telefono || "";
+      form.elements.orden.value = sede.orden || 0;
+      form.elements.activa.checked = sede.activa !== false;
+    });
+    const borrar = nodo("button", "btn btn-sec", "Eliminar");
+    borrar.type = "button";
+    borrar.addEventListener("click", async () => {
+      const ok = await preguntar("¿Eliminar la sede " + sede.nombre + "?", "Eliminar", "Cancelar");
+      if (!ok) return;
+      const { error } = await estado.supabase.from("sedes").delete().eq("id", sede.id);
+      if (error) return fail("No se pudo eliminar la sede.");
+      estado.sedes = estado.sedes.filter((item) => item.id !== sede.id);
+      pintarSedes();
+    });
+    fila.append(editar, borrar);
+    host.appendChild(fila);
   });
-};
+}
 
-const guardarBloqueo = async (cancelar) => {
-  const bloqueo = leerBloqueo();
-  if (!bloqueoValido(bloqueo)) return;
-  const rows = citasEnBloqueo.slice();
-  const guardar = document.querySelector("[data-bloqueo-guardar]");
-  const cancelarBtn = document.querySelector("[data-bloqueo-cancelar-citas]");
-  const conservar = document.querySelector("[data-bloqueo-conservar]");
-  [guardar, cancelarBtn, conservar].forEach((button) => {
-    if (button) button.disabled = true;
+function pintarBarberos() {
+  const host = document.querySelector("[data-barberos]");
+  if (!host) return;
+  host.replaceChildren();
+  if (!estado.barberos.length) host.appendChild(nodo("p", "vacio", "Aún no hay barberos."));
+  estado.barberos.forEach((barbero) => {
+    const fila = nodo("article", "pa-cita");
+    fila.append(nodo("h3", null, barbero.nombre), nodo("p", null, (barbero.especialidad || "") + " · " + nombreSede(barbero.sede_id)));
+    const editar = nodo("button", "btn btn-sec", "Editar");
+    editar.type = "button";
+    editar.addEventListener("click", () => llenarBarbero(barbero));
+    fila.appendChild(editar);
+    host.appendChild(fila);
   });
-  try {
-    if (cancelar && rows.length) {
-      const { error } = await supabase.from("reservas").update({ estado: "cancelada" }).in("id", rows.map((row) => row.id));
-      if (error) throw error;
-    }
-    const payload = {
-      desde: bloqueo.desde,
-      hasta: bloqueo.hasta,
-      hora_desde: bloqueo.todo ? null : bloqueo.horaDesde + ":00",
-      hora_hasta: bloqueo.todo ? null : bloqueo.horaHasta + ":00",
-      motivo: bloqueo.motivo || null
-    };
-    const inserted = await supabase.from("bloqueos").insert(payload);
-    if (inserted.error) throw inserted.error;
-    bloqueoError("");
-    ocultarChoques();
-    const form = document.querySelector("[data-bloqueo-form]");
-    if (form) form.hidden = true;
-    if (cancelar && rows.length) {
-      pintarAvisos(rows);
-      loadReservas();
-      loadFidelidad();
-    }
-    await loadBloqueos();
-  } catch (error) {
-    bloqueoError(cancelar ? "No pudimos cancelar las citas o guardar el bloqueo." : "No pudimos guardar el bloqueo.");
-    if (cancelar && rows.length) {
-      pintarAvisos(rows);
-      loadReservas();
-      loadFidelidad();
-    }
-  } finally {
-    [guardar, cancelarBtn, conservar].forEach((button) => {
-      if (button) button.disabled = false;
+}
+
+function serviciosChecks(seleccion, todos) {
+  const host = document.querySelector("[data-barbero-servicios]");
+  if (!host) return;
+  host.replaceChildren();
+  const general = nodo("label", "reserva-check");
+  const caja = document.createElement("input");
+  caja.type = "checkbox";
+  caja.dataset.serviciosTodos = "1";
+  caja.checked = Boolean(todos);
+  general.append(caja, document.createTextNode("Todos los servicios"));
+  host.appendChild(general);
+  estado.servicios.forEach((servicio) => {
+    const label = nodo("label", "reserva-check");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = servicio.id;
+    input.dataset.servicioId = servicio.id;
+    input.checked = !todos && Array.isArray(seleccion) && seleccion.includes(servicio.id);
+    label.append(input, document.createTextNode(servicio.nombre));
+    host.appendChild(label);
+  });
+  caja.addEventListener("change", () => {
+    host.querySelectorAll("[data-servicio-id]").forEach((input) => {
+      input.checked = false;
+      input.disabled = caja.checked;
+    });
+  });
+}
+
+function llenarBarbero(barbero) {
+  const form = document.querySelector("[data-barbero-form]");
+  form.elements.id.value = barbero.id;
+  form.elements.nombre.value = barbero.nombre || "";
+  form.elements.especialidad.value = barbero.especialidad || "";
+  form.elements.sede_id.value = barbero.sede_id || "";
+  form.elements.foto.value = barbero.foto || "";
+  form.elements.orden.value = barbero.orden || 0;
+  form.elements.activo.checked = barbero.activo !== false;
+  serviciosChecks(barbero.servicios, barbero.servicios == null);
+}
+
+function prepararFormulariosDueno() {
+  const sede = document.querySelector("[data-barbero-form] [name=sede_id]");
+  llenarSelect(sede, estado.sedes.map((item) => ({ valor: item.id, texto: item.nombre })));
+  const foto = document.querySelector("[data-barbero-foto]");
+  llenarSelect(foto, [{ valor: "", texto: "Sin foto" }, ...estado.fotos.map((item) => ({ valor: item.id, texto: item.alt || item.id }))]);
+  if (!document.querySelector("[data-servicios-todos]")) serviciosChecks(null, true);
+}
+
+function cargarModelo() {
+  const modelo = {};
+  for (let dia = 0; dia < 7; dia += 1) modelo[dia] = [];
+  estado.horarios.filter((item) => item.barbero_id === estado.horarioBarbero).forEach((item) => {
+    const dia = Number(item.dia);
+    if (!modelo[dia]) modelo[dia] = [];
+    modelo[dia].push({ abre: String(item.abre).slice(0, 5), cierra: String(item.cierra).slice(0, 5) });
+  });
+  estado.horarioModelo = modelo;
+  const desde = document.querySelector("[data-copiar-desde]");
+  llenarSelect(desde, DIAS.map((nombre, indice) => ({ valor: String(indice), texto: nombre })), "1");
+  const dias = document.querySelector("[data-copiar-dias]");
+  if (dias && !dias.children.length) {
+    DIAS.forEach((nombre, indice) => {
+      const label = nodo("label", "reserva-check");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = String(indice);
+      input.dataset.copiarDia = "1";
+      label.append(input, document.createTextNode(nombre));
+      dias.appendChild(label);
     });
   }
-};
+}
 
-const paintBloqueos = () => {
+function pintarEditor() {
+  const host = document.querySelector("[data-horario-editor]");
+  if (!host || !estado.horarioModelo) return;
+  host.replaceChildren();
+  DIAS.forEach((nombre, dia) => {
+    const bloque = nodo("fieldset", "horario-dia");
+    const leyenda = document.createElement("legend");
+    leyenda.textContent = nombre;
+    bloque.appendChild(leyenda);
+    const lista = estado.horarioModelo[dia] || [];
+    if (!lista.length) bloque.appendChild(nodo("p", "vacio", "Sin horario"));
+    lista.forEach((rango, indice) => {
+      const fila = nodo("div", "horario-rango");
+      const abre = document.createElement("input");
+      abre.type = "time";
+      abre.value = rango.abre;
+      abre.dataset.horarioDia = String(dia);
+      abre.dataset.horarioCampo = "abre";
+      abre.dataset.horarioIndice = String(indice);
+      const cierra = document.createElement("input");
+      cierra.type = "time";
+      cierra.value = rango.cierra;
+      cierra.dataset.horarioDia = String(dia);
+      cierra.dataset.horarioCampo = "cierra";
+      cierra.dataset.horarioIndice = String(indice);
+      const quitar = nodo("button", "btn btn-sec", "Quitar");
+      quitar.type = "button";
+      abre.addEventListener("input", () => { estado.horarioModelo[dia][indice].abre = abre.value; });
+      cierra.addEventListener("input", () => { estado.horarioModelo[dia][indice].cierra = cierra.value; });
+      quitar.addEventListener("click", () => {
+        estado.horarioModelo[dia].splice(indice, 1);
+        pintarEditor();
+      });
+      fila.append(abre, cierra, quitar);
+      bloque.appendChild(fila);
+    });
+    const agregar = nodo("button", "btn btn-sec", "Agregar rango");
+    agregar.type = "button";
+    agregar.addEventListener("click", () => {
+      estado.horarioModelo[dia].push({ abre: "09:00", cierra: "13:00" });
+      pintarEditor();
+    });
+    bloque.appendChild(agregar);
+    host.appendChild(bloque);
+  });
+}
+
+async function guardarHorarios() {
+  const id = estado.horarioBarbero;
+  if (!id) return;
+  const { error } = await estado.supabase.from("horarios").delete().eq("barbero_id", id);
+  if (error) return fail("No se pudieron guardar los horarios.");
+  const filas = [];
+  Object.keys(estado.horarioModelo).forEach((dia) => {
+    estado.horarioModelo[dia].forEach((rango) => {
+      if (!rango.abre || !rango.cierra || rango.abre >= rango.cierra) return;
+      filas.push({ barbero_id: id, dia: Number(dia), abre: rango.abre, cierra: rango.cierra });
+    });
+  });
+  if (filas.length) {
+    const alta = await estado.supabase.from("horarios").insert(filas).select();
+    if (alta.error) return fail("No se pudieron guardar los horarios.");
+  }
+  const recarga = await estado.supabase.from("horarios").select("*");
+  estado.horarios = recarga.data || [];
+  fail("");
+  cargarModelo();
+  pintarEditor();
+}
+
+function pintarBloqueos() {
   const host = document.querySelector("[data-bloqueos]");
   if (!host) return;
   host.replaceChildren();
-  if (!state.bloqueos.length) {
-    host.appendChild(el("p", "empty-note", "No hay bloqueos vigentes."));
+  const lista = estado.bloqueos.filter((item) => dueno() || item.barbero_id === estado.barberoId || !item.barbero_id);
+  if (!lista.length) host.appendChild(nodo("p", "vacio", "No hay bloqueos."));
+  lista.forEach((bloqueo) => {
+    const fila = nodo("article", "pa-cita");
+    const quien = bloqueo.barbero_id ? nombreBarbero(bloqueo.barbero_id) : "Toda la sede";
+    const franja = bloqueo.todo_dia ? "Todo el día" : (bloqueo.desde || "") + " – " + (bloqueo.hasta || "");
+    fila.append(nodo("h3", null, fechaLegible(bloqueo.fecha)), nodo("p", null, quien + " · " + franja), nodo("p", null, bloqueo.motivo || ""));
+    if (dueno() || bloqueo.barbero_id === estado.barberoId) {
+      const borrar = nodo("button", "btn btn-sec", "Quitar bloqueo");
+      borrar.type = "button";
+      borrar.addEventListener("click", async () => {
+        const { error } = await estado.supabase.from("bloqueos").delete().eq("id", bloqueo.id);
+        if (error) return fail("No se pudo quitar el bloqueo.");
+        estado.bloqueos = estado.bloqueos.filter((item) => item.id !== bloqueo.id);
+        pintarBloqueos();
+      });
+      fila.appendChild(borrar);
+    }
+    host.appendChild(fila);
+  });
+}
+
+function pintarServicios() {
+  const host = document.querySelector("[data-servicios]");
+  if (!host) return;
+  host.replaceChildren();
+  const ordenados = estado.servicios.slice().sort((a, b) => (a.orden || 0) - (b.orden || 0));
+  if (!ordenados.length) host.appendChild(nodo("p", "vacio", "Aún no hay servicios."));
+  ordenados.forEach((servicio, indice) => {
+    const fila = nodo("article", "pa-cita");
+    const precio = servicio.precio == null || servicio.precio === "" ? "Sin precio" : formatoPrecio(servicio.precio);
+    fila.append(
+      nodo("h3", null, servicio.nombre),
+      nodo("p", null, servicio.categoria + " · " + servicio.duracion_min + " min · " + precio),
+      nodo("p", null, servicio.activo ? "Activo" : "Inactivo")
+    );
+    const subir = nodo("button", "btn btn-sec", "Subir");
+    subir.type = "button";
+    subir.disabled = indice === 0;
+    const bajar = nodo("button", "btn btn-sec", "Bajar");
+    bajar.type = "button";
+    bajar.disabled = indice === ordenados.length - 1;
+    subir.addEventListener("click", () => moverServicio(ordenados, indice, -1));
+    bajar.addEventListener("click", () => moverServicio(ordenados, indice, 1));
+    const editar = nodo("button", "btn btn-sec", "Editar");
+    editar.type = "button";
+    editar.addEventListener("click", () => {
+      const form = document.querySelector("[data-servicio-form]");
+      form.elements.id.value = servicio.id;
+      form.elements.categoria.value = servicio.categoria || "";
+      form.elements.nombre.value = servicio.nombre || "";
+      form.elements.descripcion.value = servicio.descripcion || "";
+      form.elements.precio.value = servicio.precio == null ? "" : servicio.precio;
+      form.elements.duracion_min.value = servicio.duracion_min || 30;
+      form.elements.cuenta_fidelidad.checked = Boolean(servicio.cuenta_fidelidad);
+      form.elements.orden.value = servicio.orden || 0;
+      form.elements.activo.checked = servicio.activo !== false;
+    });
+    fila.append(subir, bajar, editar);
+    host.appendChild(fila);
+  });
+}
+
+async function moverServicio(lista, indice, delta) {
+  const actual = lista[indice];
+  const vecino = lista[indice + delta];
+  if (!actual || !vecino) return;
+  const ordenActual = actual.orden;
+  actual.orden = vecino.orden;
+  vecino.orden = ordenActual;
+  await estado.supabase.from("servicios").update({ orden: actual.orden }).eq("id", actual.id);
+  await estado.supabase.from("servicios").update({ orden: vecino.orden }).eq("id", vecino.id);
+  pintarServicios();
+}
+
+async function buscarFidelidad(evento) {
+  evento.preventDefault();
+  const host = document.querySelector("[data-fid-resultado]");
+  const input = document.querySelector("[data-fid-admin]");
+  if (!host || !input) return;
+  const cel = celularValido(input.value);
+  host.replaceChildren();
+  if (!cel.ok) {
+    host.appendChild(nodo("p", "form-error", "Revisa tu celular: 10 dígitos y empieza por 3."));
     return;
   }
-  state.bloqueos.forEach((row) => {
-    const item = el("article", "block-item");
-    const desde = String(row.desde || "").slice(0, 10);
-    const hasta = String(row.hasta || "").slice(0, 10);
-    const fechas = desde === hasta ? shortDay(desde) : shortDay(desde) + " – " + shortDay(hasta);
-    const cuando = !row.hora_desde || !row.hora_hasta
-      ? fechas + " · Todo el día"
-      : fechas + " · " + hourLabel(row.hora_desde) + " – " + hourLabel(row.hora_hasta);
-    item.appendChild(el("h3", null, cuando));
-    if (row.motivo) item.appendChild(el("p", "block-motivo", row.motivo));
-    const button = el("button", "dash-btn", "Quitar bloqueo");
-    button.type = "button";
-    button.addEventListener("click", async () => {
-      if (!window.confirm("¿Quitar este bloqueo?")) return;
-      button.disabled = true;
-      const { error } = await supabase.from("bloqueos").delete().eq("id", row.id);
-      button.disabled = false;
-      if (error) {
-        fail("No pudimos quitar el bloqueo.");
+  const { data, error } = await estado.supabase.rpc("mi_fidelidad", { p_telefono: cel.digitos });
+  if (error) {
+    host.appendChild(nodo("p", "form-error", traducir(error)));
+    return;
+  }
+  const ficha = Array.isArray(data) ? data[0] : data;
+  host.appendChild(nodo("p", null, "Progreso: " + (ficha && ficha.progreso) + " de " + (ficha && ficha.meta)));
+  if (ficha && ficha.gratis_disponible) host.appendChild(nodo("p", "fid-gratis", "¡Tu próximo corte es gratis!"));
+  const historial = estado.reservas.filter((item) => digitos(item.telefono) === cel.digitos && item.estado === "completada");
+  if (!historial.length) host.appendChild(nodo("p", "vacio", "Sin citas completadas."));
+  historial.forEach((item) => {
+    host.appendChild(nodo("p", null, fechaLegible(item.fecha) + " · " + nombreServicio(item.servicio_id) + (item.gratis ? " · gratis" : "")));
+  });
+}
+
+function rangoResumen() {
+  const hoy = hoyISO();
+  if (estado.periodo === "hoy") return { desde: hoy, hasta: hoy };
+  if (estado.periodo === "7") return { desde: sumarDias(hoy, -6), hasta: hoy };
+  if (estado.periodo === "30") return { desde: sumarDias(hoy, -29), hasta: hoy };
+  const desde = (document.querySelector("[data-desde]") || {}).value || hoy;
+  const hasta = (document.querySelector("[data-hasta]") || {}).value || hoy;
+  return { desde, hasta };
+}
+
+async function cargarResumen() {
+  const tarjetas = document.querySelector("[data-resumen-tarjetas]");
+  const graficos = document.querySelector("[data-resumen-graficos]");
+  if (!tarjetas || !graficos) return;
+  tarjetas.replaceChildren(nodo("div", "esqueleto"), nodo("div", "esqueleto"), nodo("div", "esqueleto"));
+  graficos.replaceChildren();
+  const rango = rangoResumen();
+  const { data, error } = await estado.supabase.rpc("panel_resumen", { p_desde: rango.desde, p_hasta: rango.hasta });
+  if (error) {
+    tarjetas.replaceChildren(nodo("p", "form-error", "No pudimos cargar el resumen."));
+    return;
+  }
+  const resumen = Array.isArray(data) ? data[0] : data;
+  tarjetas.replaceChildren();
+  [
+    ["Reservas", resumen.reservas],
+    ["Completadas", resumen.completadas],
+    ["Canceladas", resumen.canceladas],
+    ["No asistió", resumen.no_asistio],
+    ["Ingresos estimados", formatoPrecio(resumen.ingresos || 0)],
+    ["Visitas", resumen.visitas],
+    ["Clics en WhatsApp", resumen.clics_whatsapp]
+  ].forEach(([etiqueta, valor]) => {
+    const card = nodo("article", "pa-tarjeta");
+    card.append(nodo("p", null, etiqueta), nodo("p", "pa-cifra", String(valor ?? 0)));
+    tarjetas.appendChild(card);
+  });
+  graficos.append(
+    grafico("Reservas por día", resumen.por_dia || [], "fecha"),
+    grafico("Reservas por hora", resumen.por_hora || [], "hora"),
+    grafico("Reservas por barbero", resumen.por_barbero || [], "nombre"),
+    grafico("Reservas por servicio", resumen.por_servicio || [], "nombre")
+  );
+}
+
+function grafico(titulo, puntos, clave) {
+  const caja = nodo("article", "pa-grafico");
+  caja.appendChild(nodo("h3", null, titulo));
+  if (!puntos.length) {
+    caja.appendChild(nodo("p", "vacio", "Sin datos en este periodo."));
+    return caja;
+  }
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 320 160");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", titulo);
+  const maximo = Math.max(1, ...puntos.map((item) => Number(item.total) || 0));
+  const ancho = 320 / puntos.length;
+  puntos.forEach((punto, indice) => {
+    const alto = ((Number(punto.total) || 0) / maximo) * 110;
+    const rect = document.createElementNS(svg.namespaceURI, "rect");
+    rect.setAttribute("x", String(indice * ancho + 4));
+    rect.setAttribute("y", String(140 - alto));
+    rect.setAttribute("width", String(Math.max(2, ancho - 8)));
+    rect.setAttribute("height", String(Math.max(alto, 0)));
+    rect.setAttribute("fill", "#C9A24B");
+    svg.appendChild(rect);
+  });
+  const lista = nodo("ul", "sr-only");
+  puntos.forEach((punto) => lista.appendChild(nodo("li", null, String(punto[clave] || "") + ": " + punto.total)));
+  caja.append(svg, lista);
+  return caja;
+}
+
+function pintarAjustes() {
+  const form = document.querySelector("[data-ajustes]");
+  const config = estado.config;
+  if (!form || !config) return;
+  form.elements.reservas_activas.checked = config.reservas_activas !== false;
+  form.elements.paso_min.value = config.paso_min ?? 30;
+  form.elements.anticipacion_min.value = config.anticipacion_min ?? 0;
+  form.elements.dias_max.value = config.dias_max ?? 14;
+  form.elements.cancelar_min.value = config.cancelar_min ?? 0;
+  form.elements.fidelidad_activa.checked = Boolean(config.fidelidad_activa);
+  form.elements.fidelidad_meta.value = config.fidelidad_meta ?? 8;
+  form.elements.politica_version.value = config.politica_version || "1";
+}
+
+function prepararNueva() {
+  const form = document.querySelector("[data-nueva-form]");
+  if (!form) return;
+  const sedes = dueno() ? estado.sedes : estado.sedes.filter((item) => estado.barberos.some((barbero) => barbero.id === estado.barberoId && barbero.sede_id === item.id));
+  llenarSelect(form.elements.sede, sedes.map((item) => ({ valor: item.id, texto: item.nombre })));
+  const servicios = estado.servicios.filter((item) => item.activo && item.precio != null);
+  llenarSelect(form.elements.servicio, servicios.map((item) => ({ valor: item.id, texto: item.nombre })));
+  form.elements.fecha.value = hoyISO();
+  refrescarNueva(true);
+}
+
+function barberosNueva() {
+  const form = document.querySelector("[data-nueva-form]");
+  const sede = form.elements.sede.value;
+  const servicio = form.elements.servicio.value;
+  return estado.barberos.filter((item) => item.activo !== false && item.sede_id === sede && (dueno() || item.id === estado.barberoId) && (item.servicios == null || (Array.isArray(item.servicios) && item.servicios.includes(servicio))));
+}
+
+async function refrescarNueva(rellenarBarberos) {
+  const form = document.querySelector("[data-nueva-form]");
+  if (!form) return;
+  if (rellenarBarberos) {
+    const actual = form.elements.barbero.value;
+    const lista = barberosNueva();
+    llenarSelect(form.elements.barbero, lista.map((item) => ({ valor: item.id, texto: item.nombre })), lista.some((item) => item.id === actual) ? actual : (lista[0] || {}).id);
+  }
+  const servicio = estado.servicios.find((item) => item.id === form.elements.servicio.value);
+  const { data } = await estado.supabase.rpc("horas_disponibles", {
+    p_barbero: form.elements.barbero.value,
+    p_fecha: form.elements.fecha.value,
+    p_duracion: servicio ? servicio.duracion_min : 30
+  });
+  const horas = Array.isArray(data) ? data : [];
+  llenarSelect(form.elements.hora, horas.map((item) => ({ valor: String(item.slot).slice(0, 5), texto: horaLegible(item.slot) })));
+  if (!horas.length) {
+    const opcion = document.createElement("option");
+    opcion.value = "";
+    opcion.textContent = "Sin horarios este día";
+    form.elements.hora.appendChild(opcion);
+  }
+}
+
+function enlazar() {
+  document.querySelector("[data-salir]").addEventListener("click", salir);
+  document.querySelector("[data-sonido]").addEventListener("click", (evento) => {
+    estado.sonido = !estado.sonido;
+    evento.currentTarget.setAttribute("aria-pressed", estado.sonido ? "true" : "false");
+    try { localStorage.setItem(SONIDO, estado.sonido ? "on" : "off"); } catch (error) {}
+  });
+  document.querySelector("[data-avisos]").addEventListener("click", async () => {
+    try {
+      if (window.Notification) await Notification.requestPermission();
+    } catch (error) {}
+  });
+  document.querySelector("[data-agenda-sede]").addEventListener("change", (evento) => {
+    estado.agendaSede = evento.target.value;
+    pintarAgenda();
+  });
+  document.querySelector("[data-agenda-fecha]").addEventListener("change", (evento) => {
+    estado.agendaFecha = evento.target.value;
+    pintarAgenda();
+  });
+  document.querySelector("[data-agenda-barbero]").addEventListener("change", (evento) => {
+    estado.agendaBarbero = evento.target.value;
+    pintarAgenda();
+  });
+  document.querySelectorAll("[data-agenda-modo]").forEach((boton) => {
+    boton.addEventListener("click", () => {
+      estado.agendaModo = boton.dataset.agendaModo;
+      document.querySelectorAll("[data-agenda-modo]").forEach((item) => {
+        item.setAttribute("aria-pressed", item === boton ? "true" : "false");
+      });
+      pintarAgenda();
+    });
+  });
+  document.querySelector("[data-imprimir]").addEventListener("click", () => {
+    estado.agendaModo = "dia";
+    document.querySelectorAll("[data-agenda-modo]").forEach((item) => {
+      item.setAttribute("aria-pressed", item.dataset.agendaModo === "dia" ? "true" : "false");
+    });
+    pintarAgenda();
+    window.print();
+  });
+  document.querySelector("[data-nueva]").addEventListener("click", () => {
+    prepararNueva();
+    document.querySelector("[data-nueva-modal]").hidden = false;
+  });
+  document.querySelector("[data-nueva-cerrar]").addEventListener("click", () => {
+    document.querySelector("[data-nueva-modal]").hidden = true;
+  });
+  document.querySelector("[data-cita-cerrar]").addEventListener("click", () => {
+    document.querySelector("[data-cita-modal]").hidden = true;
+  });
+  const nueva = document.querySelector("[data-nueva-form]");
+  nueva.elements.sede.addEventListener("change", () => refrescarNueva(true));
+  nueva.elements.servicio.addEventListener("change", () => refrescarNueva(true));
+  nueva.elements.barbero.addEventListener("change", () => refrescarNueva(false));
+  nueva.elements.fecha.addEventListener("change", () => refrescarNueva(false));
+  nueva.addEventListener("submit", crearCita);
+  ["[data-buscar]", "[data-filtro-desde]", "[data-filtro-hasta]", "[data-filtro-barbero]", "[data-filtro-estado]", "[data-filtro-servicio]"].forEach((selector) => {
+    const el = document.querySelector(selector);
+    if (el) el.addEventListener("input", pintarReservas);
+    if (el) el.addEventListener("change", pintarReservas);
+  });
+  document.querySelector("[data-csv]").addEventListener("click", exportarCsv);
+  document.querySelector("[data-sede-form]").addEventListener("submit", guardarSede);
+  document.querySelector("[data-barbero-form]").addEventListener("submit", guardarBarbero);
+  document.querySelector("[data-servicio-form]").addEventListener("submit", guardarServicio);
+  document.querySelector("[data-horario-barbero]").addEventListener("change", (evento) => {
+    estado.horarioBarbero = evento.target.value;
+    cargarModelo();
+    pintarEditor();
+  });
+  document.querySelector("[data-copiar]").addEventListener("click", () => {
+    const desde = Number(document.querySelector("[data-copiar-desde]").value);
+    document.querySelectorAll("[data-copiar-dia]:checked").forEach((caja) => {
+      const dia = Number(caja.value);
+      if (dia === desde) return;
+      estado.horarioModelo[dia] = (estado.horarioModelo[desde] || []).map((rango) => ({ abre: rango.abre, cierra: rango.cierra }));
+    });
+    pintarEditor();
+  });
+  document.querySelector("[data-horario-guardar]").addEventListener("click", guardarHorarios);
+  document.querySelector("[data-bloqueo-dia]").addEventListener("change", (evento) => {
+    document.querySelector("[data-bloqueo-horas]").hidden = evento.target.checked;
+  });
+  document.querySelector("[data-bloqueo-form]").addEventListener("submit", guardarBloqueo);
+  document.querySelector("[data-fid-form]").addEventListener("submit", buscarFidelidad);
+  document.querySelectorAll("[data-periodo]").forEach((boton) => {
+    boton.addEventListener("click", () => {
+      estado.periodo = boton.dataset.periodo;
+      document.querySelectorAll("[data-periodo]").forEach((item) => item.setAttribute("aria-pressed", item === boton ? "true" : "false"));
+      document.querySelector("[data-rango]").hidden = estado.periodo !== "rango";
+      cargarResumen();
+    });
+  });
+  document.querySelector("[data-desde]").addEventListener("change", cargarResumen);
+  document.querySelector("[data-hasta]").addEventListener("change", cargarResumen);
+  document.querySelector("[data-ajustes]").addEventListener("submit", guardarAjustes);
+  ["pointerdown", "keydown"].forEach((tipo) => {
+    window.addEventListener(tipo, () => { estado.marca = Date.now(); }, { passive: true });
+  });
+  window.setInterval(() => {
+    if (Date.now() - estado.marca >= 15 * 60 * 1000) salir();
+  }, 20000);
+  window.setInterval(() => {
+    if (document.visibilityState === "visible") cargarReservas(true);
+  }, 30000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") cargarReservas(true);
+  });
+  document.addEventListener("keydown", (evento) => {
+    if (evento.key !== "Escape") return;
+    document.querySelectorAll(".pa-modal").forEach((modal) => {
+      if (modal.hidden) return;
+      if (modal.hasAttribute("data-confirmar")) {
+        const no = modal.querySelector("[data-confirmar-no]");
+        if (no) no.click();
         return;
       }
-      fail("");
-      await loadBloqueos();
+      modal.hidden = true;
     });
-    item.appendChild(button);
-    host.appendChild(item);
   });
-};
+}
 
-const loadBloqueos = async () => {
-  const host = document.querySelector("[data-bloqueos]");
-  const today = bogotaToday();
-  try {
-    const { data, error } = await supabase
-      .from("bloqueos")
-      .select("id, desde, hasta, hora_desde, hora_hasta, motivo")
-      .gte("hasta", today)
-      .order("desde", { ascending: true });
-    if (error) throw error;
-    state.bloqueos = data || [];
-    paintBloqueos();
-  } catch (error) {
-    if (host) host.replaceChildren(el("p", "empty-note", "No pudimos cargar los bloqueos."));
-  }
-};
-
-const prepararBloqueos = () => {
-  llenarHorasBloqueo();
-  const form = document.querySelector("[data-bloqueo-form]");
-  const abrir = document.querySelector("[data-bloqueo-abrir]");
-  if (abrir && form) {
-    abrir.addEventListener("click", () => {
-      form.hidden = false;
-      const today = bogotaToday();
-      const desde = form.querySelector("[name='desde']");
-      const hasta = form.querySelector("[name='hasta']");
-      if (desde && !desde.value) desde.value = today;
-      if (hasta && !hasta.value) hasta.value = today;
-      llenarHorasBloqueo();
-      ocultarChoques();
-      const avisos = document.querySelector("[data-bloqueo-avisos]");
-      if (avisos) avisos.hidden = true;
-    });
-  }
-  const ponerDia = (iso) => {
-    if (!form) return;
-    const desde = form.querySelector("[name='desde']");
-    const hasta = form.querySelector("[name='hasta']");
-    if (desde) desde.value = iso;
-    if (hasta) hasta.value = iso;
-    llenarHorasBloqueo();
-    ocultarChoques();
+async function guardarSede(evento) {
+  evento.preventDefault();
+  const form = evento.target;
+  const fila = {
+    nombre: form.elements.nombre.value.trim(),
+    direccion: form.elements.direccion.value.trim(),
+    telefono: form.elements.telefono.value.trim(),
+    orden: Number(form.elements.orden.value) || 0,
+    activa: form.elements.activa.checked
   };
-  const hoy = document.querySelector("[data-bloqueo-hoy]");
-  const manana = document.querySelector("[data-bloqueo-manana]");
-  if (hoy) hoy.addEventListener("click", () => ponerDia(bogotaToday()));
-  if (manana) manana.addEventListener("click", () => ponerDia(addDays(bogotaToday(), 1)));
-  if (form) {
-    form.querySelectorAll("[name='modo']").forEach((input) => {
-      input.addEventListener("change", () => {
-        const horas = document.querySelector("[data-bloqueo-horas]");
-        const chosen = form.querySelector("[name='modo']:checked");
-        if (horas && chosen) horas.hidden = chosen.value !== "horas";
-        ocultarChoques();
-      });
-    });
-    form.querySelectorAll("[name='desde'], [name='hasta']").forEach((input) => {
-      input.addEventListener("change", () => {
-        llenarHorasBloqueo();
-        ocultarChoques();
-      });
-    });
-    form.querySelectorAll("[name='hora_desde'], [name='hora_hasta']").forEach((input) => {
-      input.addEventListener("change", ocultarChoques);
-    });
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const bloqueo = leerBloqueo();
-      if (!bloqueoValido(bloqueo)) return;
-      const button = document.querySelector("[data-bloqueo-guardar]");
-      if (button) button.disabled = true;
-      try {
-        const rows = await citasDelBloqueo(bloqueo);
-        if (rows.length) {
-          pintarChoques(rows);
-          return;
-        }
-        citasEnBloqueo = [];
-        await guardarBloqueo(false);
-      } catch (error) {
-        bloqueoError("No pudimos revisar las citas.");
-      } finally {
-        if (button) button.disabled = false;
-      }
-    });
+  const id = form.elements.id.value;
+  const consulta = id
+    ? estado.supabase.from("sedes").update(fila).eq("id", id).select()
+    : estado.supabase.from("sedes").insert(fila).select();
+  const { data, error } = await consulta;
+  if (error) return fail("No se pudo guardar la sede.");
+  if (id) {
+    const actual = estado.sedes.find((item) => item.id === id);
+    if (actual) Object.assign(actual, fila);
+  } else if (data && data[0]) {
+    estado.sedes.push(data[0]);
   }
-  const cancelar = document.querySelector("[data-bloqueo-cancelar-citas]");
-  const conservar = document.querySelector("[data-bloqueo-conservar]");
-  if (cancelar) cancelar.addEventListener("click", () => guardarBloqueo(true));
-  if (conservar) conservar.addEventListener("click", () => guardarBloqueo(false));
-};
+  form.reset();
+  form.elements.activa.checked = true;
+  pintarSedes();
+}
 
-const tuneCharts = () => {
-  if (!globalThis.Chart) return;
-  globalThis.Chart.defaults.font.family = '"Outfit", "Avenir Next", sans-serif';
-  globalThis.Chart.defaults.color = "#5c5148";
-};
+async function guardarBarbero(evento) {
+  evento.preventDefault();
+  const form = evento.target;
+  const todos = form.querySelector("[data-servicios-todos]");
+  const servicios = todos && todos.checked ? null : [...form.querySelectorAll("[data-servicio-id]:checked")].map((input) => input.value);
+  const fila = {
+    nombre: form.elements.nombre.value.trim(),
+    especialidad: form.elements.especialidad.value.trim(),
+    sede_id: form.elements.sede_id.value,
+    foto: form.elements.foto.value,
+    servicios,
+    orden: Number(form.elements.orden.value) || 0,
+    activo: form.elements.activo.checked
+  };
+  if (!nombreValido(fila.nombre)) return fail("Escribe el nombre del barbero.");
+  const id = form.elements.id.value;
+  const consulta = id
+    ? estado.supabase.from("barberos").update(fila).eq("id", id).select()
+    : estado.supabase.from("barberos").insert(fila).select();
+  const { data, error } = await consulta;
+  if (error) return fail("No se pudo guardar el barbero.");
+  if (id) {
+    const actual = estado.barberos.find((item) => item.id === id);
+    if (actual) Object.assign(actual, fila);
+  } else if (data && data[0]) estado.barberos.push(data[0]);
+  form.reset();
+  serviciosChecks(null, true);
+  pintarBarberos();
+}
 
-const refreshAll = async () => {
-  paintHeader();
-  await Promise.all([loadReservas(), loadFidelidad(), loadBloqueos(), loadServicios()]);
-};
+async function guardarServicio(evento) {
+  evento.preventDefault();
+  const form = evento.target;
+  const precioTexto = String(form.elements.precio.value || "").trim();
+  const fila = {
+    categoria: form.elements.categoria.value.trim(),
+    nombre: form.elements.nombre.value.trim(),
+    descripcion: form.elements.descripcion.value.trim(),
+    precio: precioTexto === "" ? null : Number(precioTexto),
+    duracion_min: Number(form.elements.duracion_min.value),
+    cuenta_fidelidad: form.elements.cuenta_fidelidad.checked,
+    orden: Number(form.elements.orden.value) || 0,
+    activo: form.elements.activo.checked
+  };
+  if (!fila.nombre || !fila.categoria || !fila.duracion_min) return fail("Completa categoría, nombre y duración.");
+  if (precioTexto !== "" && !Number.isFinite(fila.precio)) return fail("El precio no es válido.");
+  const id = form.elements.id.value;
+  const consulta = id
+    ? estado.supabase.from("servicios").update(fila).eq("id", id).select()
+    : estado.supabase.from("servicios").insert(fila).select();
+  const { data, error } = await consulta;
+  if (error) return fail("No se pudo guardar el servicio.");
+  if (id) {
+    const actual = estado.servicios.find((item) => item.id === id);
+    if (actual) Object.assign(actual, fila);
+  } else if (data && data[0]) estado.servicios.push(data[0]);
+  avisoServicios();
+  pintarServicios();
+}
 
-const guard = async () => {
-  if (!navigator.onLine) return;
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!navigator.onLine) return;
-  if (!session) {
+async function guardarBloqueo(evento) {
+  evento.preventDefault();
+  const form = evento.target;
+  const error = document.querySelector("[data-bloqueo-error]");
+  error.hidden = true;
+  const todo = form.elements.todo_dia.checked;
+  const fila = {
+    sede_id: form.elements.sede_id.value,
+    barbero_id: form.elements.barbero_id.value || null,
+    fecha: form.elements.fecha.value,
+    todo_dia: todo,
+    desde: todo ? null : form.elements.desde.value,
+    hasta: todo ? null : form.elements.hasta.value,
+    motivo: form.elements.motivo.value.trim()
+  };
+  if (!dueno()) fila.barbero_id = estado.barberoId;
+  if (!fila.fecha) {
+    error.hidden = false;
+    error.textContent = "Elige la fecha.";
+    return;
+  }
+  if (!todo && (!fila.desde || !fila.hasta || fila.desde >= fila.hasta)) {
+    error.hidden = false;
+    error.textContent = "Revisa el rango de horas.";
+    return;
+  }
+  const { data, error: errorAlta } = await estado.supabase.from("bloqueos").insert(fila).select();
+  if (errorAlta) {
+    error.hidden = false;
+    error.textContent = "No se pudo guardar el bloqueo.";
+    return;
+  }
+  if (data && data[0]) estado.bloqueos.push(data[0]);
+  form.elements.motivo.value = "";
+  pintarBloqueos();
+}
+
+async function crearCita(evento) {
+  evento.preventDefault();
+  const form = evento.target;
+  const error = document.querySelector("[data-nueva-error]");
+  error.hidden = true;
+  const nombre = nombreValido(form.elements.nombre.value);
+  const cel = celularValido(form.elements.celular.value);
+  if (!nombre) {
+    error.hidden = false;
+    error.textContent = "Escribe tu nombre.";
+    return;
+  }
+  if (!cel.ok) {
+    error.hidden = false;
+    error.textContent = "Revisa tu celular: 10 dígitos y empieza por 3.";
+    return;
+  }
+  if (!form.elements.hora.value) {
+    error.hidden = false;
+    error.textContent = "Sin horarios este día";
+    return;
+  }
+  const { error: fallo } = await estado.supabase.rpc("crear_reserva", {
+    p_barbero: form.elements.barbero.value,
+    p_servicio: form.elements.servicio.value,
+    p_fecha: form.elements.fecha.value,
+    p_hora: form.elements.hora.value,
+    p_nombre: nombre,
+    p_telefono: cel.digitos,
+    p_notas: "Autorización verbal",
+    p_autoriza: true
+  });
+  if (fallo) {
+    error.hidden = false;
+    error.textContent = traducir(fallo);
+    return;
+  }
+  document.querySelector("[data-nueva-modal]").hidden = true;
+  form.reset();
+  await cargarReservas(false);
+}
+
+async function guardarAjustes(evento) {
+  evento.preventDefault();
+  const form = evento.target;
+  const error = document.querySelector("[data-ajustes-error]");
+  error.hidden = true;
+  const fila = {
+    reservas_activas: form.elements.reservas_activas.checked,
+    paso_min: Number(form.elements.paso_min.value),
+    anticipacion_min: Number(form.elements.anticipacion_min.value),
+    dias_max: Number(form.elements.dias_max.value),
+    cancelar_min: Number(form.elements.cancelar_min.value),
+    fidelidad_activa: form.elements.fidelidad_activa.checked,
+    fidelidad_meta: Number(form.elements.fidelidad_meta.value),
+    politica_version: form.elements.politica_version.value.trim()
+  };
+  if ([fila.paso_min, fila.dias_max, fila.fidelidad_meta].some((valor) => !Number.isFinite(valor) || valor <= 0)) {
+    error.hidden = false;
+    error.textContent = "Revisa los valores numéricos.";
+    return;
+  }
+  const { error: fallo } = await estado.supabase.from("config").update(fila).eq("id", 1);
+  if (fallo) {
+    error.hidden = false;
+    error.textContent = "No se pudieron guardar los ajustes.";
+    return;
+  }
+  Object.assign(estado.config, fila);
+}
+
+async function salir() {
+  try {
+    await estado.supabase.auth.signOut();
+  } catch (error) {}
+  window.location.replace("admin-login.html");
+}
+
+async function boot() {
+  if (!reservasEnLinea()) {
+    document.documentElement.classList.add("is-preparacion");
+    return;
+  }
+  const supabase = await obtenerAdmin();
+  if (!supabase) {
+    document.documentElement.classList.add("is-preparacion");
+    return;
+  }
+  estado.supabase = supabase;
+  const sesion = await supabase.auth.getSession();
+  if (!sesion.data || !sesion.data.session) {
     window.location.replace("admin-login.html");
     return;
   }
-  const { data, error } = await supabase.from("admins").select("id").limit(1);
-  if (!navigator.onLine) return;
-  if (error || !data || !data.length) {
+  const admins = await supabase.from("admins").select("rol, barbero_id").limit(1);
+  const fila = admins.data && admins.data[0];
+  if (admins.error || !fila) {
     await supabase.auth.signOut();
     window.location.replace("admin-login.html");
     return;
   }
-  document.documentElement.dataset.panelReady = "1";
-  const mail = document.querySelector("[data-admin-email]");
-  if (mail) mail.textContent = session.user.email || "";
-  tuneCharts();
-  paintHeader();
-  await refreshAll();
-  window.setInterval(() => {
-    if (document.visibilityState !== "visible") return;
-    refreshAll();
-  }, 30000);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return;
-    if (Date.now() - lastFetch < 15000) return;
-    refreshAll();
-  });
-};
-
-document.querySelectorAll("[data-view]").forEach((button) => {
-  button.addEventListener("click", () => showView(button.getAttribute("data-view")));
-});
-document.querySelectorAll("[data-period]").forEach((button) => {
-  button.addEventListener("click", () => setPeriod(button.getAttribute("data-period")));
-});
-if (desdeInput) desdeInput.addEventListener("change", () => {
-  if (state.period === "rango") loadServicios();
-});
-if (hastaInput) hastaInput.addEventListener("change", () => {
-  if (state.period === "rango") loadServicios();
-});
-document.querySelectorAll("[data-dia]").forEach((button) => {
-  button.addEventListener("click", () => {
-    state.diaModo = button.getAttribute("data-dia");
-    if (state.diaModo === "fecha" && !state.diaFecha) state.diaFecha = bogotaToday();
-    syncDia();
-    const selected = diaSeleccionado();
-    const loaded = state.reservas.some((row) => fechaDe(row) === selected) || selected >= bogotaToday();
-    if (!loaded) loadReservas();
-    else paintReservas();
-  });
-});
-const diaInput = document.querySelector("[data-dia-input]");
-if (diaInput) diaInput.addEventListener("change", () => {
-  state.diaModo = "fecha";
-  state.diaFecha = diaInput.value;
-  syncDia();
-  loadReservas();
-});
-const refresh = () => refreshAll();
-const refreshBtn = document.querySelector("[data-refresh]");
-const refreshCitas = document.querySelector("[data-refresh-citas]");
-if (refreshBtn) refreshBtn.addEventListener("click", refresh);
-if (refreshCitas) refreshCitas.addEventListener("click", refresh);
-const nuevaClose = document.querySelector("[data-nueva-close]");
-if (nuevaClose) nuevaClose.addEventListener("click", () => {
-  const box = document.querySelector("[data-nueva]");
-  if (box) box.hidden = true;
-});
-const fidInput = document.querySelector("[data-fid-q]");
-if (fidInput) fidInput.addEventListener("input", paintFidelidad);
-const askYes = document.querySelector("[data-ask-yes]");
-const askNo = document.querySelector("[data-ask-no]");
-if (askYes) askYes.addEventListener("click", () => cerrarAsk(true));
-if (askNo) askNo.addEventListener("click", () => cerrarAsk(false));
-const sheetClose = document.querySelector("[data-sheet-close]");
-if (sheetClose) sheetClose.addEventListener("click", () => {
-  const sheet = document.querySelector("[data-sheet]");
-  if (sheet) sheet.hidden = true;
-  sheetId = null;
-  sheetPhone = "";
-});
-const sheetText = document.querySelector("[data-sheet-text]");
-if (sheetText) sheetText.addEventListener("input", refrescarEnlaceHoja);
-const sheetWa = document.querySelector("[data-sheet-wa]");
-if (sheetWa) sheetWa.addEventListener("click", (event) => {
-  refrescarEnlaceHoja();
-  if (!numeroCliente(sheetPhone)) {
-    event.preventDefault();
-    return;
-  }
-  if (sheetId) marcarAvisado(sheetId);
-});
-const sheetCopy = document.querySelector("[data-sheet-copy]");
-if (sheetCopy) sheetCopy.addEventListener("click", async () => {
-  const area = document.querySelector("[data-sheet-text]");
-  const texto = area ? area.value : "";
-  let copiado = false;
+  estado.rol = fila.rol;
+  estado.barberoId = fila.barbero_id || "";
+  estado.correo = sesion.data.session.user.email || "";
   try {
-    await navigator.clipboard.writeText(texto);
-    copiado = true;
+    estado.sonido = localStorage.getItem(SONIDO) !== "off";
   } catch (error) {
-    try {
-      if (area) {
-        area.focus();
-        area.select();
-        area.setSelectionRange(0, texto.length);
-      }
-      copiado = document.execCommand("copy");
-    } catch (err) {
-      copiado = false;
-    }
+    estado.sonido = true;
   }
-  if (!copiado) return;
-  sheetCopy.textContent = "Mensaje copiado";
-  window.clearTimeout(copyTimer);
-  copyTimer = window.setTimeout(() => {
-    sheetCopy.textContent = "Copiar mensaje";
-  }, 1600);
-});
-prepararBloqueos();
-const logout = document.querySelector("[data-logout]");
-if (logout) logout.addEventListener("click", async () => {
+  const sonido = document.querySelector("[data-sonido]");
+  if (sonido) sonido.setAttribute("aria-pressed", estado.sonido ? "true" : "false");
+  const minutos = minutosAhora();
+  const saludo = document.querySelector("[data-saludo]");
+  if (saludo) saludo.textContent = minutos < 12 * 60 ? "Buenos días" : minutos < 18 * 60 ? "Buenas tardes" : "Buenas noches";
+  const correo = document.querySelector("[data-correo]");
+  if (correo) correo.textContent = estado.correo;
   try {
-    await Promise.race([
-      supabase.auth.signOut(),
-      new Promise((resolve) => window.setTimeout(resolve, 2500))
-    ]);
-  } catch (error) {}
-  window.location.replace("admin-login.html");
-});
-
-const pintarCerrado = () => {
-  document.documentElement.classList.add("is-preparacion");
-};
-
-const boot = async () => {
-  if (negocio.enPreparacion) {
-    pintarCerrado();
-    return;
+    await cargarBase();
+    await cargarReservas(false);
+  } catch (error) {
+    fail("No pudimos cargar el panel.");
   }
-  supabase = await obtenerSupabase();
-  if (!supabase) {
-    pintarCerrado();
-    return;
-  }
+  avisoServicios();
+  montarNav();
+  enlazar();
+  document.documentElement.dataset.panelReady = "1";
   document.documentElement.classList.remove("is-preparacion");
-  guard();
-};
+}
 
 boot();

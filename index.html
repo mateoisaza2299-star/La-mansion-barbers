@@ -2,6 +2,7 @@
 <html lang="es-CO">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://*.supabase.co; font-src 'self'; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>La Mansión Barber Shop | Barbería en Mosquera, Cundinamarca</title>
   <meta name="description" content="La Mansión Barber Shop, barbería en Mosquera, Cundinamarca. Cortes, barba y cuidado personal.">
@@ -292,7 +293,8 @@
 
     <section class="seccion" id="reservas" aria-labelledby="reservas-titulo">
       <div class="wrap">
-        <article class="reserva-card reveal" data-revelar>
+        <div data-reserva-app hidden></div>
+        <article class="reserva-card reveal" data-revelar data-reserva-cerrada>
           <h2 id="reservas-titulo" data-texto="reservasTitulo">Agenda abierta · Escríbenos por WhatsApp</h2>
           <div class="hero-acciones">
             <a class="btn" data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">Agenda por WhatsApp</a>
@@ -364,6 +366,8 @@
         <li><a href="#galeria">Galería</a></li>
         <li><a href="#visita">Visita</a></li>
         <li><a href="privacidad.html">Datos</a></li>
+        <li><a href="tratamiento-datos.html">Tratamiento de datos</a></li>
+        <li><a class="acceso-equipo" href="admin-login.html">Acceso del equipo</a></li>
       </ul>
       <div class="footer-redes">
         <a data-ig href="https://www.instagram.com/lamansionbarbers/" target="_blank" rel="noopener">Instagram</a>

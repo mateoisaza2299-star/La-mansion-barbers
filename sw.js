@@ -1,12 +1,13 @@
-const CACHE = "site-shell-v7";
+const CACHE = "site-shell-v8";
 
 const ADMIN_PAGES = ["admin.html", "admin-login.html"];
-const PUBLIC_PAGES = ["index.html", "historia.html", "privacidad.html", "404.html"];
-const ADMIN_JS = ["js/admin.js", "js/admin-login.js", "js/pwa.js"];
+const PUBLIC_PAGES = ["index.html", "historia.html", "privacidad.html", "tratamiento-datos.html", "404.html"];
+const ADMIN_JS = ["js/admin.js", "js/admin-login.js", "js/admin-cliente.js", "js/pwa.js"];
 const PUBLIC_JS = [
   "js/absoluto.js",
   "js/arranque.js",
-  "js/pagina.js"
+  "js/pagina.js",
+  "js/reservas.js"
 ];
 
 const SHELL = [
@@ -19,6 +20,12 @@ const SHELL = [
   "js/config.js",
   "js/servicios.js",
   "js/supabase.js",
+  "js/admin-cliente.js",
+  "js/reservas.js",
+  "js/errores.js",
+  "js/tiempo.js",
+  "js/dom.js",
+  "js/vendor/supabase.js",
   "assets/icons/icon-192.png",
   "assets/icons/icon-512.png",
   "assets/icons/icon-maskable-512.png",

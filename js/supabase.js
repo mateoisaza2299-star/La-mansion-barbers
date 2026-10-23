@@ -1,24 +1,23 @@
-import { negocio } from "./config.js";
-
-const credenciales = () => {
-  const caja = negocio.supabase || {};
-  const url = String(caja.url || "").trim();
-  const key = String(caja.key || "").trim();
-  return url && key ? { url, key } : null;
-};
+import { negocio, reservasEnLinea } from "./config.js";
 
 let cliente = null;
 
 export function supabaseListo() {
-  return Boolean(credenciales());
+  return reservasEnLinea();
 }
 
 export async function obtenerSupabase() {
-  const datos = credenciales();
-  if (!datos) return null;
+  if (!reservasEnLinea()) return null;
   if (!cliente) {
-    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
-    cliente = createClient(datos.url, datos.key);
+    const { createClient } = await import("./vendor/supabase.js");
+    const caja = negocio.supabase;
+    cliente = createClient(String(caja.url).trim(), String(caja.key).trim(), {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      }
+    });
   }
   return cliente;
 }
