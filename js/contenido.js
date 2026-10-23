@@ -25,10 +25,6 @@ const seo = {
     title: negocio.nombre + " | Barbería en " + negocio.ciudad,
     description: negocio.nombre + ", barbería en " + negocio.ciudad + ". Cortes, barba y cuidado personal."
   },
-  historia: {
-    title: "Nuestra historia — " + negocio.nombre,
-    description: negocio.nombre + ", barbería en " + negocio.ciudad + ". Por confirmar."
-  },
   privacidad: {
     title: "Política de datos — " + negocio.nombre,
     description: "Qué guarda " + negocio.nombre + " cuando reservas: nombre, celular, servicio y fecha."

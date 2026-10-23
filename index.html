@@ -124,26 +124,102 @@
       <a class="scroll-hint" href="#nosotros" aria-label="Bajar a la sección nosotros"><span></span></a>
     </section>
 
-    <section class="section about" id="nosotros">
-      <div class="wrap about-grid">
-        <div class="about-copy reveal">
-          <p class="kicker">01 — Nosotros</p>
-          <h2 data-nombre>La Mansión Barber Shop</h2>
-          <p class="is-pending">Por confirmar</p>
-          <p class="about-actions"><a class="btn btn-dark" href="historia.html">Conoce nuestra historia</a></p>
-          <blockquote class="pull">Un buen corte se siente antes de verse.</blockquote>
-          <p class="is-pending">Por confirmar</p>
-        </div>
-        <div class="about-media reveal" data-delay="1">
-          <div class="about-photos">
-            <div class="ph" role="img" aria-label="Imagen por confirmar">
-              <svg class="ph-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="11" width="34" height="26" rx="2"/><circle cx="18" cy="20" r="3"/><path d="M9 33l9-8 6 5 5-4 10 7"/></svg>
-            </div>
-            <div class="ph" role="img" aria-label="Imagen por confirmar">
-              <svg class="ph-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="11" width="34" height="26" rx="2"/><circle cx="18" cy="20" r="3"/><path d="M9 33l9-8 6 5 5-4 10 7"/></svg>
-            </div>
+    <section class="section nosotros" id="nosotros" aria-labelledby="nosotros-titulo">
+      <div class="wrap nosotros-wrap">
+        <header class="nosotros-head" data-nosotros-head>
+          <p class="nosotros-kicker" data-nosotros-etiqueta></p>
+          <h2 id="nosotros-titulo" data-nosotros-titulo></h2>
+          <p class="nosotros-intro" data-nosotros-intro></p>
+          <div class="nosotros-edades">
+            <p data-nosotros-edades-label></p>
+            <ul class="nosotros-chips" data-nosotros-chips></ul>
           </div>
-          <span class="about-frame" aria-hidden="true"></span>
+        </header>
+
+        <div class="nosotros-galeria">
+          <div class="nosotros-track" id="nosotros-historias" data-nosotros-track role="region" aria-label="Historias">
+            <figure class="nosotros-card" data-nosotros-card tabindex="0">
+              <div class="nosotros-media">
+                <img data-nosotros-img alt="" width="800" height="1000" loading="lazy" decoding="async">
+              </div>
+              <figcaption>
+                <h3 data-nosotros-card-titulo></h3>
+                <p data-nosotros-card-texto></p>
+              </figcaption>
+            </figure>
+            <figure class="nosotros-card" data-nosotros-card tabindex="0">
+              <div class="nosotros-media">
+                <img data-nosotros-img alt="" width="800" height="1000" loading="lazy" decoding="async">
+              </div>
+              <figcaption>
+                <h3 data-nosotros-card-titulo></h3>
+                <p data-nosotros-card-texto></p>
+              </figcaption>
+            </figure>
+            <figure class="nosotros-card" data-nosotros-card tabindex="0">
+              <div class="nosotros-media">
+                <img data-nosotros-img alt="" width="800" height="1000" loading="lazy" decoding="async">
+              </div>
+              <figcaption>
+                <h3 data-nosotros-card-titulo></h3>
+                <p data-nosotros-card-texto></p>
+              </figcaption>
+            </figure>
+          </div>
+          <div class="nosotros-controles">
+            <button class="nosotros-nav" type="button" data-nosotros-prev aria-controls="nosotros-historias">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6.5 9 12l5.5 5.5"/></svg>
+              <span class="sr-only">Anterior</span>
+            </button>
+            <div class="nosotros-dots" data-nosotros-dots></div>
+            <button class="nosotros-nav" type="button" data-nosotros-next aria-controls="nosotros-historias">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5"/></svg>
+              <span class="sr-only">Siguiente</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="nosotros-cifras" data-nosotros-cifras hidden>
+          <ul data-nosotros-cifras-lista></ul>
+        </div>
+
+        <div class="nosotros-valores">
+          <h3 class="nosotros-valores-titulo" id="nosotros-valores-titulo" data-nosotros-valores-titulo></h3>
+          <ul class="nosotros-valores-grid" aria-labelledby="nosotros-valores-titulo">
+            <li class="nosotros-valor" data-nosotros-valor>
+              <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="7.5" cy="8" r="2.6"/><circle cx="7.5" cy="24" r="2.6"/><path d="M10 9.6 26.5 22.8M10 22.4 26.5 9.2"/></svg>
+              <p class="nosotros-valor-titulo" data-nosotros-valor-titulo></p>
+              <p data-nosotros-valor-texto></p>
+            </li>
+            <li class="nosotros-valor" data-nosotros-valor>
+              <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M10 5.5h12v5.2c0 1.1-.3 2-1 2.8L22.2 16H9.8L11 13.5c-.7-.8-1-1.7-1-2.8V5.5z"/><path d="M9.2 16h13.6v2.1H9.2z"/><path d="M11 18.1h10l1.1 8.4H9.9L11 18.1z"/><path d="M13.5 8h5"/></svg>
+              <p class="nosotros-valor-titulo" data-nosotros-valor-titulo></p>
+              <p data-nosotros-valor-texto></p>
+            </li>
+            <li class="nosotros-valor" data-nosotros-valor>
+              <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4.5 16.2h4.2l3.3-3.2a1.8 1.8 0 0 1 2.5 0L16.2 14.6"/><path d="M16.2 14.6 18.4 12.4a1.8 1.8 0 0 1 2.5.1L23.6 15.4H28"/><path d="M8.6 16.2 11.4 21l4.8 2.6 5-2.5 3.4-4.7"/><path d="M13.4 18.2 16.2 20.8l2.7-2.1"/></svg>
+              <p class="nosotros-valor-titulo" data-nosotros-valor-titulo></p>
+              <p data-nosotros-valor-texto></p>
+            </li>
+            <li class="nosotros-valor" data-nosotros-valor>
+              <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 13.5h20"/><path d="M10 8.5h12l4 5-10 11L6 13.5l4-5z"/><path d="M12.5 8.5 16 13.5 19.5 8.5"/><path d="M16 13.5v11"/></svg>
+              <p class="nosotros-valor-titulo" data-nosotros-valor-titulo></p>
+              <p data-nosotros-valor-texto></p>
+            </li>
+          </ul>
+        </div>
+
+        <figure class="nosotros-cita" data-nosotros-cita>
+          <blockquote data-nosotros-cita-texto></blockquote>
+          <figcaption data-nosotros-firma></figcaption>
+        </figure>
+
+        <div class="nosotros-cierre">
+          <h3 data-nosotros-cierre-titulo></h3>
+          <div class="nosotros-cierre-actions">
+            <a class="btn nosotros-btn" data-nosotros-reserva href="#reservas"></a>
+            <a class="btn btn-dark nosotros-btn" data-nosotros-llegar href="#visita"></a>
+          </div>
         </div>
       </div>
     </section>
@@ -461,6 +537,7 @@
   </nav>
   <script src="js/cliente.js"></script>
   <script type="module" src="js/contenido.js"></script>
+  <script type="module" src="js/nosotros.js"></script>
   <script type="module" src="js/main.js"></script>
   <script type="module" src="js/servicios.js"></script>
   <script type="module" src="js/tracking.js"></script>

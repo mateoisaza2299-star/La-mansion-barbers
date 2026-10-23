@@ -1,4 +1,4 @@
-const CACHE = "site-shell-v5";
+const CACHE = "site-shell-v6";
 
 const ADMIN_PAGES = ["admin.html", "admin-login.html"];
 const PUBLIC_PAGES = ["index.html", "historia.html", "privacidad.html", "404.html"];
@@ -8,7 +8,7 @@ const PUBLIC_JS = [
   "js/cliente.js",
   "js/contenido.js",
   "js/faq.js",
-  "js/historia.js",
+  "js/nosotros.js",
   "js/main.js",
   "js/movimiento.js",
   "js/tracking.js"

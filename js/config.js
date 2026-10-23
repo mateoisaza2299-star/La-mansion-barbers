@@ -29,7 +29,44 @@ export const negocio = {
     "Para las estadísticas del sitio guardamos un identificador anónimo en tu navegador. No es tu nombre ni tu celular. Sirve para contar visitas y reservas sin identificarte.",
     "Si quieres que borremos tu reserva o tus datos, escríbenos y dinos el nombre y el celular con los que reservaste."
   ],
-  mensajeReserva: ""
+  mensajeReserva: "",
+  nosotros: {
+    etiqueta: "Nosotros · La Mansión",
+    titulo: "Aquí nadie sale igual que como entró",
+    intro: "En La Mansión creemos que un buen corte le cambia el día a cualquiera: al niño que se sienta por primera vez en la silla y al abuelo que lleva toda la vida con el mismo peinado. Cada uno llega con su historia. Nosotros ponemos las manos, la técnica y las ganas.",
+    edadesTitulo: "Para todas las edades",
+    edades: ["Niños", "Jóvenes", "Adultos", "Mayores"],
+    historias: [
+      {
+        titulo: "La primera vez",
+        texto: "Los primeros cortes se hacen con calma, con risas y con papá al lado.",
+        alt: "Un barbero de La Mansión le corta el cabello a un niño pequeño sentado en las piernas de su papá."
+      },
+      {
+        titulo: "El detalle que se nota",
+        texto: "Degradado limpio, brocha, tijera y pulso firme. Cada corte lleva nuestra firma.",
+        alt: "Un barbero de La Mansión peina con una brocha el cabello de un joven después de un corte degradado."
+      },
+      {
+        titulo: "Un oficio que se comparte",
+        texto: "Aprendemos mirando, preguntando y practicando. Los que saben enseñan y los que llegan crecen.",
+        alt: "Un barbero de La Mansión corta con tijeras el cabello de un señor mayor mientras otro hombre observa."
+      }
+    ],
+    valoresTitulo: "Lo que nos mueve",
+    valores: [
+      { titulo: "Presentación impecable", texto: "Te recibimos como queremos que salgas." },
+      { titulo: "Técnica y experiencia", texto: "Práctica y oficio en cada corte." },
+      { titulo: "Compromiso", texto: "Tu tiempo importa y lo cumplimos." },
+      { titulo: "Actitud de servicio", texto: "Atención premium con trato de amigo." }
+    ],
+    cita: "Un buen corte no cambia solo tu cabello: cambia cómo entras a cualquier lugar.",
+    firma: "La Mansión Barber Shop",
+    cierreTitulo: "Tu turno está listo",
+    cierreReserva: "Reserva tu cita",
+    cierreLlegar: "Cómo llegar",
+    cifras: []
+  }
 };
 
 export function urlSitio(pagina) {

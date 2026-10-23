@@ -144,8 +144,6 @@ const boot = () => {
           if (href.includes("wa.me")) insertEvent("click_whatsapp", sectionOf(link));
           if (href.toLowerCase().startsWith("tel:")) insertEvent("click_llamar", sectionOf(link));
           if (/maps\.google\.|google\.[^/\s]+\/maps|maps\.app\.goo\.gl/i.test(href)) insertEvent("click_como_llegar", sectionOf(link));
-          const label = (link.textContent || "").replace(/\s+/g, " ").trim();
-          if (label === "Conoce nuestra historia") insertEvent("ver_historia", "historia");
         }
         if (origin.closest("[data-open-reserva]")) noteInicio();
       } catch (error) {}
