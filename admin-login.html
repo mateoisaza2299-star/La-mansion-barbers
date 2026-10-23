@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#161210">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>Acceso — Miami Cuts</title>
+  <link rel="manifest" href="admin.webmanifest">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+  <script src="js/pwa.js"></script>
+  <div class="offline-screen" data-offline role="status">
+    <p>Sin conexión. Conéctate para ver tus citas.</p>
+  </div>
+  <header class="admin-bar">
+    <a class="logo" href="index.html" aria-label="Miami Cuts, inicio">
+      <span class="logo-mark" aria-hidden="true"></span>
+      <span class="logo-text">Miami Cuts</span>
+    </a>
+  </header>
+  <main class="login-main">
+    <div class="login-card">
+      <p class="kicker">Panel</p>
+      <h1>Acceso</h1>
+      <p>Solo para el equipo de la barbería.</p>
+      <form data-login>
+        <label>
+          Correo
+          <input name="email" type="email" autocomplete="username" required>
+        </label>
+        <label>
+          Contraseña
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <p class="form-error" data-login-error role="alert" hidden></p>
+        <button class="btn btn-dark btn-block" type="submit" data-login-submit>Entrar</button>
+      </form>
+    </div>
+  </main>
+  <script type="module" src="js/admin-login.js"></script>
+</body>
+</html>

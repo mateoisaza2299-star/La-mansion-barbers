@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#161210">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>Panel — Miami Cuts</title>
+  <link rel="manifest" href="admin.webmanifest">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600&family=Inter:wght@500;600&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+  <script src="js/pwa.js"></script>
+  <div class="offline-screen" data-offline role="status">
+    <p>Sin conexión. Conéctate para ver tus citas.</p>
+  </div>
+  <div class="dash">
+    <aside class="dash-side">
+      <a class="logo" href="index.html" aria-label="Miami Cuts, inicio">
+        <span class="logo-mark" aria-hidden="true"></span>
+        <span class="logo-text">Miami Cuts</span>
+      </a>
+      <p class="dash-side-label">Panel</p>
+      <nav class="dash-nav" aria-label="Secciones del panel">
+        <button type="button" data-view="reservas" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4 9.5h16M8 3.5v3.2M16 3.5v3.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <span class="nav-label">Reservas</span>
+          <span class="nav-count" data-pendientes hidden>0</span>
+        </button>
+        <button type="button" data-view="horarios">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.5V12l3.2 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <span class="nav-label">Horarios</span>
+        </button>
+        <button type="button" data-view="fidelidad">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M7 12h4.2M7 15h2.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.2" cy="12.5" r="1.35" fill="currentColor"/></svg>
+          <span class="nav-label">Fidelidad</span>
+        </button>
+        <button type="button" data-view="servicios">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.2" cy="7" r="2.15" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="6.2" cy="17" r="2.15" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.1 8.4 20 18.2M8.1 15.6 20 5.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <span class="nav-label">Servicios</span>
+        </button>
+      </nav>
+    </aside>
+
+    <div class="dash-main">
+      <header class="dash-top">
+        <a class="logo dash-logo" href="index.html" aria-label="Miami Cuts, inicio">
+          <span class="logo-mark" aria-hidden="true"></span>
+          <span class="logo-text">Miami Cuts</span>
+        </a>
+        <div class="dash-hello">
+          <p class="dash-greet" data-greet>Buenos días</p>
+          <p class="dash-date" data-today-label></p>
+          <p class="admin-mail" data-admin-email></p>
+        </div>
+        <div class="dash-top-actions">
+          <p class="dash-updated">Última actualización <time data-updated>—</time></p>
+          <div class="dash-action-buttons">
+            <button class="dash-btn" type="button" data-install hidden>Instalar app</button>
+            <button class="dash-btn" type="button" data-refresh>Actualizar</button>
+            <button class="btn" type="button" data-logout>Salir</button>
+          </div>
+        </div>
+      </header>
+
+      <p class="admin-error" data-admin-error role="alert" hidden></p>
+
+      <section class="dash-panel is-on" data-panel="reservas" aria-label="Reservas">
+        <div class="res-controls">
+          <div class="choice day-switch" role="group" aria-label="Día">
+            <button type="button" data-dia="hoy" aria-pressed="true">Hoy</button>
+            <button type="button" data-dia="manana" aria-pressed="false">Mañana</button>
+            <button type="button" data-dia="fecha" aria-pressed="false">Elegir fecha</button>
+          </div>
+          <label class="day-field" data-dia-pick hidden>Fecha <input type="date" data-dia-input></label>
+          <button class="dash-btn" type="button" data-refresh-citas>Actualizar</button>
+        </div>
+        <div class="new-note" data-nueva hidden>
+          <p data-nueva-text></p>
+          <button type="button" data-nueva-close>Listo</button>
+        </div>
+        <div data-reservas>
+          <p class="empty-note">Cargando citas…</p>
+        </div>
+      </section>
+
+      <section class="dash-panel" data-panel="horarios" hidden aria-label="Horarios">
+        <div class="block-head">
+          <h2>Horarios</h2>
+          <button class="dash-btn" type="button" data-bloqueo-abrir>Bloquear horario</button>
+        </div>
+        <form class="block-form" data-bloqueo-form hidden>
+          <div class="block-dates">
+            <label>Desde <input type="date" name="desde" required></label>
+            <label>Hasta <input type="date" name="hasta" required></label>
+          </div>
+          <div class="block-shortcuts">
+            <button type="button" data-bloqueo-hoy>Hoy</button>
+            <button type="button" data-bloqueo-manana>Mañana</button>
+          </div>
+          <fieldset class="block-mode">
+            <legend class="sr-only">Tipo de bloqueo</legend>
+            <label><input type="radio" name="modo" value="dia" checked> Todo el día</label>
+            <label><input type="radio" name="modo" value="horas"> Rango de horas</label>
+          </fieldset>
+          <div class="block-hours" data-bloqueo-horas hidden>
+            <label>Desde <select name="hora_desde"></select></label>
+            <label>Hasta <select name="hora_hasta"></select></label>
+          </div>
+          <label>Motivo <input type="text" name="motivo" maxlength="180" autocomplete="off" placeholder="Solo lo ves tú"></label>
+          <p class="form-error" data-bloqueo-error role="alert" hidden></p>
+          <div data-bloqueo-citas hidden></div>
+          <div class="block-actions">
+            <button class="dash-btn" type="submit" data-bloqueo-guardar>Bloquear horario</button>
+            <button class="dash-btn" type="button" data-bloqueo-cancelar-citas hidden>Bloquear y cancelar esas citas</button>
+            <button class="dash-btn" type="button" data-bloqueo-conservar hidden>Bloquear sin tocar esas citas</button>
+          </div>
+        </form>
+        <div data-bloqueo-avisos hidden></div>
+        <div class="block-list" data-bloqueos></div>
+      </section>
+
+      <section class="dash-panel" data-panel="fidelidad" hidden aria-label="Fidelidad">
+        <h2>Fidelidad</h2>
+        <label class="fid-search">Buscar
+          <input type="search" data-fid-q placeholder="Nombre o celular" autocomplete="off">
+        </label>
+        <div class="table-scroll" data-fid-table></div>
+      </section>
+
+      <section class="dash-panel" data-panel="servicios" hidden aria-label="Servicios">
+        <h2>Servicios</h2>
+        <div class="choice" role="group" aria-label="Periodo">
+          <button type="button" data-period="hoy" aria-pressed="true">Hoy</button>
+          <button type="button" data-period="7" aria-pressed="false">7 días</button>
+          <button type="button" data-period="30" aria-pressed="false">30 días</button>
+          <button type="button" data-period="rango" aria-pressed="false">Rango</button>
+        </div>
+        <div class="dash-range" data-range hidden>
+          <label>Desde <input type="date" data-desde></label>
+          <label>Hasta <input type="date" data-hasta></label>
+        </div>
+        <p class="dash-range-error" data-range-error role="alert" hidden>Elige un rango válido.</p>
+        <div class="table-scroll" data-servicios></div>
+        <div class="dash-grid-2">
+          <article class="dash-card">
+            <h2>Horas más pedidas</h2>
+            <div class="dash-chart" data-chart="horas"></div>
+          </article>
+          <article class="dash-card">
+            <h2>Días de la semana</h2>
+            <div class="dash-chart" data-chart="dias"></div>
+          </article>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <nav class="dash-tabs" aria-label="Secciones del panel">
+    <button type="button" data-view="reservas" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4 9.5h16M8 3.5v3.2M16 3.5v3.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <span class="nav-label">Reservas</span>
+      <span class="nav-count" data-pendientes hidden>0</span>
+    </button>
+    <button type="button" data-view="horarios">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.5V12l3.2 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <span class="nav-label">Horarios</span>
+    </button>
+    <button type="button" data-view="fidelidad">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M7 12h4.2M7 15h2.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.2" cy="12.5" r="1.35" fill="currentColor"/></svg>
+      <span class="nav-label">Fidelidad</span>
+    </button>
+    <button type="button" data-view="servicios">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.2" cy="7" r="2.15" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="6.2" cy="17" r="2.15" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.1 8.4 20 18.2M8.1 15.6 20 5.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <span class="nav-label">Servicios</span>
+    </button>
+  </nav>
+
+  <div class="ask" data-ask hidden>
+    <div class="ask-card" role="dialog" aria-modal="true" aria-labelledby="ask-text">
+      <p id="ask-text" data-ask-text></p>
+      <div class="ask-actions">
+        <button class="act act-ok" type="button" data-ask-yes>Sí</button>
+        <button class="act act-quiet" type="button" data-ask-no>No</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" data-sheet hidden>
+    <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <h2 id="sheet-title" data-sheet-title></h2>
+      <p class="sheet-error" data-sheet-error hidden>El celular de este cliente no es válido</p>
+      <textarea data-sheet-text aria-label="Mensaje"></textarea>
+      <div class="sheet-actions">
+        <a class="act act-send" data-sheet-wa target="_blank" rel="noopener">Abrir WhatsApp y enviar</a>
+        <button class="act act-quiet" type="button" data-sheet-copy>Copiar mensaje</button>
+        <button class="act act-quiet" type="button" data-sheet-close>Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="install-guide" data-install-guide hidden>
+    <div class="install-guide-card" role="dialog" aria-modal="true" aria-labelledby="install-title">
+      <p class="kicker">Panel</p>
+      <h2 id="install-title">Instalar app</h2>
+      <ol>
+        <li><span>Toca <strong>Compartir</strong>.</span></li>
+        <li><span>Elige <strong>Agregar a pantalla de inicio</strong>.</span></li>
+        <li><span>Toca <strong>Agregar</strong>.</span></li>
+      </ol>
+      <button class="btn btn-dark btn-block" type="button" data-install-close>Listo</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>

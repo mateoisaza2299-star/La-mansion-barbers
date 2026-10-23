@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Pupilos Barber</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rye&family=Libre+Franklin:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EFE7D8;
+    --paper: #F8F3E7;
+    --ink: #1B1B1B;
+    --muted: #6B6152;
+    --red: #A93226;
+    --navy: #1F3350;
+    --gold: #B4862A;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Libre Franklin', Arial, sans-serif;
+    line-height: 1.55;
+  }
+
+  a { color: inherit; }
+
+  .display {
+    font-family: 'Rye', 'Copperplate', serif;
+    font-weight: 400;
+  }
+
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .pole {
+    border-radius: 999px;
+    border: 2px solid var(--ink);
+    background-image: repeating-linear-gradient(
+      45deg,
+      var(--red) 0 9px,
+      var(--paper) 9px 18px,
+      var(--navy) 18px 27px,
+      var(--paper) 27px 36px
+    );
+    background-size: 100% 44px;
+    animation: pole-spin 1.4s linear infinite;
+  }
+
+  @keyframes pole-spin {
+    from { background-position: 0 0; }
+    to   { background-position: 0 44px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pole { animation: none; }
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 22px 0;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand .pole { width: 20px; height: 46px; }
+
+  .brand span {
+    font-size: 26px;
+    transform: rotate(-2deg);
+    display: inline-block;
+  }
+
+  nav {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+  }
+
+  nav a.jump {
+    text-decoration: none;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  nav a.jump:hover { color: var(--ink); }
+
+  .stamp-btn {
+    display: inline-block;
+    background: var(--red);
+    color: var(--paper);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 11px 20px;
+    border: 2px solid var(--ink);
+    box-shadow: 3px 3px 0 var(--ink);
+    transform: rotate(-1deg);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  .stamp-btn:hover {
+    transform: rotate(-1deg) translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+
+  .stamp-btn:focus-visible,
+  a.jump:focus-visible,
+  .ticket-link:focus-visible {
+    outline: 3px solid var(--navy);
+    outline-offset: 3px;
+  }
+
+  @media (max-width: 640px) {
+    nav a.jump { display: none; }
+  }
+
+  .hero {
+    padding: 50px 0 60px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: start;
+  }
+
+  .hero h1 {
+    font-size: clamp(42px, 7vw, 80px);
+    line-height: 1.05;
+    max-width: 12ch;
+    transform: rotate(-1.2deg);
+    transform-origin: left top;
+  }
+
+  .hero p {
+    margin-top: 20px;
+    color: var(--muted);
+    font-size: 17px;
+    max-width: 60ch;
+  }
+
+  .cta-row {
+    margin-top: 30px;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    flex-wrap: wrap;
+  }
+
+  .ticket-link {
+    text-decoration: none;
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 15px;
+    border-bottom: 2px dashed var(--muted);
+    padding-bottom: 2px;
+  }
+
+  .hero .pole { width: 46px; height: 130px; justify-self: end; }
+
+  @media (max-width: 640px) {
+    .hero { grid-template-columns: 1fr; }
+    .hero .pole { display: none; }
+  }
+
+  .stripe-divider {
+    height: 12px;
+    background-image: repeating-linear-gradient(
+      45deg,
+      var(--red) 0 10px,
+      var(--paper) 10px 20px,
+      var(--navy) 20px 30px,
+      var(--paper) 30px 40px
+    );
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .tarifa {
+    padding: 64px 0 70px;
+  }
+
+  .tarifa h2 {
+    font-size: 34px;
+    margin-bottom: 34px;
+    transform: rotate(-1deg);
+    display: inline-block;
+  }
+
+  .ticket {
+    position: relative;
+    max-width: 640px;
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    padding: 34px 36px;
+  }
+
+  .ticket::before,
+  .ticket::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 14px;
+    background-image: radial-gradient(circle at 7px 15px, var(--bg) 7px, transparent 7.5px);
+    background-size: 14px 30px;
+    background-repeat: repeat-y;
+  }
+
+  .ticket::before { left: -8px; }
+  .ticket::after { right: -8px; }
+
+  .service-list { list-style: none; }
+
+  .service-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 18px;
+    padding: 18px 0;
+    border-bottom: 2px dashed var(--bg);
+    flex-wrap: wrap;
+  }
+
+  .service-list li:last-child { border-bottom: none; }
+
+  .service-name {
+    font-weight: 700;
+    font-size: 17px;
+  }
+
+  .service-desc {
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 3px;
+  }
+
+  .service-price {
+    font-weight: 800;
+    font-size: 19px;
+    color: var(--gold);
+    white-space: nowrap;
+  }
+
+  footer {
+    background: var(--navy);
+    color: var(--paper);
+    padding: 56px 0 30px;
+    margin-top: 20px;
+  }
+
+  .foot-inner {
+    border-top: 2px dashed #4C5F7C;
+    padding-top: 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+  }
+
+  footer h3 {
+    font-family: 'Rye', 'Copperplate', serif;
+    font-weight: 400;
+    font-size: 24px;
+    margin-bottom: 14px;
+  }
+
+  footer p { color: #C9D2DF; font-size: 15px; }
+
+  .hours-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 15px;
+    max-width: 300px;
+    color: #C9D2DF;
+  }
+
+  footer a.tel {
+    color: var(--paper);
+    font-weight: 700;
+  }
+
+  footer a.wsp {
+    color: var(--gold);
+    text-decoration: none;
+    font-weight: 700;
+  }
+
+  footer a.wsp:hover { text-decoration: underline; }
+
+  .foot-bottom {
+    margin-top: 44px;
+    padding-top: 20px;
+    border-top: 1px solid #3A4C68;
+    color: #8FA0B8;
+    font-size: 13px;
+  }
+
+  @media (max-width: 640px) {
+    .foot-inner { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="pole" aria-hidden="true"></div>
+      <span class="display">Pupilos Barber</span>
+    </div>
+    <nav>
+      <a class="jump" href="#tarifa">Tarifa</a>
+      <a class="jump" href="#contacto">Horario</a>
+      <a class="stamp-btn" href="https://wa.me/573001234567" target="_blank" rel="noopener">Agendar</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <h1 class="display">Un buen corte no se afana.</h1>
+      <p>Barbería de barrio en Funza, de las que quedan pocas. Corte, barba y navaja, con tiempo y buena charla.</p>
+      <div class="cta-row">
+        <a class="stamp-btn" href="https://wa.me/573001234567" target="_blank" rel="noopener">Agendar por WhatsApp</a>
+        <a class="ticket-link" href="#tarifa">Ver la tarifa</a>
+      </div>
+    </div>
+    <div class="pole" aria-hidden="true"></div>
+  </section>
+</div>
+
+<div class="stripe-divider" role="presentation"></div>
+
+<div class="wrap">
+  <section class="tarifa" id="tarifa">
+    <h2 class="display">La tarifa</h2>
+    <div class="ticket">
+      <ul class="service-list">
+        <li>
+          <div>
+            <div class="service-name">Corte clásico</div>
+            <div class="service-desc">Tijera y máquina, incluye lavado</div>
+          </div>
+          <div class="service-price">$25.000</div>
+        </li>
+        <li>
+          <div>
+            <div class="service-name">Barba y perfilado</div>
+            <div class="service-desc">Navaja caliente, toalla vapor</div>
+          </div>
+          <div class="service-price">$18.000</div>
+        </li>
+        <li>
+          <div>
+            <div class="service-name">Corte + barba</div>
+            <div class="service-desc">El combo completo</div>
+          </div>
+          <div class="service-price">$38.000</div>
+        </li>
+        <li>
+          <div>
+            <div class="service-name">Diseño y línea</div>
+            <div class="service-desc">Diseños a máquina, líneas definidas</div>
+          </div>
+          <div class="service-price">$15.000</div>
+        </li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<footer id="contacto">
+  <div class="wrap">
+    <div class="foot-inner">
+      <div>
+        <h3>Horario</h3>
+        <div class="hours-row"><span>Lunes a viernes</span><span>9:00 am – 7:00 pm</span></div>
+        <div class="hours-row"><span>Sábados</span><span>9:00 am – 5:00 pm</span></div>
+        <div class="hours-row"><span>Domingos</span><span>Cerrado</span></div>
+      </div>
+      <div>
+        <h3>Visítanos</h3>
+        <p>Cra 6 #23-70, Zuame, Funza</p>
+        <p><a class="tel" href="tel:+573001234567">300 123 4567</a></p>
+        <p><a class="wsp" href="https://wa.me/573001234567" target="_blank" rel="noopener">WhatsApp</a></p>
+      </div>
+    </div>
+    <div class="foot-bottom">© 2026 Pupilos Barber</div>
+  </div>
+</footer>
+
+</body>
+</html>
