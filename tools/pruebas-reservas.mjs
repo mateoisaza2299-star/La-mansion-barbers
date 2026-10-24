@@ -284,6 +284,7 @@ async function sinRed(browser) {
     viewport: { width: 1366, height: 800 },
     serviceWorkers: "block"
   });
+  await context.addCookies([{ name: "lm_preparacion", value: "1", url: origen }]);
   const page = await context.newPage();
   const errores = [];
   const urls = [];

@@ -2,7 +2,7 @@
 <html lang="es-CO">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://*.supabase.co; font-src 'self'; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; font-src 'self'; connect-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>La Mansión Barber Shop | Barbería en Mosquera, Cundinamarca</title>
   <meta name="description" content="La Mansión Barber Shop, barbería en Mosquera, Cundinamarca. Cortes, barba y cuidado personal.">
@@ -65,7 +65,7 @@
       <nav class="nav-desk" data-nav aria-label="Principal">
         <a data-nav-link href="#nosotros">Nosotros</a>
         <a data-nav-link href="#servicios">Servicios</a>
-        <a data-nav-link href="#galeria">Galería</a>
+        <a data-nav-link href="#local" hidden>El local</a>
         <a data-nav-link href="#visita">Visita</a>
       </nav>
       <a class="btn btn-nav" data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener" aria-label="Agenda por WhatsApp">
@@ -82,7 +82,7 @@
     <button class="nav-cerrar" type="button" data-nav-cerrar>Cerrar</button>
     <a class="nav-panel-link" href="#nosotros">Nosotros</a>
     <a class="nav-panel-link" href="#servicios">Servicios</a>
-    <a class="nav-panel-link" href="#galeria">Galería</a>
+    <a class="nav-panel-link" href="#local" hidden>El local</a>
     <a class="nav-panel-link" href="#visita">Visita</a>
     <div class="nav-panel-acciones">
       <a class="btn" data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">Agenda por WhatsApp</a>
@@ -232,11 +232,6 @@
       </div>
     </section>
 
-    <section class="banda" aria-label="Cortes, barba y cuidado personal">
-      <div class="banda-fondo" data-banda="oficio"></div>
-      <p class="banda-frase">Cortes, barba y cuidado personal</p>
-    </section>
-
     <section class="seccion" id="servicios" aria-labelledby="servicios-titulo">
       <div class="wrap">
         <header class="reveal" data-revelar>
@@ -277,15 +272,21 @@
       </div>
     </section>
 
-    <section class="seccion" id="galeria" hidden>
-      <div class="wrap">
-        <header class="reveal" data-revelar>
-          <p class="etiqueta" data-texto="galeriaEtiqueta">Galería</p>
-          <h2 data-texto="galeriaTitulo">El lugar y el equipo</h2>
-        </header>
-        <div class="filtros" data-filtros role="toolbar" aria-label="Filtrar fotos"></div>
-        <div class="mosaico" data-mosaico></div>
-        <button class="btn btn-sec ver-mas" type="button" data-mas hidden>Ver más</button>
+    <section class="local" id="local" hidden role="region" aria-roledescription="carrusel" aria-label="Fotos de La Mansión">
+      <div class="local-marco" data-local tabindex="0">
+        <div class="local-pista" data-local-pista></div>
+        <div class="local-velo" aria-hidden="true"></div>
+        <div class="local-pie">
+          <p class="local-marca">La Mansión · Mosquera</p>
+          <p class="local-frase" data-local-frase></p>
+        </div>
+        <button class="local-flecha local-prev" type="button" data-local-prev aria-label="Foto anterior">←</button>
+        <button class="local-flecha local-next" type="button" data-local-next aria-label="Foto siguiente">→</button>
+        <div class="local-controles">
+          <div class="local-puntos" data-local-puntos></div>
+          <button class="local-pausa" type="button" data-local-pausa aria-pressed="true">Pausar</button>
+        </div>
+        <p class="sr-only" data-local-vivo></p>
       </div>
     </section>
 
@@ -297,11 +298,6 @@
           <a class="btn" data-wa-productos href="https://wa.me/573118162854?text=Hola%2C%20quiero%20preguntar%20por%20los%20productos%20de%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">Pregunta por WhatsApp</a>
         </div>
       </div>
-    </section>
-
-    <section class="banda" aria-label="Tu turno te espera">
-      <div class="banda-fondo" data-banda="turno"></div>
-      <p class="banda-frase">Tu turno te espera</p>
     </section>
 
     <section class="seccion visita" id="visita" aria-labelledby="visita-titulo">
@@ -375,18 +371,6 @@
     </section>
   </main>
 
-  <div class="visor" data-visor hidden role="dialog" aria-modal="true" aria-labelledby="visor-pie">
-    <button class="visor-cerrar" type="button" data-visor-cerrar>Cerrar</button>
-    <button class="visor-prev" type="button" data-visor-prev aria-label="Foto anterior">←</button>
-    <figure data-visor-figura>
-      <figcaption>
-        <p id="visor-pie" data-visor-pie></p>
-        <p class="visor-cuenta" data-visor-cuenta></p>
-      </figcaption>
-    </figure>
-    <button class="visor-next" type="button" data-visor-next aria-label="Foto siguiente">→</button>
-  </div>
-
   <footer class="site-footer" data-pie>
     <div class="wrap footer-grid">
       <a class="logo" href="#inicio">
@@ -395,7 +379,7 @@
       <ul class="footer-nav">
         <li><a href="#nosotros">Nosotros</a></li>
         <li><a href="#servicios">Servicios</a></li>
-        <li><a href="#galeria">Galería</a></li>
+        <li hidden><a href="#local">El local</a></li>
         <li><a href="#visita">Visita</a></li>
         <li><a href="privacidad.html">Datos</a></li>
         <li><a href="tratamiento-datos.html">Tratamiento de datos</a></li>

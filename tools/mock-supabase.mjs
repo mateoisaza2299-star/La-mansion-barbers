@@ -645,15 +645,23 @@ function servirArchivo(req, res) {
     res.end();
     return;
   }
-  const activo = String(req.headers.cookie || "").split(";").some((parte) => parte.trim() === "lm_activo=1");
-  if (destino.endsWith(path.join("js", "config.js")) && activo) {
-    const origen = "http://127.0.0.1:" + req.socket.localPort;
-    let texto = fs.readFileSync(destino, "utf8");
-    texto = texto.replace("enPreparacion: true", "enPreparacion: false");
-    texto = texto.replace('supabase: { url: "", key: "" }', "supabase: { url: " + JSON.stringify(origen) + ", key: " + JSON.stringify(clavePublica) + " }");
-    res.writeHead(200, { "content-type": tipos[".js"], "cache-control": "no-store" });
-    res.end(texto);
-    return;
+  if (destino.endsWith(path.join("js", "config.js"))) {
+    const cookie = String(req.headers.cookie || "");
+    const tiene = (nombre) => cookie.split(";").some((parte) => parte.trim() === nombre);
+    if (tiene("lm_activo=1") || tiene("lm_preparacion=1")) {
+      const origen = "http://127.0.0.1:" + req.socket.localPort;
+      let texto = fs.readFileSync(destino, "utf8");
+      if (tiene("lm_preparacion=1")) {
+        texto = texto.replace(/enPreparacion:\s*(true|false)/, "enPreparacion: true");
+        texto = texto.replace(/supabase:\s*\{[^}]*\}/, 'supabase: { url: "", key: "" }');
+      } else {
+        texto = texto.replace(/enPreparacion:\s*(true|false)/, "enPreparacion: false");
+        texto = texto.replace(/supabase:\s*\{[^}]*\}/, "supabase: { url: " + JSON.stringify(origen) + ", key: " + JSON.stringify(clavePublica) + " }");
+      }
+      res.writeHead(200, { "content-type": tipos[".js"], "cache-control": "no-store" });
+      res.end(texto);
+      return;
+    }
   }
   res.writeHead(200, { "content-type": tipos[path.extname(destino)] || "application/octet-stream", "cache-control": "no-store" });
   fs.createReadStream(destino).pipe(res);

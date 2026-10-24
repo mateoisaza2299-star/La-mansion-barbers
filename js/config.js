@@ -3,7 +3,8 @@ export const negocio = {
   nombreCorto: "La Mansión",
   ciudad: "Mosquera, Cundinamarca",
   eslogan: "Barber Shop · Mosquera",
-  enPreparacion: true,
+  enPreparacion: false,
+  indexable: false,
   whatsapp: "573118162854",
   telefono: "311 816 2854",
   direccion: "Mosquera, Cundinamarca",
@@ -13,7 +14,7 @@ export const negocio = {
   mapaConsulta: "La Mansión Barber Shop, Mosquera, Cundinamarca",
   mensajeWhatsApp: "Hola, quiero agendar una cita en La Mansión Barber Shop.",
   mensajeProductos: "Hola, quiero preguntar por los productos de La Mansión Barber Shop.",
-  supabase: { url: "", key: "" },
+  supabase: { url: "https://bkzyaiamlhlbsggsoijk.supabase.co", key: "sb_publishable__BC2lWanJOLLb4gdVcEpKw_4SQO9w6A" },
   sitio: "https://mateoisaza2299-star.github.io/La-mansion-barbers/",
   barbero: "",
   email: "",
@@ -102,9 +103,6 @@ export const negocio = {
     serviciosTitulo: "Menú de servicios",
     consultar: "Consultar por WhatsApp",
     serviciosNota: "Precios y duración por confirmar: escríbenos por WhatsApp",
-    galeriaEtiqueta: "Galería",
-    galeriaTitulo: "El lugar y el equipo",
-    verMas: "Ver más",
     productos: "Cuidado en casa: aceite de barba y productos de barbería",
     preguntaProductos: "Pregunta por WhatsApp",
     horarioPendiente: "Horario por confirmar",
@@ -113,12 +111,7 @@ export const negocio = {
     llamar: "Llamar",
     reservasTitulo: "Agenda abierta · Escríbenos por WhatsApp",
     reservasNota: "Muy pronto: reservas en línea",
-    faqTitulo: "Preguntas frecuentes",
-    filtroTodo: "Todo",
-    filtroLocal: "El local",
-    filtroCortes: "Cortes",
-    filtroEquipo: "Equipo",
-    filtroProductos: "Productos"
+    faqTitulo: "Preguntas frecuentes"
   }
 };
 

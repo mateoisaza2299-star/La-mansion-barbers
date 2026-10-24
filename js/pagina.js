@@ -7,6 +7,7 @@ import {
   formatoPrecio,
   reservasEnLinea
 } from "./config.js";
+import { iniciarCarrusel } from "./carrusel.js";
 
 const textos = negocio.textos || {};
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -118,7 +119,7 @@ const pintarTextos = () => {
   if (palabra && textos.heroPalabra) palabra.textContent = textos.heroPalabra;
   if (despues && textos.heroDespues) despues.textContent = textos.heroDespues;
   const robots = document.querySelector("[data-robots-vivo]");
-  if (robots) robots.setAttribute("content", negocio.enPreparacion ? "noindex, nofollow" : "index, follow");
+  if (robots) robots.setAttribute("content", negocio.indexable === true ? "index, follow" : "noindex, nofollow");
 };
 
 const pintarNosotros = () => {
@@ -165,15 +166,18 @@ const pintarPrivacidad = () => {
 };
 
 const usos = new Map();
+const enHero = new Set();
+const enServicios = new Set();
 const puede = (foto) => !!(foto && esId(foto.id) && (usos.get(foto.id) || 0) < 2);
-const marcar = (foto) => {
+const marcar = (foto, bolsa) => {
   if (!puede(foto)) return false;
   usos.set(foto.id, (usos.get(foto.id) || 0) + 1);
+  if (bolsa) bolsa.add(foto.id);
   return true;
 };
 const reservarApariciones = (fotos) => {
   fotos.forEach((foto) => {
-    if (foto && esId(foto.id)) usos.set(foto.id, 1);
+    if (foto && (foto.categoria === "nosotros" || String(foto.id || "").startsWith("nosotros-"))) usos.set(foto.id, 1);
   });
 };
 const ladoDe = (foto) => Math.max(Number(foto && foto.ancho) || 0, Number(foto && foto.alto) || 0);
@@ -252,7 +256,7 @@ const prepararHero = (fotos) => {
     if (marcos) marcos.hidden = true;
     precargar(horizontales[0]);
     horizontales.forEach((foto, indice) => {
-      if (!marcar(foto)) return;
+      if (!marcar(foto, enHero)) return;
       const capa = document.createElement("div");
       capa.className = "hero-slide mate-" + foto.id + (indice === 0 ? " is-on" : "");
       const img = crearImagen(foto, {
@@ -305,7 +309,7 @@ const prepararHero = (fotos) => {
         ancho: 1200,
         prioridad: true
       });
-      if (img && marcar(principal)) caja.appendChild(img);
+      if (img && marcar(principal, enHero)) caja.appendChild(img);
     }
   }
   if (secundaria) {
@@ -317,13 +321,13 @@ const prepararHero = (fotos) => {
         sizes: "(min-width: 900px) 22vw, 1px",
         ancho: 800
       });
-      if (img && marcar(secundaria)) caja.appendChild(img);
+      if (img && marcar(secundaria, enHero)) caja.appendChild(img);
     }
   }
   const textura = document.querySelector("[data-hero-textura]");
   if (textura && texturaFoto) {
     const img = crearImagen(texturaFoto, { alt: "", sizes: "100vw", ancho: 480, maximo: 480 });
-    if (img && marcar(texturaFoto)) {
+    if (img && marcar(texturaFoto, enHero)) {
       textura.classList.add("tiene-foto", "mate-" + texturaFoto.id);
       textura.appendChild(img);
     }
@@ -338,10 +342,6 @@ const prepararFondos = (fotos) => {
   const cita = document.querySelector("[data-cita-fondo]");
   const ambiente = elegirLibre(fotos, (foto) => foto.categoria === "ambiente");
   if (cita && ambiente) meterFoto(cita, ambiente, { alt: "", sizes: "100vw", ancho: 1200 });
-  document.querySelectorAll("[data-banda]").forEach((banda) => {
-    const foto = elegirLibre(fotos, (item) => item.categoria === "ambiente");
-    if (foto) meterFoto(banda, foto, { alt: "", sizes: "100vw", ancho: 1200 });
-  });
   const panel = document.querySelector("[data-nav-foto]");
   const menu = elegirLibre(fotos, (foto) => foto.categoria === "ambiente");
   if (panel && menu && meterFoto(panel, menu, { alt: "", sizes: "100vw", ancho: 800 })) {
@@ -456,11 +456,11 @@ const prepararServicios = (fotos) => {
     const pool = candidatas(nombre).filter((foto) => puede(foto) || enServicio.has(foto.id));
     const lista = (pool.length ? pool : candidatas(nombre).filter((foto) => enServicio.has(foto.id)))
       .slice()
-      .sort((a, b) => Number(a.categoria !== "corte") - Number(b.categoria !== "corte") || a.id.localeCompare(b.id));
+      .sort((a, b) => Number(enHero.has(a.id)) - Number(enHero.has(b.id)) || Number(a.categoria !== "corte") - Number(b.categoria !== "corte") || a.id.localeCompare(b.id));
     const foto = lista[0];
     if (!foto) return;
     if (!enServicio.has(foto.id)) {
-      if (!marcar(foto)) return;
+      if (!marcar(foto, enServicios)) return;
       enServicio.add(foto.id);
     }
     asignadas.set(nombre, foto);
@@ -582,158 +582,50 @@ const prepararServicios = (fotos) => {
   carta.hidden = false;
 };
 
-const prepararGaleria = (fotos) => {
-  const seccion = document.getElementById("galeria");
-  const mosaico = document.querySelector("[data-mosaico]");
-  const filtros = document.querySelector("[data-filtros]");
-  const mas = document.querySelector("[data-mas]");
-  const visor = document.querySelector("[data-visor]");
-  if (!seccion || !mosaico || !filtros || !mas || !visor) return;
-  const lista = fotos.filter((foto) => foto.alt && foto.categoria && foto.categoria !== "nosotros" && !String(foto.id).startsWith("nosotros-"));
-  document.querySelectorAll("[data-nav-link][href='#galeria'], .nav-panel-link[href='#galeria'], .footer-nav a[href='#galeria']").forEach((nodo) => {
-    if (lista.length < 4) nodo.hidden = true;
-  });
-  if (lista.length < 4) return;
+const fraseLocal = (categoria) => {
+  if (categoria === "equipo") return "El equipo";
+  if (categoria === "corte") return "El oficio";
+  if (categoria === "producto") return "El detalle";
+  return "El lugar";
+};
+
+const prepararLocal = (fotos) => {
+  const seccion = document.getElementById("local");
+  const enlaces = document.querySelectorAll("a[href='#local'], a[href='index.html#local']");
+  const ocultarEnlace = (nodo) => {
+    nodo.hidden = true;
+    const li = nodo.parentElement;
+    if (li && li.tagName === "LI") li.hidden = true;
+  };
+  const orden = { fachada: 0, interior: 1, ambiente: 2, equipo: 3, corte: 4, producto: 5 };
+  const base = fotos.filter((foto) => (
+    foto &&
+    (foto.calidad === "alta" || foto.calidad === "media") &&
+    ["fachada", "interior", "ambiente", "equipo", "corte", "producto"].includes(foto.categoria) &&
+    !String(foto.id || "").startsWith("nosotros-") &&
+    !menorEnPrimerPlano(foto) &&
+    puede(foto)
+  )).sort((a, b) => (orden[a.categoria] ?? 9) - (orden[b.categoria] ?? 9) || ladoDe(b) - ladoDe(a));
+  const ocupadas = new Set([...enHero, ...enServicios]);
+  let lista = base.filter((foto) => !ocupadas.has(foto.id));
+  if (lista.length < 3) lista = base.slice();
+  lista = lista.slice(0, 8);
+  if (lista.length < 3) {
+    if (seccion) seccion.hidden = true;
+    enlaces.forEach(ocultarEnlace);
+    return;
+  }
+  if (!seccion) return;
+  lista.forEach((foto) => marcar(foto));
   seccion.hidden = false;
-  let filtro = "todo";
-  let cupo = 9;
-  let actuales = lista;
-  const figura = visor.querySelector("[data-visor-figura]");
-  const pie = visor.querySelector("[data-visor-pie]");
-  const cuenta = visor.querySelector("[data-visor-cuenta]");
-  let imagen = null;
-  let indice = 0;
-  let retorno = null;
-  const pasa = (foto) => {
-    if (filtro === "local") return ["fachada", "interior", "ambiente"].includes(foto.categoria);
-    if (filtro === "cortes") return foto.categoria === "corte";
-    if (filtro === "equipo") return foto.categoria === "equipo";
-    if (filtro === "productos") return foto.categoria === "producto";
-    return true;
-  };
-  const pintarVisor = () => {
-    const foto = actuales[indice];
-    if (!foto) return;
-    const ancho = anchoDe(foto, 1200) || anchoDe(foto, 800);
-    if (!imagen) {
-      imagen = document.createElement("img");
-      imagen.decoding = "async";
-      figura.insertBefore(imagen, pie.parentElement);
-    }
-    imagen.src = urlDe(foto, ancho);
-    imagen.srcset = srcsetDe(foto);
-    imagen.sizes = "90vw";
-    imagen.alt = foto.alt;
-    imagen.width = foto.ancho;
-    imagen.height = foto.alto;
-    imagen.className = "mate-" + foto.id;
-    pie.textContent = foto.alt;
-    cuenta.textContent = (indice + 1) + " / " + actuales.length;
-  };
-  const abrir = (posicion) => {
-    indice = posicion;
-    retorno = document.activeElement;
-    pintarVisor();
-    visor.hidden = false;
-    document.body.classList.add("menu-abierto");
-    const cerrar = visor.querySelector("[data-visor-cerrar]");
-    if (cerrar) cerrar.focus();
-  };
-  const cerrar = () => {
-    visor.hidden = true;
-    if (imagen) imagen.removeAttribute("src");
-    if (!document.querySelector("[data-nav-panel]") || document.querySelector("[data-nav-panel]").hidden) {
-      document.body.classList.remove("menu-abierto");
-    }
-    if (retorno && retorno.focus) retorno.focus();
-  };
-  const mover = (delta) => {
-    if (!actuales.length || visor.hidden) return;
-    indice = (indice + delta + actuales.length) % actuales.length;
-    pintarVisor();
-  };
-  const pintar = () => {
-    actuales = lista.filter(pasa);
-    mosaico.replaceChildren();
-    actuales.forEach((foto, posicion) => {
-      const boton = document.createElement("button");
-      boton.type = "button";
-      boton.className = "mosaico-item mate-" + foto.id + (posicion % 5 === 0 ? " ancho" : "") + (foto.orientacion === "vertical" && posicion % 3 === 1 ? " alto" : "");
-      if (posicion >= cupo) boton.hidden = true;
-      const img = document.createElement("img");
-      const ancho = anchoDe(foto, 800);
-      img.src = urlDe(foto, ancho);
-      img.srcset = srcsetDe(foto);
-      img.sizes = "(max-width: 699px) 50vw, 280px";
-      img.alt = foto.alt;
-      img.width = foto.ancho;
-      img.height = foto.alto;
-      img.loading = "lazy";
-      img.decoding = "async";
-      img.className = "mate-" + foto.id;
-      boton.appendChild(img);
-      boton.addEventListener("click", () => abrir(posicion));
-      mosaico.appendChild(boton);
-    });
-    mas.hidden = actuales.length <= cupo;
-    if (textos.verMas) mas.textContent = textos.verMas;
-  };
-  const defs = [
-    ["todo", textos.filtroTodo || "Todo", () => true],
-    ["local", textos.filtroLocal || "El local", (foto) => ["fachada", "interior", "ambiente"].includes(foto.categoria)],
-    ["cortes", textos.filtroCortes || "Cortes", (foto) => foto.categoria === "corte"],
-    ["equipo", textos.filtroEquipo || "Equipo", (foto) => foto.categoria === "equipo"],
-    ["productos", textos.filtroProductos || "Productos", (foto) => foto.categoria === "producto"]
-  ];
-  defs.forEach(([id, etiqueta, fn]) => {
-    if (id !== "todo" && !lista.some(fn)) return;
-    const boton = document.createElement("button");
-    boton.type = "button";
-    boton.className = "filtro";
-    boton.setAttribute("aria-pressed", id === "todo" ? "true" : "false");
-    boton.textContent = etiqueta;
-    boton.addEventListener("click", () => {
-      filtro = id;
-      cupo = 9;
-      filtros.querySelectorAll(".filtro").forEach((item) => item.setAttribute("aria-pressed", item === boton ? "true" : "false"));
-      pintar();
-    });
-    filtros.appendChild(boton);
+  iniciarCarrusel({
+    raiz: seccion,
+    fotos: lista,
+    estatico,
+    urlDe,
+    anchoDe,
+    frase: fraseLocal
   });
-  mas.addEventListener("click", () => {
-    cupo += 9;
-    pintar();
-  });
-  visor.querySelector("[data-visor-cerrar]").addEventListener("click", cerrar);
-  visor.querySelector("[data-visor-prev]").addEventListener("click", () => mover(-1));
-  visor.querySelector("[data-visor-next]").addEventListener("click", () => mover(1));
-  let origenX = 0;
-  let origenY = 0;
-  visor.addEventListener("pointerdown", (event) => {
-    origenX = event.clientX;
-    origenY = event.clientY;
-  });
-  visor.addEventListener("pointerup", (event) => {
-    const dx = event.clientX - origenX;
-    const dy = event.clientY - origenY;
-    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
-    mover(dx < 0 ? 1 : -1);
-  });
-  document.addEventListener("keydown", (event) => {
-    if (visor.hidden) return;
-    if (event.key === "Escape") {
-      event.preventDefault();
-      cerrar();
-    } else if (event.key === "ArrowRight") {
-      event.preventDefault();
-      mover(1);
-    } else if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      mover(-1);
-    }
-  });
-  pintar();
-  return { visor, cerrar };
 };
 
 const prepararMenu = () => {
@@ -753,8 +645,7 @@ const prepararMenu = () => {
   const cerrar = () => {
     panel.hidden = true;
     toggle.setAttribute("aria-expanded", "false");
-    const visor = document.querySelector("[data-visor]");
-    if (!visor || visor.hidden) document.body.classList.remove("menu-abierto");
+    document.body.classList.remove("menu-abierto");
     if (retorno && retorno.focus) retorno.focus();
   };
   toggle.addEventListener("click", () => {
@@ -767,8 +658,6 @@ const prepararMenu = () => {
   document.addEventListener("keydown", (event) => {
     if (panel.hidden) return;
     if (event.key === "Escape") {
-      const visor = document.querySelector("[data-visor]");
-      if (visor && !visor.hidden) return;
       event.preventDefault();
       cerrar();
       return;
@@ -856,7 +745,7 @@ const prepararCarrusel = () => {
   sincronizar();
 };
 
-const prepararMovimiento = (visor) => {
+const prepararMovimiento = () => {
   const header = document.querySelector("[data-header]");
   const barra = document.querySelector("[data-barra]");
   const ratios = new Map();
@@ -910,22 +799,6 @@ const prepararMovimiento = (visor) => {
   };
   document.addEventListener("scroll", alScroll, { passive: true });
   alScroll();
-  if (visor) {
-    document.addEventListener("keydown", (event) => {
-      if (visor.hidden || event.key !== "Tab") return;
-      const nodos = [...visor.querySelectorAll("a, button")].filter((nodo) => !nodo.hidden);
-      if (!nodos.length) return;
-      const primero = nodos[0];
-      const ultimo = nodos[nodos.length - 1];
-      if (event.shiftKey && document.activeElement === primero) {
-        event.preventDefault();
-        ultimo.focus();
-      } else if (!event.shiftKey && document.activeElement === ultimo) {
-        event.preventDefault();
-        primero.focus();
-      }
-    });
-  }
 };
 
 const iniciar = async () => {
@@ -953,9 +826,8 @@ const iniciar = async () => {
   prepararEquipo(fotos);
   prepararFondos(fotos);
   prepararServicios(fotos);
-  const visor = document.querySelector("[data-visor]");
-  prepararGaleria(fotos);
-  prepararMovimiento(visor);
+  prepararLocal(fotos);
+  prepararMovimiento();
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
   }

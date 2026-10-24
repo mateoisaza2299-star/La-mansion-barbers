@@ -1,4 +1,4 @@
-const CACHE = "site-shell-v9";
+const CACHE = "site-shell-v10";
 
 const ADMIN_PAGES = ["admin.html", "admin-login.html"];
 const PUBLIC_PAGES = ["index.html", "historia.html", "privacidad.html", "tratamiento-datos.html", "404.html"];
@@ -7,6 +7,7 @@ const PUBLIC_JS = [
   "js/absoluto.js",
   "js/arranque.js",
   "js/pagina.js",
+  "js/carrusel.js",
   "js/reservas.js"
 ];
 

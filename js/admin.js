@@ -1365,6 +1365,7 @@ async function boot() {
     document.documentElement.classList.add("is-preparacion");
     return;
   }
+  document.documentElement.classList.remove("is-preparacion");
   const supabase = await obtenerAdmin();
   if (!supabase) {
     document.documentElement.classList.add("is-preparacion");
