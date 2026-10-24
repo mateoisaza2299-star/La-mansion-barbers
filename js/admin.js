@@ -3,6 +3,7 @@ import { obtenerAdmin } from "./admin-cliente.js";
 import { traducir, celularValido, nombreValido } from "./errores.js";
 import { hoyISO, sumarDias, fechaLegible, horaLegible, aMinutos, aHora, lunesDe, diaSemanaISO } from "./tiempo.js";
 import { nodo, hojaEstilos, marcaCasilla } from "./dom.js";
+import { mensajeCita } from "./mensajes.js";
 
 const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const SEMANA = [
@@ -117,18 +118,6 @@ function waCliente(telefono, texto) {
   const numero = digitos(telefono);
   if (numero.length !== 10) return "";
   return "https://wa.me/57" + numero + "?text=" + encodeURIComponent(texto);
-}
-
-function mensajeAviso(reserva) {
-  const cuando = fechaLegible(reserva.fecha) + " a las " + horaLegible(reserva.hora);
-  const servicio = nombreServicio(reserva.servicio_id);
-  if (reserva.estado === "cancelada") {
-    return "Hola " + reserva.nombre + ", tu cita " + reserva.numero + " del " + cuando + " en La Mansión fue cancelada.";
-  }
-  if (reserva.estado === "confirmada") {
-    return "Hola " + reserva.nombre + ", te recordamos tu cita " + reserva.numero + " en La Mansión: " + servicio + " el " + cuando + ".";
-  }
-  return "Hola " + reserva.nombre + ", tu cita " + reserva.numero + " en La Mansión quedó confirmada: " + servicio + " el " + cuando + ".";
 }
 
 function preguntar(texto, si, no) {
@@ -482,7 +471,14 @@ function accionesDe(reserva) {
     });
   }
   if (reserva.estado === "pendiente" || reserva.estado === "confirmada" || reserva.estado === "cancelada") {
-    const href = waCliente(reserva.telefono, mensajeAviso(reserva));
+    const href = waCliente(reserva.telefono, mensajeCita({
+      estado: reserva.estado,
+      nombre: reserva.nombre,
+      servicio: nombreServicio(reserva.servicio_id),
+      fecha: reserva.fecha,
+      hora: reserva.hora,
+      cancel_token: reserva.cancel_token
+    }));
     if (href) {
       const enlace = nodo("a", "btn", "Avisar por WhatsApp");
       enlace.href = href;

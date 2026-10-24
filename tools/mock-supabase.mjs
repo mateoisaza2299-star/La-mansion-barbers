@@ -78,6 +78,7 @@ function crearEstado() {
   const manana = sumarDias(hoy, 1);
   const base = (extra) => ({
     token: crypto.randomUUID(),
+    cancel_token: crypto.randomUUID(),
     sede_id: id.sede1,
     servicio_id: id.corte,
     precio: 25000,
@@ -361,6 +362,36 @@ function horasDe(estado, barberoId, fecha, duracion) {
   return slots;
 }
 
+function situacionCancelacion(reserva) {
+  if (!reserva) return "no_encontrada";
+  if (reserva.estado === "cancelada") return "cancelada";
+  const inicio = instanteBogota(reserva.fecha, reserva.hora);
+  if (inicio <= Date.now() || (reserva.estado !== "pendiente" && reserva.estado !== "confirmada")) return "pasada";
+  return "vigente";
+}
+
+function datosCancelacion(estado, reserva) {
+  const servicio = estado.servicios.find((item) => item.id === reserva.servicio_id);
+  return {
+    situacion: situacionCancelacion(reserva),
+    servicio: servicio ? servicio.nombre : "",
+    fecha: reserva.fecha,
+    hora: String(reserva.hora).slice(0, 5)
+  };
+}
+
+function cancelarCita(estado, body) {
+  const token = String(body.p_token || "").trim();
+  const reserva = estado.reservas.find((item) => item.cancel_token === token);
+  if (!reserva) return { error: "cita no encontrada" };
+  const datos = datosCancelacion(estado, reserva);
+  if (body.p_confirmar !== true) return { data: datos };
+  if (datos.situacion === "cancelada") return { error: "Esta cita ya fue cancelada" };
+  if (datos.situacion === "pasada") return { error: "Esta cita ya pasó" };
+  reserva.estado = "cancelada";
+  return { data: { ok: true, situacion: "cancelada", servicio: datos.servicio, fecha: datos.fecha, hora: datos.hora } };
+}
+
 function puedeCancelar(estado, reserva) {
   if (!reserva) return false;
   if (reserva.estado !== "pendiente" && reserva.estado !== "confirmada") return false;
@@ -471,6 +502,7 @@ function crearReserva(estado, body) {
   const reserva = {
     id: crypto.randomUUID(),
     token: crypto.randomUUID(),
+    cancel_token: crypto.randomUUID(),
     numero: "LM-" + estado.secuencia,
     barbero_id: barbero.id,
     servicio_id: servicio.id,
@@ -502,6 +534,7 @@ function rpc(estado, nombre, body, sesion) {
     if (!reserva) return { error: "cita no encontrada" };
     return { data: filaPublica(estado, reserva) };
   }
+  if (nombre === "cancelar_cita") return cancelarCita(estado, body || {});
   if (nombre === "cancelar_reserva" || nombre === "reagendar_reserva") {
     const reserva = estado.reservas.find((item) => item.token === body.p_token);
     if (!reserva) return { error: "cita no encontrada" };
@@ -667,17 +700,19 @@ function servirArchivo(req, res) {
     res.end();
     return;
   }
-  if (!fs.existsSync(destino) || fs.statSync(destino).isDirectory()) {
+  let archivo = destino;
+  if (fs.existsSync(destino) && fs.statSync(destino).isDirectory()) archivo = path.join(destino, "index.html");
+  if (!fs.existsSync(archivo) || fs.statSync(archivo).isDirectory()) {
     res.writeHead(404);
     res.end();
     return;
   }
-  if (destino.endsWith(path.join("js", "config.js"))) {
+  if (archivo.endsWith(path.join("js", "config.js"))) {
     const cookie = String(req.headers.cookie || "");
     const tiene = (nombre) => cookie.split(";").some((parte) => parte.trim() === nombre);
     if (tiene("lm_activo=1") || tiene("lm_preparacion=1")) {
       const origen = "http://127.0.0.1:" + req.socket.localPort;
-      let texto = fs.readFileSync(destino, "utf8");
+      let texto = fs.readFileSync(archivo, "utf8");
       if (tiene("lm_preparacion=1")) {
         texto = texto.replace(/enPreparacion:\s*(true|false)/, "enPreparacion: true");
         texto = texto.replace(/supabase:\s*\{[^}]*\}/, 'supabase: { url: "", key: "" }');
@@ -690,8 +725,8 @@ function servirArchivo(req, res) {
       return;
     }
   }
-  res.writeHead(200, { "content-type": tipos[path.extname(destino)] || "application/octet-stream", "cache-control": "no-store" });
-  fs.createReadStream(destino).pipe(res);
+  res.writeHead(200, { "content-type": tipos[path.extname(archivo)] || "application/octet-stream", "cache-control": "no-store" });
+  fs.createReadStream(archivo).pipe(res);
 }
 
 export function iniciar(puerto = 0) {

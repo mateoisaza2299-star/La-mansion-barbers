@@ -9,7 +9,10 @@ const TABLA = [
   ["falta autorizacion", "Debes aceptar el tratamiento de datos para reservar."],
   ["cita no encontrada", "No encontramos esa cita."],
   ["cita no cancelable", "Esta cita ya no se puede cancelar."],
-  ["fuera de plazo", "Ya pasó el plazo para cancelar o cambiar la cita."]
+  ["fuera de plazo", "Ya pasó el plazo para cancelar o cambiar la cita."],
+  ["esta cita ya fue cancelada", "Esta cita ya fue cancelada"],
+  ["esta cita ya pasó", "Esta cita ya pasó"],
+  ["esta cita ya paso", "Esta cita ya pasó"]
 ];
 
 export function traducir(error) {

@@ -1165,6 +1165,13 @@ html.motion .local.is-play .local-slide.is-on > img.principal.is-zoom { animatio
 
 .visita-pista { margin: 0.8rem 0 0; }
 
+.pagina-simple .cancelar-datos p {
+  margin: 0.35rem 0;
+  color: var(--hueso);
+}
+
+.pagina-simple .caja .hero-acciones { justify-content: center; }
+
 .reserva-card,
 .pagina-simple .caja {
   max-width: 40rem;

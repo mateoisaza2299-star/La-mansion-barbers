@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; font-src 'self'; connect-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src https://www.google.com https://maps.google.com">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cancelar cita | La Mansión Barber Shop</title>
+  <meta name="description" content="Cancela tu cita en La Mansión Barber Shop.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://mateoisaza2299-star.github.io/La-mansion-barbers/cancelar">
+  <meta name="theme-color" content="#0A0A0A">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="../assets/favicon.ico" sizes="any">
+  <link rel="icon" href="../assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png" sizes="180x180">
+  <link rel="preload" href="../assets/fonts/cinzel-600.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../assets/fonts/oswald-500.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="public">
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+  <header class="site-header is-scrolled" data-header>
+    <div class="wrap header-bar">
+      <a class="logo" href="../index.html#inicio">
+        <img src="../assets/logo/logo-256.webp" srcset="../assets/logo/logo-256.webp 1x, ../assets/logo/logo-512.webp 2x" width="256" height="124" alt="La Mansión Barber Shop">
+      </a>
+    </div>
+  </header>
+  <main id="contenido" class="pagina-simple" tabindex="-1">
+    <div class="wrap">
+      <article class="caja" data-cancelar>
+        <p class="etiqueta">Tu cita</p>
+        <h1 data-cancelar-titulo>Cancelar cita</h1>
+        <div class="cancelar-datos">
+          <p data-cancelar-servicio hidden></p>
+          <p data-cancelar-fecha hidden></p>
+          <p data-cancelar-hora hidden></p>
+        </div>
+        <p data-cancelar-estado role="status"></p>
+        <div class="hero-acciones">
+          <button class="btn" type="button" data-cancelar-abrir hidden>Cancelar mi cita</button>
+          <a class="btn" href="../index.html#reservar" data-cancelar-otra hidden>Agendar otra cita</a>
+        </div>
+      </article>
+    </div>
+  </main>
+  <div class="reserva-confirma" data-cancelar-confirma hidden>
+    <div class="reserva-confirma-card" role="dialog" aria-modal="true" aria-labelledby="cancelar-pregunta">
+      <p id="cancelar-pregunta">¿Seguro que quieres cancelar esta cita?</p>
+      <div class="cita-acciones">
+        <button class="btn" type="button" data-cancelar-si>Cancelar mi cita</button>
+        <button class="btn btn-sec" type="button" data-cancelar-no>Volver</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="../js/cancelar.js"></script>
+</body>
+</html>

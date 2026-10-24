@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { iniciar } from "./mock-supabase.mjs";
-import { hoyISO, sumarDias, diaSemanaISO, horaLegible } from "../js/tiempo.js";
+import { hoyISO, sumarDias, diaSemanaISO, horaLegible, fechaCita } from "../js/tiempo.js";
 
 const require = createRequire("/tmp/pw/package.json");
 const { chromium } = require("playwright-core");
@@ -72,7 +72,7 @@ async function radiosControl(page) {
 async function fueraDeTarjeta(page) {
   return page.evaluate(() => {
     const fuera = [];
-    document.querySelectorAll(".horario-hoja, .pa-cita, .horario-semana-card, .login-card, .visita-tarjeta, .reserva-card").forEach((card) => {
+    document.querySelectorAll(".horario-hoja, .pa-cita, .horario-semana-card, .login-card, .visita-tarjeta, .reserva-card, .pagina-simple .caja").forEach((card) => {
       if (card.closest("[hidden]") || card.hidden) return;
       const caja = card.getBoundingClientRect();
       if (caja.width < 2) return;
@@ -374,6 +374,85 @@ async function probarFicha(page) {
   exigir(ana && ana.servicios == null, "no guardó todos los servicios");
 }
 
+function textoWhatsapp(href) {
+  return new URL(href).searchParams.get("text") || "";
+}
+
+async function exigirMensaje(href, tipo, nombre, fecha, hora, ancho) {
+  const texto = textoWhatsapp(href);
+  const primero = nombre.split(" ")[0];
+  const resto = nombre.slice(primero.length).trim();
+  exigir(texto.startsWith("👋 Hola " + primero + "\n"), ancho + " saludo");
+  exigir(texto.includes("💈 *La Mansión Barber Shop*"), ancho + " sin nombre del local");
+  exigir(texto.includes("✂️ Corte clásico"), ancho + " sin servicio");
+  exigir(texto.includes("📅 " + fechaCita(fecha)), ancho + " fecha");
+  exigir(texto.includes("🕛 " + horaLegible(hora)), ancho + " hora");
+  exigir(!texto.includes("m.."), ancho + " doble punto");
+  exigir(texto.includes("📍 Vía Funza - Siberia, Km 3.8, La Isla, Ceuta, Funza"), ancho + " sin dirección");
+  exigir(!/LM-\d/.test(texto), ancho + " muestra el número interno");
+  if (resto) exigir(!texto.includes(resto), ancho + " usa el nombre completo");
+  const cierre = tipo === "recordatorio"
+    ? "¿No puedes asistir? Cancela aquí y liberamos tu espacio:"
+    : "Si necesitas cancelarla, hazlo aquí:";
+  exigir(texto.includes("✅ " + cierre), ancho + " cierre " + tipo);
+  exigir(/\/cancelar\?token=[0-9a-f-]{36}/i.test(texto), ancho + " sin enlace de cancelación");
+}
+
+async function probarCancelacion(page) {
+  const datos = await page.evaluate(async ({ ana, corte, fecha }) => {
+    const modulo = await import("./js/admin-cliente.js");
+    const supabase = await modulo.obtenerAdmin();
+    const horasLibres = await supabase.rpc("horas_disponibles", { p_barbero: ana, p_fecha: fecha, p_duracion: 45 });
+    if (horasLibres.error) throw new Error("horas");
+    const hora = horasLibres.data && horasLibres.data[0] && String(horasLibres.data[0].slot).slice(0, 5);
+    if (!hora) throw new Error("sin hora");
+    const alta = await supabase.rpc("crear_reserva", {
+      p_barbero: ana,
+      p_servicio: corte,
+      p_fecha: fecha,
+      p_hora: hora,
+      p_nombre: "Cita Cancelable",
+      p_telefono: "3005556677",
+      p_notas: "",
+      p_autoriza: true
+    });
+    if (alta.error) throw new Error(alta.error.message || "alta");
+    const lista = await supabase.from("reservas").select("cancel_token,id").eq("nombre", "Cita Cancelable");
+    if (lista.error || !lista.data || !lista.data[0]) throw new Error("sin token");
+    const pasadas = await supabase.from("reservas").select("cancel_token").eq("estado", "completada").limit(1);
+    if (pasadas.error || !pasadas.data || !pasadas.data[0]) throw new Error("sin pasada");
+    return { token: lista.data[0].cancel_token, id: lista.data[0].id, pasada: pasadas.data[0].cancel_token, fecha, hora };
+  }, { ana: "33333333-3333-4333-8333-333333333333", corte: CORTE, fecha: habil(9) });
+  exigir(datos.token && datos.token !== datos.id, "el enlace usa el id de la cita");
+  await page.goto(origen + "/cancelar?token=" + encodeURIComponent(datos.token), { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("[data-cancelar-servicio]:not([hidden])", { timeout: 10000 });
+  const cuerpo = await textoDe(page.locator("[data-cancelar]"));
+  exigir(cuerpo.includes("Corte clásico"), "cancelar sin servicio");
+  exigir(cuerpo.includes(fechaCita(datos.fecha)), "cancelar sin fecha");
+  exigir(cuerpo.includes(horaLegible(datos.hora)), "cancelar sin hora");
+  await revisar(page, 1366, "cancelar");
+  await foto(page, "1366-cancelar");
+  await page.locator("[data-cancelar-abrir]").click();
+  await page.waitForSelector("[data-cancelar-confirma]:not([hidden])");
+  await page.locator("[data-cancelar-no]").click();
+  await page.waitForSelector("[data-cancelar-confirma]", { state: "hidden" });
+  await page.locator("[data-cancelar-abrir]").click();
+  await page.locator("[data-cancelar-si]").click();
+  await page.waitForSelector("[data-cancelar-otra]:not([hidden])", { timeout: 10000 });
+  exigir((await textoDe(page.locator("[data-cancelar]"))).includes("Tu cita quedó cancelada"), "sin confirmación de cancelación");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => (document.querySelector("[data-cancelar-estado]") || {}).textContent === "Esta cita ya fue cancelada");
+  await page.goto(origen + "/cancelar?token=" + encodeURIComponent(datos.pasada), { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => (document.querySelector("[data-cancelar-estado]") || {}).textContent === "Esta cita ya pasó");
+  await page.goto(origen + "/admin.html", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("[data-nav]:visible [data-vista='reservas']", { timeout: 15000 });
+  await navVisible(page, "reservas");
+  await page.waitForFunction(() => {
+    const nodo = [...document.querySelectorAll("article.pa-cita")].find((el) => el.textContent.includes("Cita Cancelable"));
+    return nodo && nodo.textContent.includes("Cancelada");
+  });
+}
+
 async function flujoPanel(page, ancho) {
   await entrar(page, "dueno@lamansion.test", "ClaveDueno123");
   await page.waitForSelector("text=Cliente Ana Uno", { timeout: 10000 });
@@ -390,6 +469,7 @@ async function flujoPanel(page, ancho) {
     const card = [...document.querySelectorAll("article.pa-cita")].find((el) => el.textContent.includes("Cliente Ana Uno"));
     return card && card.textContent.includes("Confirmada");
   });
+  await exigirMensaje(await ana.locator("[data-accion='avisar']").getAttribute("href"), "recordatorio", "Cliente Ana Uno", hoyISO(), "10:00", ancho);
   const dos = page.locator("article.pa-cita", { hasText: "Cliente Ana Dos" });
   await dos.locator("[data-accion='completada']").click();
   await page.waitForFunction(() => {
@@ -406,11 +486,13 @@ async function flujoPanel(page, ancho) {
   const href = await aviso.locator("[data-accion='avisar']").getAttribute("href");
   exigir(href && href.includes("wa.me/573101111114"), ancho + " whatsapp " + href);
   exigir((await aviso.locator(".falta-avisar").count()) === 1, ancho + " sin falta avisar");
+  await exigirMensaje(href, "confirmacion", "Cliente Ana Aviso", hoyISO(), "15:00", ancho);
   await aviso.locator("[data-accion='avisar']").click();
   await page.waitForFunction(() => {
     const card = [...document.querySelectorAll("article.pa-cita")].find((el) => el.textContent.includes("Cliente Ana Aviso"));
     return card && !card.querySelector(".falta-avisar");
   });
+  if (ancho === 1366) await probarCancelacion(page);
   await foto(page, ancho + "-reservas");
 
   await navVisible(page, "equipo");

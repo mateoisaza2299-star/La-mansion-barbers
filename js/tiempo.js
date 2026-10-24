@@ -1,8 +1,10 @@
 export const ZONA = "America/Bogota";
 
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const DIAS_CITA = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const CORTOS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const MESES_CITA = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
 export function hoyISO(fecha) {
   return new Intl.DateTimeFormat("en-CA", {
@@ -65,6 +67,14 @@ export function fechaLegible(iso) {
   if (partes.length < 3 || !partes[0]) return "";
   const dia = diaSemanaISO(iso);
   return DIAS[dia] + " " + partes[2] + " " + MESES[partes[1] - 1];
+}
+
+export function fechaCita(iso) {
+  const partes = String(iso || "").split("-").map(Number);
+  if (partes.length < 3 || !partes[0]) return "";
+  const dia = diaSemanaISO(iso);
+  if (dia < 0) return "";
+  return DIAS_CITA[dia] + " " + partes[2] + " de " + MESES_CITA[partes[1] - 1];
 }
 
 export function fechaCorta(iso) {
