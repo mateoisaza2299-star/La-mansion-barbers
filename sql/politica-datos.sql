@@ -3,7 +3,7 @@
 -- La clave pública del sitio no puede aplicar este DDL.
 --
 -- No crea otra función de reserva: toma el cuerpo actual de public.crear_reserva,
--- le agrega la trampa, normaliza el celular, baja el tope a 2 citas activas
+-- le agrega p_autoriza y la trampa, normaliza el celular, baja el tope a 2 citas activas
 -- y deja la misma lógica de horarios. Al insertar, el trigger guarda
 -- autorizacion_datos y autorizacion_fecha. Si autorizacion_datos no es true, rechaza.
 
@@ -70,6 +70,7 @@ declare
   i int;
   caracter text;
   cierre int := 0;
+  extras text := '';
   inyeccion text;
 begin
   select p.oid
@@ -109,8 +110,15 @@ begin
     sufijo := substr(def, aviso);
     def := prefijo || ventana || sufijo;
 
+    if position('p_autoriza' in pg_get_function_identity_arguments(objetivo)) = 0
+       and position('p_autoriza boolean' in lower(def)) = 0 then
+      extras := extras || ', p_autoriza boolean DEFAULT false';
+    end if;
     if position('p_trampa' in pg_get_function_identity_arguments(objetivo)) = 0
-       and position('p_trampa' in def) = 0 then
+       and position('p_trampa text' in lower(def)) = 0 then
+      extras := extras || ', p_trampa text DEFAULT NULL::text';
+    end if;
+    if extras <> '' then
       firma_ini := position('crear_reserva(' in def);
       if firma_ini = 0 then
         raise exception 'No encontré la firma de crear_reserva.';
@@ -131,9 +139,7 @@ begin
       if cierre = 0 then
         raise exception 'No cerré la lista de argumentos de crear_reserva.';
       end if;
-      def := substr(def, 1, cierre - 1)
-        || ', p_trampa text DEFAULT NULL::text'
-        || substr(def, cierre);
+      def := substr(def, 1, cierre - 1) || extras || substr(def, cierre);
     end if;
 
     if lower(resultado) = 'jsonb' then

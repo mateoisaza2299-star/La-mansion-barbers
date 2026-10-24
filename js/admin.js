@@ -2233,8 +2233,9 @@ async function crearCita(evento) {
   };
   let respuesta = await estado.supabase.rpc("crear_reserva", payload);
   const avisoRpc = String((respuesta.error && (respuesta.error.message || respuesta.error.details)) || "");
-  if (respuesta.error && /p_trampa|schema cache/i.test(avisoRpc)) {
+  if (respuesta.error && /p_trampa|p_autoriza|schema cache/i.test(avisoRpc)) {
     delete payload.p_trampa;
+    delete payload.p_autoriza;
     respuesta = await estado.supabase.rpc("crear_reserva", payload);
   }
   const fallo = respuesta.error;
