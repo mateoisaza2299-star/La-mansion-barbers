@@ -620,8 +620,13 @@ function avanzar() {
   if (titulo) titulo.focus();
 }
 
+function categoriaPublica(nombre) {
+  return nombre && !["Niños", "Mujer", "Color"].includes(nombre);
+}
+
 function pintarServicios(host) {
-  const categorias = ["Todos", ...new Set(serviciosActivos().map((item) => item.categoria).filter(Boolean))];
+  const visibles = serviciosActivos().filter((item) => categoriaPublica(item.categoria));
+  const categorias = ["Todos", ...new Set(visibles.map((item) => item.categoria).filter(Boolean))];
   let activa = "Todos";
   const chips = nodo("div", "chips");
   chips.setAttribute("role", "group");
@@ -629,7 +634,7 @@ function pintarServicios(host) {
   const lista = nodo("div", "opciones");
   const pintar = () => {
     lista.replaceChildren();
-    serviciosActivos().filter((item) => activa === "Todos" || item.categoria === activa).forEach((servicio) => {
+    visibles.filter((item) => activa === "Todos" || item.categoria === activa).forEach((servicio) => {
       const boton = nodo("button", "opcion", "");
       boton.type = "button";
       boton.dataset.servicio = servicio.id;

@@ -12,7 +12,7 @@ Eso ejecuta `node tools/procesar-fotos.mjs`. Genera WebP en `assets/img/fotos/`,
 
 ## Reservas
 
-El sitio reserva sin cuenta y con un horario por barbero. El cliente elige servicio, barbero (o el primero libre), fecha y hora, y deja nombre, celular y la autorización de datos. La cita queda en el navegador, se puede cancelar o cambiar, y la tarjeta de fidelidad se consulta con el celular. El panel (Agenda, Reservas, Barberos y horarios, Servicios, Fidelidad, Resumen y Ajustes) distingue al dueño del barbero: el barbero solo ve su agenda. Las páginas legales están en preparación. La URL y la clave pública viven solo en `negocio.supabase`. Si falta alguna, o `enPreparacion` sigue en `true`, la página no llama a Supabase.
+El sitio reserva sin cuenta y con un horario por barbero. El cliente elige servicio, barbero (o el primero libre), fecha y hora, y deja nombre, celular y la autorización de datos. La cita queda en el navegador, se puede cancelar o cambiar, y la tarjeta de fidelidad se consulta con el celular. El panel (Agenda, Reservas, Barberos, Servicios, Fidelidad, Resumen y Ajustes) distingue al dueño del barbero: el barbero solo ve su agenda y su horario. Las páginas legales están en preparación. La URL y la clave pública viven solo en `negocio.supabase`. Si falta alguna, o `enPreparacion` sigue en `true`, la página no llama a Supabase.
 
 ## Activar reservas
 

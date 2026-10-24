@@ -496,16 +496,39 @@ const servicioNodo = (servicio) => {
 
 const slug = (valor) => valor.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-const prepararServicios = (fotos) => {
+const categoriaPublica = (nombre) => nombre && !["Niños", "Mujer", "Color"].includes(nombre);
+
+const cargarServiciosMenu = async () => {
+  if (!reservasEnLinea()) return null;
+  try {
+    const modulo = await import("./supabase.js");
+    const supabase = await modulo.obtenerSupabase();
+    if (!supabase) return null;
+    const { data, error } = await supabase.from("servicios").select("*").eq("activo", true).order("orden");
+    if (error || !Array.isArray(data)) return null;
+    return data.filter((item) => item && item.activo !== false && categoriaPublica(item.categoria));
+  } catch (error) {
+    return null;
+  }
+};
+
+const prepararServicios = async (fotos) => {
   const carta = document.querySelector("[data-carta]");
   const estatica = document.querySelector("[data-carta-estatica]");
-  if (!carta || !Array.isArray(negocio.servicios) || !negocio.servicios.length) return;
-  const orden = ["Cortes", "Barba", "Niños", "Mujer", "Color", "FreeStyle y diseños", "Cuidado facial"];
+  if (!carta) return;
+  const remoto = await cargarServiciosMenu();
+  const catalogo = (Array.isArray(remoto) ? remoto : (negocio.servicios || [])).filter((item) => categoriaPublica(item.categoria));
+  if (!catalogo.length) {
+    if (estatica) estatica.hidden = true;
+    carta.hidden = true;
+    return;
+  }
+  const orden = ["Cortes", "Barba", "FreeStyle y diseños", "Cuidado facial"];
   const presentes = [];
   orden.forEach((nombre) => {
-    if (negocio.servicios.some((item) => item.categoria === nombre)) presentes.push(nombre);
+    if (catalogo.some((item) => item.categoria === nombre)) presentes.push(nombre);
   });
-  negocio.servicios.forEach((item) => {
+  catalogo.forEach((item) => {
     if (item.categoria && !presentes.includes(item.categoria)) presentes.push(item.categoria);
   });
   const banco = fotos.filter((foto) => ["corte", "equipo", "producto", "interior", "nosotros"].includes(foto.categoria) && ladoDe(foto) >= 480);
@@ -517,7 +540,6 @@ const prepararServicios = (fotos) => {
   const asignadas = new Map();
   let previa = "";
   const candidatas = (nombre) => banco.filter((foto) => {
-    if (nombre === "Niños") return foto.id === "nosotros-1" || /niñ|niño/i.test(foto.alt || "");
     if (menorEnPrimerPlano(foto)) return false;
     if (nombre === "Barba") return foto.categoria === "corte" || foto.categoria === "equipo";
     if (nombre === "Cuidado facial") return ["producto", "interior", "corte"].includes(foto.categoria);
@@ -590,7 +612,7 @@ const prepararServicios = (fotos) => {
   };
   presentes.forEach((nombre, indice) => {
     const id = slug(nombre) || "cat-" + indice;
-    const servicios = negocio.servicios.filter((item) => item.categoria === nombre);
+    const servicios = catalogo.filter((item) => item.categoria === nombre);
     const tab = document.createElement("button");
     tab.type = "button";
     tab.className = "carta-tab";
@@ -898,7 +920,7 @@ const iniciar = async () => {
   refrescarNosotros(fotos);
   prepararHero(fotos);
   prepararFondos(fotos);
-  prepararServicios(fotos);
+  await prepararServicios(fotos);
   prepararLocal(fotos);
   prepararMapa();
   if (document.querySelector("[data-trabajo]")) prepararTrabajo({ fotos, puede, marcar, crearImagen, reducir: reduce });

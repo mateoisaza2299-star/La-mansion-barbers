@@ -156,6 +156,19 @@ if (reintentar) {
   });
 }
 
+const verClave = document.querySelector("[data-ver-clave]");
+if (verClave && form) {
+  verClave.addEventListener("click", () => {
+    const campo = form.querySelector('input[name="password"]');
+    if (!campo) return;
+    const visible = campo.type === "password";
+    campo.type = visible ? "text" : "password";
+    verClave.setAttribute("aria-pressed", visible ? "true" : "false");
+    verClave.setAttribute("aria-label", visible ? "Ocultar contraseña" : "Mostrar contraseña");
+    verClave.textContent = visible ? "Ocultar" : "Mostrar";
+  });
+}
+
 const boot = async () => {
   if (!reservasEnLinea()) {
     document.documentElement.classList.add("is-preparacion");

@@ -22,7 +22,7 @@
   --muted-light: var(--gris);
   --line: var(--linea);
   --gold-line: var(--oro);
-  --header: 72px;
+  --header: 68px;
   --display: "Cinzel", "Times New Roman", serif;
   --impacto: "Oswald", "Arial Narrow", sans-serif;
   --serif: var(--display);
@@ -212,12 +212,13 @@ body:not(.admin-body) h3 {
 .logo { display: flex; align-items: center; text-decoration: none; }
 
 .logo img {
-  width: auto;
-  height: 36px;
-  opacity: 0.92;
+  width: 83px;
+  height: 40px;
+  opacity: 1;
+  object-fit: contain;
 }
 
-.site-footer .logo img { height: 56px; }
+.site-footer .logo img { width: 140px; height: 68px; }
 
 .site-header {
   position: fixed;
@@ -1380,8 +1381,11 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
   .seccion,
   .cita,
   .productos { padding: 88px 0; }
-  .logo img { height: 40px; }
-  .site-footer .logo img { height: 56px; }
+  :root { --header: 76px; }
+  .logo img { width: 99px; height: 48px; }
+  .site-header.is-scrolled .logo img,
+  .site-header.is-open .logo img { width: 83px; height: 40px; }
+  .site-footer .logo img { width: 140px; height: 68px; }
   .nav-desk { display: flex; }
   .nav-toggle,
   .barra-movil,

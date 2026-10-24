@@ -59,8 +59,8 @@ function crearEstado() {
     baseServicio({ id: id.combo, categoria: "Cortes", nombre: "Corte y barba", descripcion: "Corte y arreglo en la misma visita.", duracion_min: 60, orden: 3 }),
     baseServicio({ id: id.barba, categoria: "Barba", nombre: "Arreglo de barba", descripcion: "Perfil, forma y definición.", orden: 4 }),
     baseServicio({ id: id.completa, categoria: "Barba", nombre: "Barba completa", descripcion: "Diseño de toda la barba.", orden: 5 }),
-    baseServicio({ id: id.nino, categoria: "Niños", nombre: "Corte para niños", descripcion: "Con calma y a su ritmo.", orden: 6 }),
-    baseServicio({ id: id.mujer, categoria: "Mujer", nombre: "Corte para mujer", descripcion: "Consulta disponibilidad.", orden: 7 })
+    baseServicio({ id: id.nino, categoria: "FreeStyle y diseños", nombre: "Diseños", descripcion: "Líneas, figuras y freestyle sobre el corte.", orden: 6 }),
+    baseServicio({ id: id.mujer, categoria: "Cuidado facial", nombre: "Cuidado facial", descripcion: "Limpieza y cuidado de la piel del rostro.", orden: 7 })
   ];
   const barberos = [
     { id: id.ana, nombre: "Ana Rojas", especialidad: "Cortes y barba", sede_id: id.sede1, foto: "", servicios: null, orden: 1, activo: true },
@@ -334,8 +334,12 @@ function ocupado(estado, barberoId, fecha, hora, duracion, ignorarId) {
 function horasDe(estado, barberoId, fecha, duracion) {
   const barbero = estado.barberos.find((item) => item.id === barberoId);
   if (!barbero || barbero.activo === false) return [];
-  const dia = diaSemanaISO(fecha);
-  const rangos = estado.horarios.filter((item) => item.barbero_id === barberoId && Number(item.dia) === dia);
+  const crudo = diaSemanaISO(fecha);
+  const dia = crudo === 0 ? 7 : crudo;
+  const rangos = estado.horarios.filter((item) => {
+    const guardado = Number(item.dia);
+    return item.barbero_id === barberoId && (guardado === dia || (dia === 7 && guardado === 0));
+  });
   const paso = Number(estado.config.paso_min) || 30;
   const minutos = Number(duracion) || 30;
   const hoy = hoyISO();

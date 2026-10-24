@@ -82,7 +82,7 @@ async function llenarDatos(page, nombre, telefono) {
 
 async function reservar(page, opciones) {
   await abrirReserva(page);
-  const servicio = page.locator('[data-servicio="' + CORTE + '"]');
+  const servicio = page.locator("[data-reserva-pasos] [data-servicio='" + CORTE + "']");
   exigir((await textoDe(servicio)).includes("Precio por confirmar"), "el servicio sin precio no avisa el precio");
   await servicio.click();
   if (await page.locator('[data-barbero="' + opciones.barbero + '"]').count()) {
@@ -107,6 +107,8 @@ async function navVisible(page, vista) {
 async function entrar(page, correo, clave) {
   await page.goto(origen + "/admin-login.html", { waitUntil: "domcontentloaded" });
   await page.waitForSelector("[data-login]", { state: "visible", timeout: 15000 });
+  const acceso = await page.locator(".login-card .logo img").boundingBox();
+  exigir(acceso && Math.abs(acceso.height - 60) <= 2, "logo acceso " + (acceso && acceso.height));
   await page.locator('input[name="email"]').fill(correo);
   await page.locator('input[name="password"]').fill(clave);
   await page.locator("[data-login-submit]").click();
@@ -123,6 +125,20 @@ async function capturas(page, ancho) {
   await page.locator("#nosotros").scrollIntoViewIfNeeded();
   await page.waitForTimeout(400);
   exigir(await logos(page) <= 2, ancho + " logos inicio " + await logos(page));
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(200);
+  const altoLogo = ancho >= 900 ? 48 : 40;
+  const cabecera = await page.locator("header.site-header .logo img").boundingBox();
+  exigir(cabecera && Math.abs(cabecera.height - altoLogo) <= 2, ancho + " logo cabecera " + (cabecera && cabecera.height));
+  const pieLogo = await page.locator("footer .logo img").boundingBox();
+  exigir(pieLogo && Math.abs(pieLogo.height - 68) <= 2, ancho + " logo pie " + (pieLogo && pieLogo.height));
+  if (ancho >= 900) {
+    await page.evaluate(() => window.scrollTo(0, 500));
+    await page.waitForTimeout(400);
+    const scrolled = await page.locator("header.site-header .logo img").boundingBox();
+    exigir(scrolled && Math.abs(scrolled.height - 40) <= 2, ancho + " logo al bajar " + (scrolled && scrolled.height));
+    await page.evaluate(() => window.scrollTo(0, 0));
+  }
   await page.locator("#nosotros").screenshot({ path: path.join(dir, ancho + "-nosotros.png") });
   const extraNos = await desborde(page);
   exigir(extraNos <= 1, ancho + " desborde nosotros " + extraNos);
@@ -140,7 +156,7 @@ async function capturas(page, ancho) {
   await page.locator("[data-mapa]").screenshot({ path: path.join(dir, ancho + "-mapa.png") });
   const extraVis = await desborde(page);
   exigir(extraVis <= 1, ancho + " desborde visita " + extraVis);
-  await page.locator("[data-carta] [data-reservar][data-servicio='corte-clasico']:visible").click();
+  await page.locator("[data-carta] [data-reservar][data-servicio-nombre='Corte clásico']:visible").click();
   await page.waitForSelector("[data-paso-titulo]", { timeout: 10000 });
   const titulo = await page.locator("[data-paso-titulo]").innerText();
   exigir(/barbero/i.test(titulo), ancho + " reservar servicio no abrió el paso: " + titulo);
@@ -227,7 +243,7 @@ async function flujoPublico(page, ancho, telefono) {
   exigir(detalle.includes("Luis Gómez"), ancho + " se perdió el barbero");
 
   await abrirReserva(page);
-  await page.locator('[data-servicio="' + CORTE + '"]').click();
+  await page.locator("[data-reserva-pasos] [data-servicio='" + CORTE + "']").click();
   await page.locator('[data-barbero="primero"]').click();
   await elegirDia(page, fechaTres);
   const horaOcupada = await page.locator("[data-hora]").first().getAttribute("data-hora");
@@ -316,8 +332,8 @@ async function flujoPanel(page, ancho) {
   exigir(opcionLocal.includes("Cerrar el local"), ancho + " sin cerrar el local: " + opcionLocal);
   await page.locator("[data-bloqueo-fecha]").fill(bloqueo);
   await page.locator("[data-bloqueo-dia]").uncheck();
-  await page.locator("[name='desde']").fill("10:00");
-  await page.locator("[name='hasta']").fill("12:00");
+  await page.locator("[name='desde']").selectOption("10:00");
+  await page.locator("[name='hasta']").selectOption("12:00");
   await page.locator("[data-bloqueo-motivo]").fill("Capacitación");
   await page.locator("[data-bloqueo-guardar]").click();
   await page.waitForSelector("[data-bloqueos] >> text=Capacitación", { timeout: 10000 });
@@ -334,13 +350,93 @@ async function flujoPanel(page, ancho) {
   exigir(horas.includes("14:00"), ancho + " se cerró el local entero " + horas.join(","));
   await publica.close();
   const cierra = page.locator("[data-horario-dia='1'][data-horario-campo='cierra']").first();
-  await cierra.fill(CIERRES[ancho]);
+  await cierra.selectOption(CIERRES[ancho]);
   await page.locator("[data-horario-guardar]").click();
   await page.waitForFunction((valor) => {
     const campo = document.querySelector("[data-horario-dia='1'][data-horario-campo='cierra']");
     return campo && campo.value.slice(0, 5) === valor;
   }, CIERRES[ancho]);
   await foto(page, ancho + "-equipo");
+  await page.locator(".pa-top").screenshot({ path: path.join(dir, ancho + "-panel-cabecera.png") });
+  await page.getByRole("button", { name: "Lunes a sábado" }).click();
+  const lunes = page.locator("fieldset.horario-dia", { has: page.locator("legend", { hasText: "Lunes" }) });
+  await lunes.locator("[data-horario-campo='cierra']").selectOption("13:00");
+  await lunes.getByRole("button", { name: "Agregar descanso o turno" }).click();
+  await lunes.locator("[data-horario-campo='abre']").nth(1).selectOption("14:00");
+  await page.getByRole("button", { name: "Copiar el lunes a todos los días" }).click();
+  const domingo = page.locator("fieldset.horario-dia", { has: page.locator("legend", { hasText: "Domingo" }) });
+  if ((await domingo.locator("[role='switch']").getAttribute("aria-checked")) === "true") {
+    await domingo.locator("[role='switch']").click();
+  }
+  await page.locator("[data-horario-guardar]").click();
+  await page.waitForFunction(() => {
+    const aviso = document.querySelector("[data-horario-aviso]");
+    return aviso && aviso.hidden;
+  });
+  await page.locator("[data-horario-editor]").screenshot({ path: path.join(dir, ancho + "-horarios.png") });
+  const extraHorario = await desborde(page);
+  exigir(extraHorario <= 1, ancho + " desborde horarios " + extraHorario);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForSelector("[data-nav]:visible [data-vista='agenda']", { timeout: 15000 });
+  await navVisible(page, "equipo");
+  await page.waitForSelector("[data-horario-dia='2'][data-horario-campo='abre']");
+  const leido = await page.locator("[data-horario-dia='2'][data-horario-campo='abre']").evaluateAll((nodos) => nodos.map((nodo) => nodo.value));
+  exigir(leido.includes("10:00") && leido.includes("14:00"), ancho + " horario no se leyó " + leido.join(","));
+  const domingoCerrado = await page.locator("fieldset.horario-dia", { has: page.locator("legend", { hasText: "Domingo" }) }).locator("[role='switch']").getAttribute("aria-checked");
+  exigir(domingoCerrado === "false", ancho + " el domingo quedó abierto");
+
+  await navVisible(page, "ajustes");
+  await page.locator("[data-ajuste='paso_min']").selectOption("45");
+  await page.locator("[data-ajuste='anticipacion_min']").selectOption("120");
+  await page.locator("[data-ajuste='dias_max']").selectOption("30");
+  await page.locator("[data-ajuste='cancelar_min']").selectOption("60");
+  await page.locator("[data-ajuste='reservas_activas']").click();
+  await page.waitForFunction(() => {
+    const estado = document.querySelector("[data-ajuste-estado]");
+    return estado && (estado.textContent || "").includes("Pausadas");
+  });
+  await page.locator("[data-ajuste='reservas_activas']").click();
+  await page.locator("[data-ajuste='fidelidad_meta'] [data-mas]").click();
+  const frase = await page.locator("[data-ajuste-frase]").innerText();
+  exigir(frase.includes("Horas cada 45 min") && frase.includes("30 días adelante") && frase.includes("1 h antes"), ancho + " frase " + frase);
+  await page.locator("[data-ajustes-guardar]").click();
+  await page.waitForSelector("[data-ajustes-ok]:not([hidden])", { timeout: 10000 });
+  await page.locator("[data-panel='ajustes']").screenshot({ path: path.join(dir, ancho + "-ajustes.png") });
+  const extraAjustes = await desborde(page);
+  exigir(extraAjustes <= 1, ancho + " desborde ajustes " + extraAjustes);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForSelector("[data-nav]:visible [data-vista='agenda']", { timeout: 15000 });
+  await navVisible(page, "ajustes");
+  exigir(await page.locator("[data-ajuste='paso_min']").inputValue() === "45", ancho + " no guardó el intervalo");
+  exigir(await page.locator("[data-ajuste='anticipacion_min']").inputValue() === "120", ancho + " no guardó la anticipación");
+  exigir(await page.locator("[data-ajuste='dias_max']").inputValue() === "30", ancho + " no guardó los días");
+  exigir(await page.locator("[data-ajuste='cancelar_min']").inputValue() === "60", ancho + " no guardó el plazo");
+  exigir(await page.locator("[data-ajuste='fidelidad_meta'] [data-valor]").innerText() === "9", ancho + " no guardó la meta");
+
+  await page.evaluate(async ({ ana, corte, fecha }) => {
+    const modulo = await import("./js/admin-cliente.js");
+    const supabase = await modulo.obtenerAdmin();
+    const horasLibres = await supabase.rpc("horas_disponibles", { p_barbero: ana, p_fecha: fecha, p_duracion: 45 });
+    if (horasLibres.error) throw new Error("horas");
+    const hora = horasLibres.data && horasLibres.data[0] && String(horasLibres.data[0].slot).slice(0, 5);
+    if (!hora) throw new Error("sin hora");
+    const alta = await supabase.rpc("crear_reserva", {
+      p_barbero: ana,
+      p_servicio: corte,
+      p_fecha: fecha,
+      p_hora: hora,
+      p_nombre: "Aviso Visual",
+      p_telefono: "3007778899",
+      p_notas: "",
+      p_autoriza: true
+    });
+    if (alta.error) throw new Error(alta.error.message || "alta");
+  }, { ana: "33333333-3333-4333-8333-333333333333", corte: CORTE, fecha: habil(6) });
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.waitForSelector("[data-llegada]:not([hidden])", { timeout: 10000 });
+  exigir((await page.locator("[data-llegada]").innerText()).includes("Llegó una reserva nueva"), ancho + " sin aviso visual");
+  exigir(await page.locator("[data-nav]:visible [data-nuevas]").isVisible(), ancho + " sin contador");
+
   await navVisible(page, "resumen");
   await page.waitForSelector("[data-resumen-tarjetas] .pa-cifra", { timeout: 10000 });
   await foto(page, ancho + "-resumen");
@@ -351,7 +447,7 @@ async function flujoPanel(page, ancho) {
   await page.waitForURL(/admin-login\.html/);
   await entrar(page, "barbero@lamansion.test", "ClaveBarbero123");
   const vistas = await page.locator("[data-nav]:visible [data-vista]").evaluateAll((nodos) => nodos.map((nodo) => nodo.dataset.vista));
-  exigir(!vistas.includes("ajustes") && !vistas.includes("equipo") && !vistas.includes("servicios"), ancho + " barbero ve " + vistas.join(","));
+  exigir(!vistas.includes("ajustes") && !vistas.includes("equipo") && !vistas.includes("servicios") && !vistas.includes("fidelidad") && !vistas.includes("resumen"), ancho + " barbero ve " + vistas.join(","));
   await navVisible(page, "reservas");
   const lista = await textoDe(page.locator("[data-reservas-lista]"));
   exigir(!lista.includes("Cliente Luis"), ancho + " barbero ve cita ajena");

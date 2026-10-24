@@ -22,13 +22,11 @@
   <div class="offline-screen" data-offline role="status">
     <p>Sin conexión. Conéctate para ver tus citas.</p>
   </div>
-  <header class="admin-bar">
-    <a class="logo" href="index.html">
-      <img src="assets/logo/logo-256.webp" width="256" height="124" alt="La Mansión Barber Shop">
-    </a>
-  </header>
   <main class="login-main">
     <div class="login-card">
+      <a class="logo" href="index.html">
+        <img src="assets/logo/logo-256.webp" width="256" height="124" alt="La Mansión Barber Shop">
+      </a>
       <p class="etiqueta">Panel</p>
       <h1>Acceso</h1>
       <p>Solo para el equipo de la barbería.</p>
@@ -37,7 +35,10 @@
           <input name="email" type="email" autocomplete="username" required>
         </label>
         <label class="campo">Contraseña
-          <input name="password" type="password" autocomplete="current-password" required>
+          <span class="clave-fila">
+            <input name="password" type="password" autocomplete="current-password" required>
+            <button class="clave-ver" type="button" data-ver-clave aria-pressed="false" aria-label="Mostrar contraseña">Mostrar</button>
+          </span>
         </label>
         <p class="form-error" data-login-error role="alert" hidden></p>
         <p class="login-codigo" data-login-codigo hidden></p>

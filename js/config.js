@@ -77,16 +77,12 @@ export const negocio = {
     { id: "corte-barba", categoria: "Cortes", nombre: "Corte y barba", descripcion: "El corte y el arreglo de barba en la misma visita.", precio: null },
     { id: "arreglo-barba", categoria: "Barba", nombre: "Arreglo de barba", descripcion: "Perfil, forma y definición.", precio: null },
     { id: "barba-completa", categoria: "Barba", nombre: "Barba completa", descripcion: "Diseño y limpieza de toda la barba.", precio: null },
-    { id: "corte-ninos", categoria: "Niños", nombre: "Corte para niños", descripcion: "Con calma, a su ritmo y con quien los acompaña.", precio: null },
-    { id: "corte-mujer", categoria: "Mujer", nombre: "Corte para mujer", descripcion: "Escríbenos para consultar disponibilidad.", precio: null },
-    { id: "color", categoria: "Color", nombre: "Color", descripcion: "Consulta el tono y el proceso por WhatsApp.", precio: null },
     { id: "disenos", categoria: "FreeStyle y diseños", nombre: "Diseños", descripcion: "Líneas, figuras y freestyle sobre el corte.", precio: null },
     { id: "facial", categoria: "Cuidado facial", nombre: "Cuidado facial", descripcion: "Limpieza y cuidado de la piel del rostro.", precio: null }
   ],
   preguntas: [
     { pregunta: "¿Cómo agendo mi cita?", respuesta: "Desde esta página, en un minuto." },
     { pregunta: "¿Atienden niños?", respuesta: "Sí. Los cortes de niños se hacen con calma." },
-    { pregunta: "¿Hacen cortes para mujer?", respuesta: "Sí. Escríbenos para consultar disponibilidad." },
     { pregunta: "¿Dónde están?", respuesta: "" },
     { pregunta: "¿Cuál es el horario?", respuesta: "Todos los días, de 10:00 a. m. a 8:00 p. m." }
   ],
