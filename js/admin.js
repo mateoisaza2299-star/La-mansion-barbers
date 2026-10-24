@@ -6,6 +6,15 @@ import { nodo, hojaEstilos } from "./dom.js";
 
 const SONIDO = "lamansion-sonido";
 const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const SEMANA = [
+  { dia: 1, nombre: "Lunes" },
+  { dia: 2, nombre: "Martes" },
+  { dia: 3, nombre: "Miércoles" },
+  { dia: 4, nombre: "Jueves" },
+  { dia: 5, nombre: "Viernes" },
+  { dia: 6, nombre: "Sábado" },
+  { dia: 0, nombre: "Domingo" }
+];
 const NAV = [
   { id: "agenda", texto: "Agenda", roles: ["dueno", "barbero"] },
   { id: "reservas", texto: "Reservas", roles: ["dueno", "barbero"] },
@@ -648,6 +657,9 @@ function pintarBarberos() {
   estado.barberos.forEach((barbero) => {
     const fila = nodo("article", "pa-cita");
     fila.append(nodo("h3", null, barbero.nombre), nodo("p", null, (barbero.especialidad || "") + " · " + nombreSede(barbero.sede_id)));
+    if (!estado.horarios.some((item) => item.barbero_id === barbero.id)) {
+      fila.appendChild(nodo("p", null, "Sin horarios: no aparecerá disponible para reservar"));
+    }
     const editar = nodo("button", "btn btn-sec", "Editar");
     editar.type = "button";
     editar.addEventListener("click", () => llenarBarbero(barbero));
@@ -695,6 +707,8 @@ function llenarBarbero(barbero) {
   form.elements.orden.value = barbero.orden || 0;
   form.elements.activo.checked = barbero.activo !== false;
   serviciosChecks(barbero.servicios, barbero.servicios == null);
+  const horario = document.querySelector("[data-barbero-horario]");
+  if (horario) horario.hidden = true;
 }
 
 function prepararFormulariosDueno() {
@@ -703,6 +717,172 @@ function prepararFormulariosDueno() {
   const foto = document.querySelector("[data-barbero-foto]");
   llenarSelect(foto, [{ valor: "", texto: "Sin foto" }, ...estado.fotos.map((item) => ({ valor: item.id, texto: item.alt || item.id }))]);
   if (!document.querySelector("[data-servicios-todos]")) serviciosChecks(null, true);
+  prepararHorarioNuevo();
+}
+
+function plantillaSede() {
+  return SEMANA.map((item) => ({ dia: item.dia, nombre: item.nombre, activo: true, abre: "10:00", cierra: "20:00" }));
+}
+
+function prepararHorarioNuevo() {
+  const host = document.querySelector("[data-horario-manual]");
+  const caja = document.querySelector("[data-horario-sede]");
+  if (!host || !caja || host.childElementCount) return;
+  plantillaSede().forEach((item) => {
+    const fila = nodo("div", "horario-rango horario-manual-dia");
+    const marca = document.createElement("input");
+    marca.type = "checkbox";
+    marca.checked = true;
+    marca.dataset.manualDia = String(item.dia);
+    const abre = document.createElement("input");
+    abre.type = "time";
+    abre.value = "10:00";
+    abre.dataset.manualAbre = String(item.dia);
+    const cierra = document.createElement("input");
+    cierra.type = "time";
+    cierra.value = "20:00";
+    cierra.dataset.manualCierra = String(item.dia);
+    fila.append(marca, nodo("span", null, item.nombre), abre, cierra);
+    host.appendChild(fila);
+  });
+  caja.addEventListener("change", () => {
+    host.hidden = caja.checked;
+  });
+}
+
+function leerHorarioManual() {
+  const filas = [];
+  document.querySelectorAll("[data-manual-dia]").forEach((marca) => {
+    if (!marca.checked) return;
+    const dia = Number(marca.dataset.manualDia);
+    const abre = document.querySelector('[data-manual-abre="' + dia + '"]');
+    const cierra = document.querySelector('[data-manual-cierra="' + dia + '"]');
+    if (!abre || !cierra || !abre.value || !cierra.value || abre.value >= cierra.value) return;
+    filas.push({ dia, abre: abre.value, cierra: cierra.value });
+  });
+  return filas;
+}
+
+function barberosActivos() {
+  return estado.barberos.filter((item) => item.activo !== false);
+}
+
+function abrirHorarioTodos() {
+  const modal = document.querySelector("[data-horario-todos]");
+  const dias = document.querySelector("[data-horario-todos-dias]");
+  const previa = document.querySelector("[data-horario-todos-previa]");
+  const error = document.querySelector("[data-horario-todos-error]");
+  const reintentar = document.querySelector("[data-horario-todos-reintentar]");
+  if (!modal || !dias) return;
+  estado.horarioLote = plantillaSede();
+  estado.horarioReintento = 0;
+  dias.replaceChildren();
+  estado.horarioLote.forEach((item) => {
+    const fila = nodo("div", "horario-rango");
+    const marca = document.createElement("input");
+    marca.type = "checkbox";
+    marca.checked = true;
+    marca.addEventListener("change", () => { item.activo = marca.checked; });
+    const abre = document.createElement("input");
+    abre.type = "time";
+    abre.value = item.abre;
+    abre.addEventListener("input", () => { item.abre = abre.value; });
+    const cierra = document.createElement("input");
+    cierra.type = "time";
+    cierra.value = item.cierra;
+    cierra.addEventListener("input", () => { item.cierra = cierra.value; });
+    fila.append(marca, nodo("span", null, item.nombre), abre, cierra);
+    dias.appendChild(fila);
+  });
+  if (previa) previa.textContent = "Se aplicará a " + barberosActivos().length + " barberos.";
+  if (error) error.hidden = true;
+  if (reintentar) reintentar.hidden = true;
+  const aplicar = document.querySelector("[data-horario-todos-aplicar]");
+  if (aplicar) aplicar.disabled = false;
+  modal.hidden = false;
+}
+
+async function recargarHorarios() {
+  const recarga = await estado.supabase.from("horarios").select("*");
+  if (!recarga.error) estado.horarios = recarga.data || [];
+  cargarModelo();
+  pintarEditor();
+  pintarBarberos();
+}
+
+async function aplicarHorarioTodos(desde) {
+  const error = document.querySelector("[data-horario-todos-error]");
+  const reintentar = document.querySelector("[data-horario-todos-reintentar]");
+  const aplicar = document.querySelector("[data-horario-todos-aplicar]");
+  if (error) error.hidden = true;
+  if (reintentar) reintentar.hidden = true;
+  const plantilla = (estado.horarioLote || []).filter((item) => item.activo && item.abre && item.cierra && item.abre < item.cierra);
+  if (!plantilla.length) {
+    if (error) {
+      error.hidden = false;
+      error.textContent = "Elige al menos un día con apertura y cierre.";
+    }
+    return;
+  }
+  const lista = barberosActivos();
+  if (!lista.length) {
+    if (error) {
+      error.hidden = false;
+      error.textContent = "No hay barberos activos.";
+    }
+    return;
+  }
+  if (aplicar) aplicar.disabled = true;
+  const inicio = Number(desde) || 0;
+  for (let i = inicio; i < lista.length; i += 1) {
+    const barbero = lista[i];
+    const borrado = await estado.supabase.from("horarios").delete().eq("barbero_id", barbero.id);
+    if (borrado.error) {
+      if (error) {
+        error.hidden = false;
+        error.textContent = "No se pudo cambiar el horario de " + barbero.nombre + ".";
+      }
+      if (reintentar) reintentar.hidden = false;
+      estado.horarioReintento = i;
+      if (aplicar) aplicar.disabled = false;
+      return;
+    }
+    const filas = plantilla.map((item) => ({ barbero_id: barbero.id, dia: item.dia, abre: item.abre, cierra: item.cierra }));
+    const alta = await estado.supabase.from("horarios").insert(filas).select();
+    if (alta.error) {
+      if (error) {
+        error.hidden = false;
+        error.textContent = "No se completó. " + barbero.nombre + " quedó sin horario.";
+      }
+      if (reintentar) reintentar.hidden = false;
+      estado.horarioReintento = i;
+      if (aplicar) aplicar.disabled = false;
+      await recargarHorarios();
+      return;
+    }
+  }
+  estado.horarioReintento = 0;
+  await recargarHorarios();
+  if (aplicar) aplicar.disabled = false;
+  const modal = document.querySelector("[data-horario-todos]");
+  if (modal) modal.hidden = true;
+  fail("");
+}
+
+async function guardarHorarioBarbero(barberoId, filas) {
+  const borrado = await estado.supabase.from("horarios").delete().eq("barbero_id", barberoId);
+  if (borrado.error) return false;
+  if (!filas.length) {
+    estado.horarios = estado.horarios.filter((item) => item.barbero_id !== barberoId);
+    return true;
+  }
+  const alta = await estado.supabase.from("horarios").insert(filas).select();
+  if (alta.error) {
+    estado.horarios = estado.horarios.filter((item) => item.barbero_id !== barberoId);
+    return false;
+  }
+  estado.horarios = estado.horarios.filter((item) => item.barbero_id !== barberoId).concat(alta.data || filas);
+  return true;
 }
 
 function cargarModelo() {
@@ -1116,6 +1296,16 @@ function enlazar() {
     pintarEditor();
   });
   document.querySelector("[data-horario-guardar]").addEventListener("click", guardarHorarios);
+  const abrirTodos = document.querySelector("[data-horario-todos-abrir]");
+  if (abrirTodos) abrirTodos.addEventListener("click", abrirHorarioTodos);
+  const aplicarTodos = document.querySelector("[data-horario-todos-aplicar]");
+  if (aplicarTodos) aplicarTodos.addEventListener("click", () => aplicarHorarioTodos(0));
+  const reintentarTodos = document.querySelector("[data-horario-todos-reintentar]");
+  if (reintentarTodos) reintentarTodos.addEventListener("click", () => aplicarHorarioTodos(estado.horarioReintento || 0));
+  const cerrarTodos = document.querySelector("[data-horario-todos-cerrar]");
+  if (cerrarTodos) cerrarTodos.addEventListener("click", () => {
+    document.querySelector("[data-horario-todos]").hidden = true;
+  });
   document.querySelector("[data-bloqueo-dia]").addEventListener("change", (evento) => {
     document.querySelector("[data-bloqueo-horas]").hidden = evento.target.checked;
   });
@@ -1209,10 +1399,23 @@ async function guardarBarbero(evento) {
   if (id) {
     const actual = estado.barberos.find((item) => item.id === id);
     if (actual) Object.assign(actual, fila);
-  } else if (data && data[0]) estado.barberos.push(data[0]);
+  } else if (data && data[0]) {
+    estado.barberos.push(data[0]);
+    const usarSede = form.elements.horario_sede && form.elements.horario_sede.checked;
+    const plantilla = usarSede ? plantillaSede().filter((item) => item.activo) : leerHorarioManual();
+    const filas = plantilla.map((item) => ({ barbero_id: data[0].id, dia: item.dia, abre: item.abre, cierra: item.cierra }));
+    const guardado = await guardarHorarioBarbero(data[0].id, filas);
+    if (!guardado) fail(data[0].nombre + " quedó sin horario.");
+  }
   form.reset();
+  if (form.elements.horario_sede) form.elements.horario_sede.checked = true;
+  if (form.elements.activo) form.elements.activo.checked = true;
+  const manual = document.querySelector("[data-horario-manual]");
+  if (manual) manual.hidden = true;
+  const bloqueHorario = document.querySelector("[data-barbero-horario]");
+  if (bloqueHorario) bloqueHorario.hidden = false;
   serviciosChecks(null, true);
-  pintarBarberos();
+  pintarEquipo();
 }
 
 async function guardarServicio(evento) {

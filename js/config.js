@@ -1,17 +1,17 @@
 export const negocio = {
   nombre: "La Mansión Barber Shop",
   nombreCorto: "La Mansión",
-  ciudad: "Mosquera, Cundinamarca",
-  eslogan: "Barber Shop · Mosquera",
+  ciudad: "Funza, Cundinamarca",
+  eslogan: "Barber Shop · Funza",
   enPreparacion: false,
   indexable: false,
   whatsapp: "573118162854",
   telefono: "311 816 2854",
-  direccion: "Mosquera, Cundinamarca",
-  codigoPostal: "250040",
+  direccion: "Vía Funza - Siberia, Km 3.8, La Isla, Ceuta, Funza, Cundinamarca, Colombia",
+  direccionCorta: "Vía Funza - Siberia, Km 3.8 · La Isla, Ceuta",
   instagram: "lamansionbarbers",
-  horario: "",
-  mapaConsulta: "La Mansión Barber Shop, Mosquera, Cundinamarca",
+  horario: { texto: "Todos los días · 10:00 a. m. a 8:00 p. m.", dias: [1, 2, 3, 4, 5, 6, 7], abre: "10:00", cierra: "20:00" },
+  mapaConsulta: "Vía Funza Siberia Km 3.8, La Isla, Ceuta, Funza, Cundinamarca, Colombia",
   mensajeWhatsApp: "Hola, quiero agendar una cita en La Mansión Barber Shop.",
   mensajeProductos: "Hola, quiero preguntar por los productos de La Mansión Barber Shop.",
   supabase: { url: "https://bkzyaiamlhlbsggsoijk.supabase.co", key: "sb_publishable__BC2lWanJOLLb4gdVcEpKw_4SQO9w6A" },
@@ -20,7 +20,7 @@ export const negocio = {
   email: "",
   mapsUrl: "",
   mapaEmbed: "",
-  zona: "America/Bogota",
+  zona: "Funza",
   horasAntesDeCerrar: 1,
   bloqueMinutos: 60,
   redes: { resenas: "" },
@@ -85,17 +85,18 @@ export const negocio = {
     { pregunta: "¿Cómo agendo mi cita?", respuesta: "Escríbenos por WhatsApp y te confirmamos el día y la hora." },
     { pregunta: "¿Atienden niños?", respuesta: "Sí. Los cortes de niños se hacen con calma." },
     { pregunta: "¿Hacen cortes para mujer?", respuesta: "Sí. Escríbenos para consultar disponibilidad." },
-    { pregunta: "¿Dónde están?", respuesta: "En Mosquera, Cundinamarca." }
+    { pregunta: "¿Dónde están?", respuesta: "" },
+    { pregunta: "¿Cuál es el horario?", respuesta: "Todos los días, de 10:00 a. m. a 8:00 p. m." }
   ],
   textos: {
-    heroEtiqueta: "BARBER SHOP · MOSQUERA",
+    heroEtiqueta: "BARBER SHOP · FUNZA",
     heroAntes: "¡Los verdaderos ",
     heroPalabra: "HOMBRES",
     heroDespues: " van a la barbería!",
-    heroLead: "Cortes, barba y cuidado personal en Mosquera. Agenda abierta.",
+    heroLead: "Cortes, barba y cuidado personal. Agenda abierta.",
     agenda: "Agenda por WhatsApp",
     verServicios: "Ver servicios",
-    datoAgenda: "Agenda abierta por WhatsApp",
+    datoAgenda: "Reserva en línea",
     datoEdades: "Niños, jóvenes y adultos",
     confianzaEdades: "Para todas las edades",
     confianzaCortes: "Cortes, barba y cuidado facial",
@@ -105,7 +106,6 @@ export const negocio = {
     serviciosNota: "Precios y duración por confirmar: escríbenos por WhatsApp",
     productos: "Cuidado en casa: aceite de barba y productos de barbería",
     preguntaProductos: "Pregunta por WhatsApp",
-    horarioPendiente: "Horario por confirmar",
     pista: "Busca el letrero luminoso de La Mansión.",
     llegar: "Cómo llegar",
     llamar: "Llamar",
@@ -193,9 +193,31 @@ export function diaSemana(iso) {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
+export function tituloPublico() {
+  return negocio.nombre + " | Barbería en " + negocio.ciudad;
+}
+
+export function descripcionPublica() {
+  return negocio.nombre + ", barbería en " + negocio.ciudad + ". Cortes, barba y cuidado personal.";
+}
+
+export function textoHorarioPublico() {
+  const horario = negocio.horario;
+  if (horario && typeof horario === "object" && horario.texto) return String(horario.texto);
+  if (typeof horario === "string") return horario.trim();
+  return "";
+}
+
+export function callePublica() {
+  const completa = String(negocio.direccion || "").trim();
+  const cola = ", " + String(negocio.ciudad || "").trim() + ", Colombia";
+  if (cola !== ", , Colombia" && completa.endsWith(cola)) return completa.slice(0, -cola.length);
+  return completa;
+}
+
 export function partesBogota(date) {
   const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: negocio.zona,
+    timeZone: "America/Bogota",
     weekday: "short",
     year: "numeric",
     month: "2-digit",
@@ -216,7 +238,14 @@ export function partesBogota(date) {
 }
 
 function reglasHorario() {
-  return Array.isArray(negocio.horario) ? negocio.horario : [];
+  const horario = negocio.horario;
+  if (Array.isArray(horario)) return horario;
+  if (!horario || typeof horario !== "object" || !horario.abre || !horario.cierra) return [];
+  const dias = (Array.isArray(horario.dias) ? horario.dias : []).map((dia) => {
+    const numero = Number(dia);
+    return numero === 7 ? 0 : numero;
+  });
+  return [{ dias, abre: horario.abre, cierra: horario.cierra }];
 }
 
 export function reglaDelDia(dia) {

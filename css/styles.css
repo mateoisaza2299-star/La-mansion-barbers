@@ -1184,6 +1184,7 @@ html.motion .local.is-play .local-slide.is-on > img.principal.is-zoom { animatio
 .visita-ciudad { margin: 0.35rem 0 0; }
 
 .visita-postal,
+.visita-direccion,
 .horario-nota,
 .reserva-nota,
 .pagina-simple p { color: var(--gris); }

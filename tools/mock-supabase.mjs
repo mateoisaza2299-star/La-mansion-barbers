@@ -41,8 +41,8 @@ function crearEstado() {
     politica_version: "1"
   };
   const sedes = [
-    { id: id.sede1, nombre: "Mansión Centro", direccion: "Calle 4, Mosquera", telefono: "3118162854", orden: 1, activa: true },
-    { id: id.sede2, nombre: "Mansión Occidente", direccion: "Carrera 8, Mosquera", telefono: "3118162854", orden: 2, activa: true }
+    { id: id.sede1, nombre: "Mansión Centro", direccion: "Vía Funza - Siberia, Km 3.8, La Isla, Ceuta", telefono: "3118162854", orden: 1, activa: true },
+    { id: id.sede2, nombre: "Mansión Occidente", direccion: "Vía Funza - Siberia, Km 3.8, Funza", telefono: "3118162854", orden: 2, activa: true }
   ];
   const servicios = [
     { id: id.corte, categoria: "Cortes", nombre: "Corte clásico", descripcion: "Tijera o máquina, con el acabado que pidas.", precio: 25000, duracion_min: 45, cuenta_fidelidad: true, orden: 1, activo: true },

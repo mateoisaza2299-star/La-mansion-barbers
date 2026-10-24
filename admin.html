@@ -99,9 +99,16 @@
             <div data-barbero-servicios></div>
             <label class="campo">Orden <input name="orden" type="number" min="0" value="1"></label>
             <label class="reserva-check"><input name="activo" type="checkbox" checked> Activo</label>
+            <div data-barbero-horario>
+              <label class="reserva-check"><input name="horario_sede" type="checkbox" data-horario-sede checked> Usar el horario de la sede</label>
+              <div data-horario-manual hidden></div>
+            </div>
             <button class="btn" type="submit">Guardar barbero</button>
           </form>
           <div data-barberos></div>
+        </div>
+        <div data-solo="dueno">
+          <button class="btn" type="button" data-horario-todos-abrir>Aplicar el mismo horario a todos los barberos</button>
         </div>
         <h2>Horarios</h2>
         <label class="campo">Barbero <select data-horario-barbero></select></label>
@@ -204,6 +211,21 @@
       <h2 id="cita-modal-titulo">Cita</h2>
       <div data-cita-modal-cuerpo></div>
       <button class="btn btn-sec" type="button" data-cita-cerrar>Cerrar</button>
+    </div>
+  </div>
+
+  <div class="pa-modal" data-horario-todos hidden>
+    <div class="pa-modal-card horario-todos-card" role="dialog" aria-modal="true" aria-labelledby="horario-todos-titulo">
+      <h2 id="horario-todos-titulo">Mismo horario para todos</h2>
+      <div data-horario-todos-dias></div>
+      <p data-horario-todos-previa></p>
+      <p>Esto reemplaza los horarios actuales.</p>
+      <p class="form-error" data-horario-todos-error role="alert" hidden></p>
+      <div class="cita-acciones">
+        <button class="btn" type="button" data-horario-todos-aplicar>Aplicar</button>
+        <button class="btn btn-sec" type="button" data-horario-todos-reintentar hidden>Reintentar</button>
+        <button class="btn btn-sec" type="button" data-horario-todos-cerrar>Cerrar</button>
+      </div>
     </div>
   </div>
 

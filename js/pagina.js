@@ -5,7 +5,12 @@ import {
   enlaceMapa,
   urlInstagram,
   formatoPrecio,
-  reservasEnLinea
+  reservasEnLinea,
+  tituloPublico,
+  descripcionPublica,
+  textoHorarioPublico,
+  callePublica,
+  urlSitio
 } from "./config.js";
 import { iniciarCarrusel } from "./carrusel.js";
 
@@ -97,21 +102,93 @@ const pintarEnlaces = () => {
   });
 };
 
+const pintarMeta = (selector, valor) => {
+  document.querySelectorAll(selector).forEach((nodo) => {
+    if (valor) nodo.setAttribute("content", valor);
+  });
+};
+
+const aplicarEsquema = () => {
+  const nodo = document.getElementById("schema-negocio");
+  if (!nodo) return;
+  const partes = String(negocio.ciudad || "").split(",").map((parte) => parte.trim());
+  const nombres = { 1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday", 7: "Sunday" };
+  const horario = negocio.horario && typeof negocio.horario === "object" ? negocio.horario : {};
+  const dias = Array.isArray(horario.dias) ? horario.dias : [];
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "BarberShop",
+    name: negocio.nombre,
+    image: urlSitio("assets/og.jpg"),
+    url: urlSitio(""),
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: callePublica(),
+      addressLocality: partes[0] || negocio.zona || "",
+      addressRegion: partes[1] || "",
+      addressCountry: "CO"
+    }
+  };
+  const telefono = String(negocio.whatsapp || "").replace(/\D/g, "");
+  if (telefono) data.telephone = "+" + telefono;
+  if (horario.abre && horario.cierra && dias.length) {
+    data.openingHoursSpecification = dias.filter((dia) => nombres[dia]).map((dia) => ({
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: nombres[dia],
+      opens: horario.abre,
+      closes: horario.cierra
+    }));
+  }
+  const mapa = enlaceMapa();
+  if (mapa) data.hasMap = mapa;
+  const instagram = urlInstagram();
+  if (instagram) data.sameAs = [instagram];
+  nodo.textContent = JSON.stringify(data);
+};
+
 const pintarTextos = () => {
+  const titulo = tituloPublico();
+  const descripcion = descripcionPublica();
+  const etiqueta = "BARBER SHOP · " + String(negocio.zona || "").toLocaleUpperCase("es-CO");
+  const lead = "Cortes, barba y cuidado personal en " + negocio.ciudad + ". Agenda abierta.";
+  document.title = titulo;
+  pintarMeta('meta[name="description"]', descripcion);
+  pintarMeta('meta[property="og:title"]', titulo);
+  pintarMeta('meta[property="og:description"]', descripcion);
+  pintarMeta('meta[name="twitter:title"]', titulo);
+  pintarMeta('meta[name="twitter:description"]', descripcion);
+  pintarMeta('meta[property="og:image:alt"]', "Letrero de neón de " + negocio.nombre + " en " + (negocio.zona || "") + ".");
+  pintarMeta('meta[name="twitter:image:alt"]', "Letrero de neón de " + negocio.nombre + " en " + (negocio.zona || "") + ".");
   document.querySelectorAll("[data-texto]").forEach((nodo) => {
-    const valor = textos[nodo.getAttribute("data-texto")];
+    const clave = nodo.getAttribute("data-texto");
+    if (clave === "heroEtiqueta") {
+      nodo.textContent = etiqueta;
+      return;
+    }
+    if (clave === "heroLead") {
+      nodo.textContent = lead;
+      return;
+    }
+    const valor = textos[clave];
     if (valor) nodo.textContent = valor;
   });
   document.querySelectorAll("[data-ciudad]").forEach((nodo) => {
     if (negocio.ciudad) nodo.textContent = negocio.ciudad;
   });
-  const postal = document.querySelector("[data-postal]");
-  if (postal && negocio.codigoPostal) postal.textContent = "Código postal " + negocio.codigoPostal;
-  const horario = document.querySelector("[data-horario]");
-  if (horario) {
-    const valor = typeof negocio.horario === "string" ? negocio.horario.trim() : "";
-    horario.textContent = valor || textos.horarioPendiente || "Horario por confirmar";
-  }
+  document.querySelectorAll("[data-direccion]").forEach((nodo) => {
+    if (negocio.direccion) nodo.textContent = negocio.direccion;
+  });
+  document.querySelectorAll("[data-direccion-corta]").forEach((nodo) => {
+    if (negocio.direccionCorta) nodo.textContent = negocio.direccionCorta;
+  });
+  document.querySelectorAll("[data-horario]").forEach((nodo) => {
+    const valor = textoHorarioPublico();
+    if (valor) nodo.textContent = valor;
+  });
+  document.querySelectorAll("[data-marca-local]").forEach((nodo) => {
+    nodo.textContent = negocio.nombreCorto + " · " + (negocio.zona || "");
+  });
+  aplicarEsquema();
   const antes = document.querySelector("[data-hero-antes]");
   const palabra = document.querySelector("[data-hero-palabra]");
   const despues = document.querySelector("[data-hero-despues]");
@@ -683,7 +760,10 @@ const prepararFaq = () => {
     const pregunta = document.querySelector('[data-faq-q="' + indice + '"]');
     const respuesta = document.querySelector('[data-faq-a="' + indice + '"]');
     if (pregunta && item.pregunta) pregunta.textContent = item.pregunta;
-    if (respuesta && item.respuesta) respuesta.textContent = item.respuesta;
+    if (!respuesta) return;
+    if (item.pregunta === "¿Dónde están?") respuesta.textContent = negocio.direccion || "";
+    else if (item.pregunta === "¿Cuál es el horario?") respuesta.textContent = item.respuesta || textoHorarioPublico();
+    else if (item.respuesta) respuesta.textContent = item.respuesta;
   });
   document.querySelectorAll(".faq-q").forEach((boton) => {
     boton.addEventListener("click", () => {

@@ -99,6 +99,23 @@ html.is-offline .login-main { display: none; }
 
 .btn-block { width: 100%; }
 
+.horario-todos-card { width: min(40rem, 100%); }
+
+.horario-todos-card .horario-rango,
+.horario-manual-dia {
+  display: grid;
+  grid-template-columns: 1.4rem minmax(4.8rem, 7rem) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.horario-todos-card input[type="time"],
+.horario-manual-dia input[type="time"] {
+  min-width: 0;
+  width: 100%;
+  padding-inline: 0.3rem;
+}
+
 .pa { min-height: 100svh; }
 
 .pa-lado {
