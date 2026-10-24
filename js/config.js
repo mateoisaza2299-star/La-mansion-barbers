@@ -12,6 +12,8 @@ export const negocio = {
   instagram: "lamansionbarbers",
   horario: { texto: "Todos los días · 10:00 a. m. a 8:00 p. m.", dias: [1, 2, 3, 4, 5, 6, 7], abre: "10:00", cierra: "20:00" },
   mapaConsulta: "Vía Funza Siberia Km 3.8, La Isla, Ceuta, Funza, Cundinamarca, Colombia",
+  unaSede: true,
+  mostrarWhatsappContacto: true,
   mensajeWhatsApp: "Hola, quiero agendar una cita en La Mansión Barber Shop.",
   mensajeProductos: "Hola, quiero preguntar por los productos de La Mansión Barber Shop.",
   supabase: { url: "https://bkzyaiamlhlbsggsoijk.supabase.co", key: "sb_publishable__BC2lWanJOLLb4gdVcEpKw_4SQO9w6A" },
@@ -82,7 +84,7 @@ export const negocio = {
     { id: "facial", categoria: "Cuidado facial", nombre: "Cuidado facial", descripcion: "Limpieza y cuidado de la piel del rostro.", precio: null }
   ],
   preguntas: [
-    { pregunta: "¿Cómo agendo mi cita?", respuesta: "Escríbenos por WhatsApp y te confirmamos el día y la hora." },
+    { pregunta: "¿Cómo agendo mi cita?", respuesta: "Desde esta página, en un minuto." },
     { pregunta: "¿Atienden niños?", respuesta: "Sí. Los cortes de niños se hacen con calma." },
     { pregunta: "¿Hacen cortes para mujer?", respuesta: "Sí. Escríbenos para consultar disponibilidad." },
     { pregunta: "¿Dónde están?", respuesta: "" },
@@ -93,8 +95,8 @@ export const negocio = {
     heroAntes: "¡Los verdaderos ",
     heroPalabra: "HOMBRES",
     heroDespues: " van a la barbería!",
-    heroLead: "Cortes, barba y cuidado personal. Agenda abierta.",
-    agenda: "Agenda por WhatsApp",
+    heroLead: "Cortes, barba y cuidado personal.",
+    agenda: "Reserva tu cita",
     verServicios: "Ver servicios",
     datoAgenda: "Reserva en línea",
     datoEdades: "Niños, jóvenes y adultos",
@@ -102,15 +104,15 @@ export const negocio = {
     confianzaCortes: "Cortes, barba y cuidado facial",
     confianzaProductos: "Productos de barbería",
     serviciosTitulo: "Menú de servicios",
-    consultar: "Consultar por WhatsApp",
-    serviciosNota: "Precios y duración por confirmar: escríbenos por WhatsApp",
+    consultar: "Precio por confirmar",
+    serviciosNota: "Los servicios sin precio se muestran como Precio por confirmar.",
     productos: "Cuidado en casa: aceite de barba y productos de barbería",
     preguntaProductos: "Pregunta por WhatsApp",
     pista: "Busca el letrero luminoso de La Mansión.",
     llegar: "Cómo llegar",
     llamar: "Llamar",
-    reservasTitulo: "Agenda abierta · Escríbenos por WhatsApp",
-    reservasNota: "Muy pronto: reservas en línea",
+    reservasTitulo: "Reserva tu cita en línea",
+    reservasNota: "",
     faqTitulo: "Preguntas frecuentes"
   }
 };
@@ -121,12 +123,30 @@ export function urlSitio(pagina) {
   return base + "/" + String(pagina).replace(/^\//, "");
 }
 
+export function consultaMapa() {
+  return String(negocio.mapaConsulta || "").trim() || [negocio.nombre, direccionLinea()].filter(Boolean).join(", ");
+}
+
 export function enlaceMapa() {
   const guardado = String(negocio.mapsUrl || "").trim();
   if (guardado) return guardado;
-  const consulta = String(negocio.mapaConsulta || "").trim() || [negocio.nombre, direccionLinea()].filter(Boolean).join(", ");
+  const consulta = consultaMapa();
   if (!consulta) return "";
   return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(consulta);
+}
+
+export function enlaceDirecciones() {
+  const consulta = consultaMapa();
+  if (!consulta) return "";
+  return "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(consulta);
+}
+
+export function enlaceEmbed() {
+  const guardado = String(negocio.mapaEmbed || "").trim();
+  if (guardado) return guardado;
+  const consulta = consultaMapa();
+  if (!consulta) return "";
+  return "https://www.google.com/maps?q=" + encodeURIComponent(consulta) + "&output=embed&hl=es";
 }
 
 export function enlaceTelefono() {

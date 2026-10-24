@@ -2,7 +2,7 @@
 <html lang="es-CO" class="is-preparacion">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; font-src 'self'; connect-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; font-src 'self'; connect-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src https://www.google.com https://maps.google.com">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#0A0A0A">
@@ -49,8 +49,8 @@
       <p class="pa-aviso" data-servicios-aviso hidden>Hay servicios inactivos. Revísalos y actívalos antes de ofrecerlos.</p>
 
       <section data-panel="agenda" aria-label="Agenda">
+        <article class="pa-cita" data-puesta data-solo="dueno"></article>
         <div class="pa-controles">
-          <label class="campo">Sede <select data-agenda-sede></select></label>
           <label class="campo">Fecha <input type="date" data-agenda-fecha></label>
           <div class="choice" role="group" aria-label="Vista">
             <button type="button" data-agenda-modo="dia" aria-pressed="true">Día</button>
@@ -76,31 +76,20 @@
         <div data-reservas-lista aria-busy="true"></div>
       </section>
 
-      <section data-panel="equipo" hidden aria-label="Equipo y horarios">
+      <section data-panel="equipo" hidden aria-label="Barberos y horarios">
         <div data-solo="dueno">
-          <h2>Sedes</h2>
-          <form class="pa-form" data-sede-form>
-            <input type="hidden" name="id">
-            <label class="campo">Nombre <input name="nombre" required maxlength="80"></label>
-            <label class="campo">Dirección <input name="direccion" required maxlength="160"></label>
-            <label class="campo">Teléfono <input name="telefono" maxlength="20"></label>
-            <label class="campo">Orden <input name="orden" type="number" min="0" value="1"></label>
-            <label class="reserva-check"><input name="activa" type="checkbox" checked> Activa</label>
-            <button class="btn" type="submit">Guardar sede</button>
-          </form>
-          <div data-sedes></div>
           <h2>Barberos</h2>
           <form class="pa-form" data-barbero-form>
             <input type="hidden" name="id">
+            <input type="hidden" name="sede_id">
             <label class="campo">Nombre <input name="nombre" required maxlength="80"></label>
             <label class="campo">Especialidad <input name="especialidad" maxlength="120"></label>
-            <label class="campo">Sede <select name="sede_id" required></select></label>
             <label class="campo">Foto <select name="foto" data-barbero-foto></select></label>
             <div data-barbero-servicios></div>
             <label class="campo">Orden <input name="orden" type="number" min="0" value="1"></label>
             <label class="reserva-check"><input name="activo" type="checkbox" checked> Activo</label>
             <div data-barbero-horario>
-              <label class="reserva-check"><input name="horario_sede" type="checkbox" data-horario-sede checked> Usar el horario de la sede</label>
+              <label class="reserva-check"><input name="horario_sede" type="checkbox" data-horario-sede checked> Usar el horario del local (todos los días de 10:00 a 20:00)</label>
               <div data-horario-manual hidden></div>
             </div>
             <button class="btn" type="submit">Guardar barbero</button>
@@ -119,9 +108,9 @@
         </div>
         <div data-horario-editor></div>
         <button class="btn" type="button" data-horario-guardar>Guardar horarios</button>
-        <h2>Bloqueos</h2>
+        <h2>Cerrar el local</h2>
         <form class="pa-form" data-bloqueo-form>
-          <label class="campo">Sede <select name="sede_id" data-bloqueo-sede required></select></label>
+          <input type="hidden" name="sede_id" data-bloqueo-sede>
           <label class="campo">Barbero <select name="barbero_id" data-bloqueo-barbero></select></label>
           <label class="campo">Fecha <input type="date" name="fecha" data-bloqueo-fecha required></label>
           <label class="reserva-check"><input type="checkbox" name="todo_dia" data-bloqueo-dia checked> Todo el día</label>
@@ -179,6 +168,17 @@
 
       <section data-panel="ajustes" hidden aria-label="Ajustes">
         <h2>Ajustes</h2>
+        <article class="pa-cita">
+          <h2>Datos del local</h2>
+          <form class="pa-form" data-local-form>
+            <label class="campo">Nombre <input name="nombre" required maxlength="80"></label>
+            <label class="campo">Dirección <input name="direccion" required maxlength="180"></label>
+            <label class="campo">Teléfono <input name="telefono" maxlength="20"></label>
+            <p>La dirección pública se cambia en el archivo de configuración.</p>
+            <p class="form-error" data-local-error role="alert" hidden></p>
+            <button class="btn" type="submit">Guardar</button>
+          </form>
+        </article>
         <form class="pa-form" data-ajustes>
           <label class="reserva-check"><input name="reservas_activas" type="checkbox"> Reservas en línea activas</label>
           <label class="campo">Paso entre horas (min) <input name="paso_min" type="number" min="5" max="180" required></label>
@@ -233,7 +233,7 @@
     <div class="pa-modal-card" role="dialog" aria-modal="true" aria-labelledby="nueva-titulo">
       <h2 id="nueva-titulo">Nueva cita</h2>
       <form data-nueva-form>
-        <label class="campo">Sede <select name="sede" required></select></label>
+        <select name="sede" hidden></select>
         <label class="campo">Servicio <select name="servicio" required></select></label>
         <label class="campo">Barbero <select name="barbero" required></select></label>
         <label class="campo">Fecha <input type="date" name="fecha" required></label>

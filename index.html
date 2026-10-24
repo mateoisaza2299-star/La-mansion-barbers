@@ -2,7 +2,7 @@
 <html lang="es-CO">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; font-src 'self'; connect-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; font-src 'self'; connect-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src https://www.google.com https://maps.google.com">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>La Mansión Barber Shop | Barbería en Funza, Cundinamarca</title>
   <meta name="description" content="La Mansión Barber Shop, barbería en Funza, Cundinamarca. Cortes, barba y cuidado personal.">
@@ -77,9 +77,9 @@
         <a data-nav-link href="#local" hidden>El local</a>
         <a data-nav-link href="#visita">Visita</a>
       </nav>
-      <a class="btn btn-nav" data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener" aria-label="Agenda por WhatsApp">
-        <span class="btn-largo">Agenda por WhatsApp</span><span class="btn-corto">Agenda</span>
-      </a>
+      <button class="btn btn-nav" type="button" data-reservar aria-label="Reserva tu cita">
+        <span class="btn-largo">Reserva tu cita</span><span class="btn-corto">Reservar</span>
+      </button>
       <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="nav-panel">
         <span></span>
         <span class="sr-only">Abrir menú</span>
@@ -94,7 +94,7 @@
     <a class="nav-panel-link" href="#local" hidden>El local</a>
     <a class="nav-panel-link" href="#visita">Visita</a>
     <div class="nav-panel-acciones">
-      <a class="btn" data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">Agenda por WhatsApp</a>
+      <button class="btn" type="button" data-reservar>Reserva tu cita</button>
       <a class="btn btn-sec" data-ig href="https://www.instagram.com/lamansionbarbers/" target="_blank" rel="noopener">Instagram</a>
     </div>
   </div>
@@ -110,9 +110,9 @@
         <h1>
           <span data-hero-antes>¡Los verdaderos </span><span class="oro-palabra"><span class="oro-texto" data-hero-palabra>HOMBRES</span></span><span data-hero-despues> van a la barbería!</span>
         </h1>
-        <p class="hero-lead" data-texto="heroLead">Cortes, barba y cuidado personal en Funza, Cundinamarca. Agenda abierta.</p>
+        <p class="hero-lead" data-texto="heroLead">Cortes, barba y cuidado personal en Funza, Cundinamarca.</p>
         <div class="hero-acciones">
-          <a class="btn" data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">Agenda por WhatsApp</a>
+          <button class="btn" type="button" data-reservar>Reserva tu cita</button>
           <a class="btn btn-sec" href="#servicios" data-texto="verServicios">Ver servicios</a>
         </div>
         <ul class="hero-datos">
@@ -144,15 +144,15 @@
     <div class="confianza">
       <ul class="wrap">
         <li><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="2.4"/><path d="M6 19c.7-3 2.8-4.5 6-4.5S17.3 16 18 19"/></svg><span data-texto="confianzaEdades">Para todas las edades</span></li>
-        <li><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14v9H8l-3 2.5z"/></svg><span data-texto="agenda">Agenda por WhatsApp</span></li>
+        <li><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14v9H8l-3 2.5z"/></svg><span data-texto="datoAgenda">Reserva en línea</span></li>
         <li><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="7" r="2"/><circle cx="6" cy="17" r="2"/><path d="M8 8.2 19 17M8 15.8 19 7"/></svg><span data-texto="confianzaCortes">Cortes, barba y cuidado facial</span></li>
         <li><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3h4v2l1 2a6 6 0 0 1 .8 3V20H8.2v-10a6 6 0 0 1 .8-3L10 5z"/></svg><span data-texto="confianzaProductos">Productos de barbería</span></li>
       </ul>
     </div>
 
     <section class="seccion" id="nosotros" aria-labelledby="nosotros-titulo">
-      <div class="wrap">
-        <header class="reveal" data-revelar>
+      <div class="wrap nosotros-compacto">
+        <div class="reveal" data-revelar>
           <p class="etiqueta" data-nosotros="etiqueta">Nosotros · La Mansión</p>
           <h2 id="nosotros-titulo" data-nosotros="titulo">Aquí nadie sale igual que como entró</h2>
           <p class="nosotros-intro" data-nosotros="intro">En La Mansión creemos que un buen corte le cambia el día a cualquiera: al niño que se sienta por primera vez en la silla y al abuelo que lleva toda la vida con el mismo peinado. Cada uno llega con su historia. Nosotros ponemos las manos, la técnica y las ganas.</p>
@@ -162,82 +162,17 @@
             <li>Adultos</li>
             <li>Mayores</li>
           </ul>
-        </header>
-        <div class="nosotros-escenario" data-nosotros-galeria>
-          <div class="nosotros-pista" data-nosotros-pista>
-            <figure class="nosotros-card d0" data-revelar>
-              <div class="nosotros-media mate-nosotros-1">
-                <img src="assets/img/fotos/nosotros-1-480.webp" srcset="assets/img/fotos/nosotros-1-480.webp 480w" sizes="(max-width: 767px) 82vw, (max-width: 1023px) 46vw, 360px" width="781" height="861" alt="Un barbero le corta el cabello a un niño pequeño sentado en las piernas de su papá." loading="lazy" decoding="async">
-              </div>
-              <figcaption>
-                <h3 data-nosotros-h="0">La primera vez</h3>
-                <p data-nosotros-p="0">Los primeros cortes se hacen con calma, con risas y con papá al lado.</p>
-              </figcaption>
-            </figure>
-            <figure class="nosotros-card d1" data-revelar>
-              <div class="nosotros-media mate-nosotros-2">
-                <img src="assets/img/fotos/nosotros-2-480.webp" srcset="assets/img/fotos/nosotros-2-480.webp 480w" sizes="(max-width: 767px) 82vw, (max-width: 1023px) 46vw, 360px" width="685" height="882" alt="Un barbero con delantal de herramientas doradas peina con una brocha el cabello de un joven." loading="lazy" decoding="async">
-              </div>
-              <figcaption>
-                <h3 data-nosotros-h="1">El detalle que se nota</h3>
-                <p data-nosotros-p="1">Degradado limpio, brocha, tijera y pulso firme. Cada corte lleva nuestra firma.</p>
-              </figcaption>
-            </figure>
-            <figure class="nosotros-card d2" data-revelar>
-              <div class="nosotros-media mate-nosotros-3">
-                <img src="assets/img/fotos/nosotros-3-480.webp" srcset="assets/img/fotos/nosotros-3-480.webp 480w" sizes="(max-width: 767px) 82vw, (max-width: 1023px) 92vw, 360px" width="691" height="873" alt="Un barbero corta con tijeras el cabello de un señor mayor mientras otro hombre observa." loading="lazy" decoding="async">
-              </div>
-              <figcaption>
-                <h3 data-nosotros-h="2">Un oficio que se comparte</h3>
-                <p data-nosotros-p="2">Aprendemos mirando, preguntando y practicando. Los que saben enseñan y los que llegan crecen.</p>
-              </figcaption>
-            </figure>
-          </div>
-          <div class="nosotros-controles" data-nosotros-controles>
-            <button type="button" data-nosotros-prev aria-label="Historia anterior">←</button>
-            <div class="nosotros-puntos" data-nosotros-puntos></div>
-            <button type="button" data-nosotros-next aria-label="Historia siguiente">→</button>
+          <div class="hero-acciones">
+            <a class="btn" href="nosotros.html">Conoce nuestra historia</a>
+            <a class="btn btn-sec" href="nosotros.html#trabajo">Ver nuestro trabajo</a>
           </div>
         </div>
-        <div class="valores">
-          <h2 class="reveal" data-revelar data-nosotros="valoresTitulo">Lo que nos mueve</h2>
-          <ul class="valores-lista">
-            <li class="valor reveal d0" data-revelar>
-              <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6 14 9h5.4l-4.4 3.2 1.7 5.2L12 14.6 7.3 17.4 9 12.2 4.6 9H10z"/></svg>
-              <div><h3 data-valor-t="0">Presentación impecable</h3><p data-valor-p="0">Te recibimos como queremos que salgas.</p></div>
-            </li>
-            <li class="valor reveal d1" data-revelar>
-              <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="7" r="2"/><circle cx="6" cy="17" r="2"/><path d="M8 8.2 19 17M8 15.8 19 7"/></svg>
-              <div><h3 data-valor-t="1">Técnica y experiencia</h3><p data-valor-p="1">Práctica y oficio en cada corte.</p></div>
-            </li>
-            <li class="valor reveal d2" data-revelar>
-              <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M8.2 12.2 11 15l4.8-5.2"/></svg>
-              <div><h3 data-valor-t="2">Compromiso</h3><p data-valor-p="2">Tu tiempo importa y lo cumplimos.</p></div>
-            </li>
-            <li class="valor reveal d3" data-revelar>
-              <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M8.5 13.2c.9 1.5 2 2.2 3.5 2.2s2.6-.7 3.5-2.2"/></svg>
-              <div><h3 data-valor-t="3">Actitud de servicio</h3><p data-valor-p="3">Atención premium con trato de amigo.</p></div>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <section class="seccion equipo" id="equipo" hidden>
-      <div class="wrap">
-        <header class="reveal" data-revelar>
-          <p class="etiqueta">El equipo</p>
-          <h2>El equipo</h2>
-        </header>
-        <div class="equipo-pista" data-equipo-pista></div>
-      </div>
-    </section>
-
-    <section class="cita" aria-label="Cita">
-      <div class="cita-fondo fondo-parallax" data-cita-fondo></div>
-      <div class="wrap cita-caja reveal" data-revelar>
-        <blockquote data-nosotros="cita">Un buen corte no cambia solo tu cabello: cambia cómo entras a cualquier lugar.</blockquote>
-        <p class="cita-firma" data-nosotros="firma">La Mansión Barber Shop</p>
+        <figure class="nosotros-marco reveal" data-revelar>
+          <div class="nosotros-marco-foto mate-nosotros-1">
+            <img src="assets/img/fotos/nosotros-1-480.webp" srcset="assets/img/fotos/nosotros-1-480.webp 480w" sizes="(max-width: 899px) 86vw, 380px" width="781" height="861" alt="Un barbero de La Mansión le corta el cabello a un niño pequeño sentado en las piernas de su papá." loading="lazy" decoding="async">
+          </div>
+          <figcaption>La primera vez — Los primeros cortes se hacen con calma, con risas y con papá al lado.</figcaption>
+        </figure>
       </div>
     </section>
 
@@ -249,22 +184,22 @@
         </header>
         <div class="carta-estatica" data-carta-estatica>
           <h3>Cortes</h3>
-          <article><h3>Corte clásico</h3><p>Tijera o máquina, con el acabado que pidas.</p><p class="servicio-precio">Consultar por WhatsApp</p></article>
-          <article><h3>Degradado</h3><p>Transición limpia, de corto a largo.</p><p class="servicio-precio">Consultar por WhatsApp</p></article>
-          <article><h3>Corte y barba</h3><p>El corte y el arreglo de barba en la misma visita.</p><p class="servicio-precio">Consultar por WhatsApp</p></article>
+          <article><h3>Corte clásico</h3><p>Tijera o máquina, con el acabado que pidas.</p><p class="servicio-precio">Precio por confirmar</p></article>
+          <article><h3>Degradado</h3><p>Transición limpia, de corto a largo.</p><p class="servicio-precio">Precio por confirmar</p></article>
+          <article><h3>Corte y barba</h3><p>El corte y el arreglo de barba en la misma visita.</p><p class="servicio-precio">Precio por confirmar</p></article>
           <h3>Barba</h3>
-          <article><h3>Arreglo de barba</h3><p>Perfil, forma y definición.</p><p class="servicio-precio">Consultar por WhatsApp</p></article>
-          <article><h3>Barba completa</h3><p>Diseño y limpieza de toda la barba.</p><p class="servicio-precio">Consultar por WhatsApp</p></article>
+          <article><h3>Arreglo de barba</h3><p>Perfil, forma y definición.</p><p class="servicio-precio">Precio por confirmar</p></article>
+          <article><h3>Barba completa</h3><p>Diseño y limpieza de toda la barba.</p><p class="servicio-precio">Precio por confirmar</p></article>
           <h3>Niños</h3>
-          <article><h3>Corte para niños</h3><p>Con calma, a su ritmo y con quien los acompaña.</p><p class="servicio-precio">Consultar por WhatsApp</p></article>
+          <article><h3>Corte para niños</h3><p>Con calma, a su ritmo y con quien los acompaña.</p><p class="servicio-precio">Precio por confirmar</p></article>
           <h3>Mujer</h3>
-          <article><h3>Corte para mujer</h3><p>Escríbenos para consultar disponibilidad.</p><p class="servicio-precio">Consultar por WhatsApp</p></article>
+          <article><h3>Corte para mujer</h3><p>Escríbenos para consultar disponibilidad.</p><p class="servicio-precio">Precio por confirmar</p></article>
           <h3>Color</h3>
-          <article><h3>Color</h3><p>Consulta el tono y el proceso por WhatsApp.</p><p class="servicio-precio">Consultar por WhatsApp</p></article>
+          <article><h3>Color</h3><p>Consulta el tono y el proceso por WhatsApp.</p><p class="servicio-precio">Precio por confirmar</p></article>
           <h3>FreeStyle y diseños</h3>
-          <article><h3>Diseños</h3><p>Líneas, figuras y freestyle sobre el corte.</p><p class="servicio-precio">Consultar por WhatsApp</p></article>
+          <article><h3>Diseños</h3><p>Líneas, figuras y freestyle sobre el corte.</p><p class="servicio-precio">Precio por confirmar</p></article>
           <h3>Cuidado facial</h3>
-          <article><h3>Cuidado facial</h3><p>Limpieza y cuidado de la piel del rostro.</p><p class="servicio-precio">Consultar por WhatsApp</p></article>
+          <article><h3>Cuidado facial</h3><p>Limpieza y cuidado de la piel del rostro.</p><p class="servicio-precio">Precio por confirmar</p></article>
         </div>
         <div class="carta" data-carta hidden>
           <div class="carta-lado">
@@ -275,8 +210,8 @@
           <div class="carta-movil" data-carta-movil></div>
         </div>
         <p class="servicios-nota">
-          <span data-texto="serviciosNota">Precios y duración por confirmar: escríbenos por WhatsApp</span>
-          <a class="btn" data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">Agenda por WhatsApp</a>
+          <span data-texto="serviciosNota">Los servicios sin precio se muestran como Precio por confirmar.</span>
+          <button class="btn" type="button" data-reservar>Reserva tu cita</button>
         </p>
       </div>
     </section>
@@ -304,27 +239,41 @@
       <div class="wrap">
         <h2 data-texto="productos">Cuidado en casa: aceite de barba y productos de barbería</h2>
         <div class="hero-acciones">
-          <a class="btn" data-wa-productos href="https://wa.me/573118162854?text=Hola%2C%20quiero%20preguntar%20por%20los%20productos%20de%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">Pregunta por WhatsApp</a>
+          <button class="btn" type="button" data-reservar>Reserva tu cita</button>
         </div>
       </div>
     </section>
 
     <section class="seccion visita" id="visita" aria-labelledby="visita-titulo">
-      <div class="visita-fondo fondo-parallax" data-visita-fondo></div>
-      <div class="wrap">
+      <div class="wrap visita-grid">
         <article class="visita-tarjeta reveal" data-revelar>
           <p class="etiqueta">Visita</p>
           <h2 id="visita-titulo" data-ciudad>Funza, Cundinamarca</h2>
           <p class="visita-direccion" data-direccion>Vía Funza - Siberia, Km 3.8, La Isla, Ceuta, Funza, Cundinamarca, Colombia</p>
           <p class="horario-nota" data-horario>Todos los días · 10:00 a. m. a 8:00 p. m.</p>
+          <p class="visita-contacto">
+            <a data-tel href="tel:+573118162854">311 816 2854</a>
+            <a class="wa-contacto" data-wa-contacto href="https://wa.me/573118162854" target="_blank" rel="noopener">
+              <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14v9H8l-3 2.5z"/></svg>
+              <span data-wa-numero>311 816 2854</span>
+            </a>
+            <a data-ig href="https://www.instagram.com/lamansionbarbers/" target="_blank" rel="noopener">Instagram</a>
+          </p>
           <p class="visita-pista" data-pista hidden>Busca el letrero luminoso de La Mansión.</p>
           <div class="grupo-botones">
-            <a class="btn btn-sec" data-maps href="https://www.google.com/maps/search/?api=1&amp;query=V%C3%ADa%20Funza%20Siberia%20Km%203.8%2C%20La%20Isla%2C%20Ceuta%2C%20Funza%2C%20Cundinamarca%2C%20Colombia" target="_blank" rel="noopener">Cómo llegar</a>
-            <a class="btn" href="#reservas">Reserva tu cita</a>
+            <a class="btn" data-maps href="https://www.google.com/maps/dir/?api=1&amp;destination=V%C3%ADa%20Funza%20Siberia%20Km%203.8%2C%20La%20Isla%2C%20Ceuta%2C%20Funza%2C%20Cundinamarca%2C%20Colombia" target="_blank" rel="noopener">Cómo llegar</a>
+            <a class="btn btn-sec" data-maps-buscar href="https://www.google.com/maps/search/?api=1&amp;query=V%C3%ADa%20Funza%20Siberia%20Km%203.8%2C%20La%20Isla%2C%20Ceuta%2C%20Funza%2C%20Cundinamarca%2C%20Colombia" target="_blank" rel="noopener">Abrir en Google Maps</a>
             <a class="btn btn-sec" data-tel href="tel:+573118162854">Llamar</a>
-            <a class="btn btn-sec" data-ig href="https://www.instagram.com/lamansionbarbers/" target="_blank" rel="noopener">Instagram</a>
+            <button class="btn btn-sec" type="button" data-reservar>Reserva tu cita</button>
           </div>
         </article>
+        <div class="mapa-marco" data-mapa>
+          <div class="mapa-espera" data-mapa-espera>
+            <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10z"/><circle cx="12" cy="11" r="2"/></svg>
+            <p data-direccion>Vía Funza - Siberia, Km 3.8, La Isla, Ceuta, Funza, Cundinamarca, Colombia</p>
+            <button class="btn btn-sec" type="button" data-mapa-ver>Ver mapa</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -332,11 +281,10 @@
       <div class="wrap">
         <div data-reserva-app hidden></div>
         <article class="reserva-card reveal" data-revelar data-reserva-cerrada>
-          <h2 id="reservas-titulo" data-texto="reservasTitulo">Agenda abierta · Escríbenos por WhatsApp</h2>
+          <h2 id="reservas-titulo" data-texto="reservasTitulo">Reserva tu cita en línea</h2>
           <div class="hero-acciones">
-            <a class="btn" data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">Agenda por WhatsApp</a>
+            <button class="btn" type="button" data-reservar>Reserva tu cita</button>
           </div>
-          <p class="reserva-nota" data-texto="reservasNota">Muy pronto: reservas en línea</p>
         </article>
       </div>
     </section>
@@ -349,8 +297,8 @@
             <h3><button class="faq-q" type="button" id="faq-b-0" aria-expanded="false" aria-controls="faq-p-0" data-faq-q="0">¿Cómo agendo mi cita?</button></h3>
             <div class="faq-panel" id="faq-p-0" role="region" aria-labelledby="faq-b-0">
               <div class="faq-cuerpo">
-                <p data-faq-a="0">Escríbenos por WhatsApp y te confirmamos el día y la hora.</p>
-                <p><a class="btn" data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">Agenda por WhatsApp</a></p>
+                <p data-faq-a="0">Desde esta página, en un minuto.</p>
+                <p><button class="btn" type="button" data-reservar>Reserva tu cita</button></p>
               </div>
             </div>
           </div>
@@ -371,7 +319,7 @@
             <div class="faq-panel" id="faq-p-3" role="region" aria-labelledby="faq-b-3">
               <div class="faq-cuerpo">
                 <p data-faq-a="3">Vía Funza - Siberia, Km 3.8, La Isla, Ceuta, Funza, Cundinamarca, Colombia</p>
-                <p><a data-maps href="https://www.google.com/maps/search/?api=1&amp;query=V%C3%ADa%20Funza%20Siberia%20Km%203.8%2C%20La%20Isla%2C%20Ceuta%2C%20Funza%2C%20Cundinamarca%2C%20Colombia" target="_blank" rel="noopener">Cómo llegar</a></p>
+                <p><a data-maps href="https://www.google.com/maps/dir/?api=1&amp;destination=V%C3%ADa%20Funza%20Siberia%20Km%203.8%2C%20La%20Isla%2C%20Ceuta%2C%20Funza%2C%20Cundinamarca%2C%20Colombia" target="_blank" rel="noopener">Cómo llegar</a></p>
               </div>
             </div>
           </div>
@@ -402,7 +350,10 @@
       </ul>
       <div class="footer-redes">
         <a data-ig href="https://www.instagram.com/lamansionbarbers/" target="_blank" rel="noopener">Instagram</a>
-        <a data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">WhatsApp</a>
+        <a class="wa-contacto" data-wa-contacto href="https://wa.me/573118162854" target="_blank" rel="noopener">
+          <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14v9H8l-3 2.5z"/></svg>
+          <span data-wa-numero>311 816 2854</span>
+        </a>
       </div>
     </div>
     <div class="wrap">
@@ -410,9 +361,9 @@
     </div>
   </footer>
 
-  <nav class="barra-movil" data-barra aria-label="Contacto rápido">
-    <a class="btn" data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">WhatsApp</a>
-    <a class="btn btn-sec" data-maps href="https://www.google.com/maps/search/?api=1&amp;query=V%C3%ADa%20Funza%20Siberia%20Km%203.8%2C%20La%20Isla%2C%20Ceuta%2C%20Funza%2C%20Cundinamarca%2C%20Colombia" target="_blank" rel="noopener">Cómo llegar</a>
+  <nav class="barra-movil" data-barra aria-label="Reserva y mapa">
+    <button class="btn" type="button" data-reservar>Reservar</button>
+    <a class="btn btn-sec" data-maps href="https://www.google.com/maps/dir/?api=1&amp;destination=V%C3%ADa%20Funza%20Siberia%20Km%203.8%2C%20La%20Isla%2C%20Ceuta%2C%20Funza%2C%20Cundinamarca%2C%20Colombia" target="_blank" rel="noopener">Cómo llegar</a>
   </nav>
   <script type="module" src="js/pagina.js"></script>
 </body>

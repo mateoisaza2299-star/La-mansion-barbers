@@ -18,7 +18,7 @@ const SEMANA = [
 const NAV = [
   { id: "agenda", texto: "Agenda", roles: ["dueno", "barbero"] },
   { id: "reservas", texto: "Reservas", roles: ["dueno", "barbero"] },
-  { id: "equipo", texto: "Equipo y horarios", roles: ["dueno"] },
+  { id: "equipo", texto: "Barberos y horarios", roles: ["dueno"] },
   { id: "horarios", texto: "Horarios", roles: ["barbero"] },
   { id: "servicios", texto: "Servicios", roles: ["dueno"] },
   { id: "fidelidad", texto: "Fidelidad", roles: ["dueno", "barbero"] },
@@ -88,9 +88,11 @@ function nombreServicio(id) {
   return servicio ? servicio.nombre : "";
 }
 
-function nombreSede(id) {
-  const sede = estado.sedes.find((item) => item.id === id);
-  return sede ? sede.nombre : "";
+function sedeActual() {
+  const activas = estado.sedes.filter((item) => item.activa !== false);
+  const lista = (activas.length ? activas : estado.sedes).slice();
+  lista.sort((a, b) => (Number(a.orden) || 0) - (Number(b.orden) || 0) || String(a.nombre || "").localeCompare(String(b.nombre || ""), "es"));
+  return lista[0] || null;
 }
 
 function digitos(valor) {
@@ -297,8 +299,9 @@ function pintarAgenda() {
   const fechaInput = document.querySelector("[data-agenda-fecha]");
   const barberoSelect = document.querySelector("[data-agenda-barbero]");
   if (!estado.agendaFecha) estado.agendaFecha = hoyISO();
-  if (!estado.agendaSede) estado.agendaSede = (estado.sedes.find((item) => item.activa !== false) || estado.sedes[0] || {}).id || "";
-  llenarSelect(sedeSelect, estado.sedes.map((item) => ({ valor: item.id, texto: item.nombre })), estado.agendaSede);
+  if (!estado.agendaSede) estado.agendaSede = (sedeActual() || {}).id || "";
+  if (sedeSelect) llenarSelect(sedeSelect, estado.sedes.map((item) => ({ valor: item.id, texto: item.nombre })), estado.agendaSede);
+  pintarPuesta();
   if (fechaInput && fechaInput.value !== estado.agendaFecha) fechaInput.value = estado.agendaFecha;
   const deSede = barberosDeSede(estado.agendaSede).filter((item) => dueno() || item.id === estado.barberoId);
   if (!estado.agendaBarbero || !deSede.some((item) => item.id === estado.agendaBarbero)) {
@@ -323,7 +326,7 @@ function pintarDia(host, deSede) {
     ? deSede.filter((item) => item.id === estado.agendaBarbero)
     : deSede;
   if (!columnas.length) {
-    host.appendChild(nodo("p", "vacio", "No hay barberos en esta sede."));
+    host.appendChild(nodo("p", "vacio", "No hay barberos."));
     return;
   }
   const citas = reservasEn(estado.agendaFecha, estado.agendaSede);
@@ -593,7 +596,6 @@ async function exportarCsv() {
 
 function pintarEquipo() {
   if (dueno()) {
-    pintarSedes();
     pintarBarberos();
     prepararFormulariosDueno();
   }
@@ -607,46 +609,12 @@ function pintarEquipo() {
   pintarBloqueos();
   const sede = document.querySelector("[data-bloqueo-sede]");
   const barbero = document.querySelector("[data-bloqueo-barbero]");
-  llenarSelect(sede, estado.sedes.map((item) => ({ valor: item.id, texto: item.nombre })));
+  if (sede) sede.value = (sedeActual() || {}).id || "";
   const opciones = [];
-  if (dueno()) opciones.push({ valor: "", texto: "Toda la sede" });
+  if (dueno()) opciones.push({ valor: "", texto: "Cerrar el local" });
   (dueno() ? estado.barberos : lista).forEach((item) => opciones.push({ valor: item.id, texto: item.nombre }));
   llenarSelect(barbero, opciones, dueno() ? "" : estado.barberoId);
   if (barbero && !dueno()) barbero.disabled = true;
-}
-
-function pintarSedes() {
-  const host = document.querySelector("[data-sedes]");
-  if (!host) return;
-  host.replaceChildren();
-  if (!estado.sedes.length) host.appendChild(nodo("p", "vacio", "Aún no hay sedes."));
-  estado.sedes.forEach((sede) => {
-    const fila = nodo("article", "pa-cita");
-    fila.append(nodo("h3", null, sede.nombre), nodo("p", null, sede.direccion || ""), nodo("p", null, sede.activa ? "Activa" : "Inactiva"));
-    const editar = nodo("button", "btn btn-sec", "Editar");
-    editar.type = "button";
-    editar.addEventListener("click", () => {
-      const form = document.querySelector("[data-sede-form]");
-      form.elements.id.value = sede.id;
-      form.elements.nombre.value = sede.nombre || "";
-      form.elements.direccion.value = sede.direccion || "";
-      form.elements.telefono.value = sede.telefono || "";
-      form.elements.orden.value = sede.orden || 0;
-      form.elements.activa.checked = sede.activa !== false;
-    });
-    const borrar = nodo("button", "btn btn-sec", "Eliminar");
-    borrar.type = "button";
-    borrar.addEventListener("click", async () => {
-      const ok = await preguntar("¿Eliminar la sede " + sede.nombre + "?", "Eliminar", "Cancelar");
-      if (!ok) return;
-      const { error } = await estado.supabase.from("sedes").delete().eq("id", sede.id);
-      if (error) return fail("No se pudo eliminar la sede.");
-      estado.sedes = estado.sedes.filter((item) => item.id !== sede.id);
-      pintarSedes();
-    });
-    fila.append(editar, borrar);
-    host.appendChild(fila);
-  });
 }
 
 function pintarBarberos() {
@@ -656,7 +624,7 @@ function pintarBarberos() {
   if (!estado.barberos.length) host.appendChild(nodo("p", "vacio", "Aún no hay barberos."));
   estado.barberos.forEach((barbero) => {
     const fila = nodo("article", "pa-cita");
-    fila.append(nodo("h3", null, barbero.nombre), nodo("p", null, (barbero.especialidad || "") + " · " + nombreSede(barbero.sede_id)));
+    fila.append(nodo("h3", null, barbero.nombre), nodo("p", null, barbero.especialidad || ""));
     if (!estado.horarios.some((item) => item.barbero_id === barbero.id)) {
       fila.appendChild(nodo("p", null, "Sin horarios: no aparecerá disponible para reservar"));
     }
@@ -702,7 +670,7 @@ function llenarBarbero(barbero) {
   form.elements.id.value = barbero.id;
   form.elements.nombre.value = barbero.nombre || "";
   form.elements.especialidad.value = barbero.especialidad || "";
-  form.elements.sede_id.value = barbero.sede_id || "";
+  if (form.elements.sede_id) form.elements.sede_id.value = barbero.sede_id || (sedeActual() || {}).id || "";
   form.elements.foto.value = barbero.foto || "";
   form.elements.orden.value = barbero.orden || 0;
   form.elements.activo.checked = barbero.activo !== false;
@@ -713,7 +681,8 @@ function llenarBarbero(barbero) {
 
 function prepararFormulariosDueno() {
   const sede = document.querySelector("[data-barbero-form] [name=sede_id]");
-  llenarSelect(sede, estado.sedes.map((item) => ({ valor: item.id, texto: item.nombre })));
+  if (sede && sede.tagName === "SELECT") llenarSelect(sede, estado.sedes.map((item) => ({ valor: item.id, texto: item.nombre })));
+  else if (sede) sede.value = (sedeActual() || {}).id || "";
   const foto = document.querySelector("[data-barbero-foto]");
   llenarSelect(foto, [{ valor: "", texto: "Sin foto" }, ...estado.fotos.map((item) => ({ valor: item.id, texto: item.alt || item.id }))]);
   if (!document.querySelector("[data-servicios-todos]")) serviciosChecks(null, true);
@@ -988,7 +957,7 @@ function pintarBloqueos() {
   if (!lista.length) host.appendChild(nodo("p", "vacio", "No hay bloqueos."));
   lista.forEach((bloqueo) => {
     const fila = nodo("article", "pa-cita");
-    const quien = bloqueo.barbero_id ? nombreBarbero(bloqueo.barbero_id) : "Toda la sede";
+    const quien = bloqueo.barbero_id ? nombreBarbero(bloqueo.barbero_id) : "Cerrar el local";
     const franja = bloqueo.todo_dia ? "Todo el día" : (bloqueo.desde || "") + " – " + (bloqueo.hasta || "");
     fila.append(nodo("h3", null, fechaLegible(bloqueo.fecha)), nodo("p", null, quien + " · " + franja), nodo("p", null, bloqueo.motivo || ""));
     if (dueno() || bloqueo.barbero_id === estado.barberoId) {
@@ -1160,6 +1129,7 @@ function grafico(titulo, puntos, clave) {
 }
 
 function pintarAjustes() {
+  pintarLocal();
   const form = document.querySelector("[data-ajustes]");
   const config = estado.config;
   if (!form || !config) return;
@@ -1178,7 +1148,7 @@ function prepararNueva() {
   if (!form) return;
   const sedes = dueno() ? estado.sedes : estado.sedes.filter((item) => estado.barberos.some((barbero) => barbero.id === estado.barberoId && barbero.sede_id === item.id));
   llenarSelect(form.elements.sede, sedes.map((item) => ({ valor: item.id, texto: item.nombre })));
-  const servicios = estado.servicios.filter((item) => item.activo && item.precio != null);
+  const servicios = estado.servicios.filter((item) => item.activo !== false);
   llenarSelect(form.elements.servicio, servicios.map((item) => ({ valor: item.id, texto: item.nombre })));
   form.elements.fecha.value = hoyISO();
   refrescarNueva(true);
@@ -1227,7 +1197,8 @@ function enlazar() {
       if (window.Notification) await Notification.requestPermission();
     } catch (error) {}
   });
-  document.querySelector("[data-agenda-sede]").addEventListener("change", (evento) => {
+  const agendaSede = document.querySelector("[data-agenda-sede]");
+  if (agendaSede) agendaSede.addEventListener("change", (evento) => {
     estado.agendaSede = evento.target.value;
     pintarAgenda();
   });
@@ -1267,7 +1238,7 @@ function enlazar() {
     document.querySelector("[data-cita-modal]").hidden = true;
   });
   const nueva = document.querySelector("[data-nueva-form]");
-  nueva.elements.sede.addEventListener("change", () => refrescarNueva(true));
+  if (nueva.elements.sede) nueva.elements.sede.addEventListener("change", () => refrescarNueva(true));
   nueva.elements.servicio.addEventListener("change", () => refrescarNueva(true));
   nueva.elements.barbero.addEventListener("change", () => refrescarNueva(false));
   nueva.elements.fecha.addEventListener("change", () => refrescarNueva(false));
@@ -1278,7 +1249,8 @@ function enlazar() {
     if (el) el.addEventListener("change", pintarReservas);
   });
   document.querySelector("[data-csv]").addEventListener("click", exportarCsv);
-  document.querySelector("[data-sede-form]").addEventListener("submit", guardarSede);
+  const localForm = document.querySelector("[data-local-form]");
+  if (localForm) localForm.addEventListener("submit", guardarLocal);
   document.querySelector("[data-barbero-form]").addEventListener("submit", guardarBarbero);
   document.querySelector("[data-servicio-form]").addEventListener("submit", guardarServicio);
   document.querySelector("[data-horario-barbero]").addEventListener("change", (evento) => {
@@ -1348,31 +1320,43 @@ function enlazar() {
   });
 }
 
-async function guardarSede(evento) {
+function pintarLocal() {
+  const form = document.querySelector("[data-local-form]");
+  const sede = sedeActual();
+  if (!form || !sede) return;
+  form.elements.nombre.value = sede.nombre || "";
+  form.elements.direccion.value = sede.direccion || "";
+  form.elements.telefono.value = sede.telefono || "";
+}
+
+async function guardarLocal(evento) {
   evento.preventDefault();
   const form = evento.target;
+  const sede = sedeActual();
+  const error = document.querySelector("[data-local-error]");
+  if (error) error.hidden = true;
+  if (!sede) {
+    if (error) {
+      error.hidden = false;
+      error.textContent = "No pudimos guardar los datos del local.";
+    }
+    return;
+  }
   const fila = {
     nombre: form.elements.nombre.value.trim(),
     direccion: form.elements.direccion.value.trim(),
-    telefono: form.elements.telefono.value.trim(),
-    orden: Number(form.elements.orden.value) || 0,
-    activa: form.elements.activa.checked
+    telefono: form.elements.telefono.value.trim()
   };
-  const id = form.elements.id.value;
-  const consulta = id
-    ? estado.supabase.from("sedes").update(fila).eq("id", id).select()
-    : estado.supabase.from("sedes").insert(fila).select();
-  const { data, error } = await consulta;
-  if (error) return fail("No se pudo guardar la sede.");
-  if (id) {
-    const actual = estado.sedes.find((item) => item.id === id);
-    if (actual) Object.assign(actual, fila);
-  } else if (data && data[0]) {
-    estado.sedes.push(data[0]);
+  const { error: fallo } = await estado.supabase.from("sedes").update(fila).eq("id", sede.id);
+  if (fallo) {
+    if (error) {
+      error.hidden = false;
+      error.textContent = "No pudimos guardar los datos del local.";
+    }
+    return;
   }
-  form.reset();
-  form.elements.activa.checked = true;
-  pintarSedes();
+  Object.assign(sede, fila);
+  pintarPuesta();
 }
 
 async function guardarBarbero(evento) {
@@ -1383,7 +1367,7 @@ async function guardarBarbero(evento) {
   const fila = {
     nombre: form.elements.nombre.value.trim(),
     especialidad: form.elements.especialidad.value.trim(),
-    sede_id: form.elements.sede_id.value,
+    sede_id: (form.elements.sede_id && form.elements.sede_id.value) || (sedeActual() || {}).id || "",
     foto: form.elements.foto.value,
     servicios,
     orden: Number(form.elements.orden.value) || 0,
@@ -1455,7 +1439,7 @@ async function guardarBloqueo(evento) {
   error.hidden = true;
   const todo = form.elements.todo_dia.checked;
   const fila = {
-    sede_id: form.elements.sede_id.value,
+    sede_id: (form.elements.sede_id && form.elements.sede_id.value) || (sedeActual() || {}).id || "",
     barbero_id: form.elements.barbero_id.value || null,
     fecha: form.elements.fecha.value,
     todo_dia: todo,
@@ -1554,6 +1538,100 @@ async function guardarAjustes(evento) {
     return;
   }
   Object.assign(estado.config, fila);
+  pintarPuesta();
+}
+
+const PUESTA = "lamansion-puesta-ok";
+let puestaMarca = 0;
+let puestaAbierta = false;
+
+async function huecoSemana() {
+  const servicio = estado.servicios.find((item) => item.activo !== false);
+  const barberos = estado.barberos.filter((item) => item.activo !== false);
+  if (!servicio || !barberos.length || !estado.supabase) return false;
+  const hoy = hoyISO();
+  for (let i = 0; i < 7; i += 1) {
+    const fecha = sumarDias(hoy, i);
+    for (const barbero of barberos) {
+      const { data, error } = await estado.supabase.rpc("horas_disponibles", {
+        p_barbero: barbero.id,
+        p_fecha: fecha,
+        p_duracion: Number(servicio.duracion_min) || 30
+      });
+      if (!error && Array.isArray(data) && data.length) return true;
+    }
+  }
+  return false;
+}
+
+async function pintarPuesta() {
+  const host = document.querySelector("[data-puesta]");
+  if (!host || !dueno()) return;
+  const token = ++puestaMarca;
+  const sede = sedeActual();
+  const activos = estado.servicios.filter((item) => item.activo !== false);
+  const conPrecio = activos.some((item) => item.precio != null && item.precio !== "");
+  const sinPrecio = activos.some((item) => item.precio == null || item.precio === "");
+  const barberos = estado.barberos.filter((item) => item.activo !== false);
+  const sinHorario = barberos.filter((item) => !estado.horarios.some((horario) => horario.barbero_id === item.id));
+  const reservas = Boolean(estado.config && estado.config.reservas_activas !== false);
+  const hueco = await huecoSemana();
+  if (token !== puestaMarca) return;
+  const items = [
+    { ok: Boolean(sede && String(sede.direccion || "").trim()), texto: "Local con dirección cargada", destino: "ajustes", accion: "Corregir" },
+    { ok: activos.length > 0, texto: "Al menos un servicio activo", destino: "servicios", accion: "Corregir" },
+    { ok: conPrecio, texto: "Al menos un servicio con precio", destino: "servicios", accion: "Corregir", extra: sinPrecio ? "Los servicios sin precio se muestran como 'Precio por confirmar'" : "" },
+    { ok: barberos.length > 0, texto: "Al menos un barbero activo", destino: "equipo", accion: "Corregir" },
+    { ok: barberos.length > 0 && sinHorario.length === 0, texto: "Cada barbero activo tiene horarios", destino: "equipo", accion: "Editar", extra: sinHorario.length ? sinHorario.map((item) => item.nombre).join(", ") + ". No aparecerá disponible para reservar" : "" },
+    { ok: reservas, texto: "Reservas activas en Ajustes", destino: "ajustes", accion: "Corregir" },
+    { ok: hueco, texto: "Al menos una hora libre en los próximos 7 días", destino: "equipo", accion: "Corregir" }
+  ];
+  const listo = items.every((item) => item.ok);
+  let desde = 0;
+  try {
+    if (listo) {
+      desde = Number(localStorage.getItem(PUESTA) || 0);
+      if (!desde) {
+        desde = Date.now();
+        localStorage.setItem(PUESTA, String(desde));
+      }
+    } else localStorage.removeItem(PUESTA);
+  } catch (error) {}
+  const colapsada = listo && desde && Date.now() - desde >= 7 * 86400000 && !puestaAbierta;
+  host.replaceChildren();
+  host.appendChild(nodo("h2", null, "Puesta en marcha"));
+  if (colapsada) {
+    const boton = nodo("button", "btn btn-sec", "Listo para recibir reservas");
+    boton.type = "button";
+    boton.addEventListener("click", () => {
+      puestaAbierta = true;
+      pintarPuesta();
+    });
+    host.appendChild(boton);
+    return;
+  }
+  if (listo) host.appendChild(nodo("p", "puesta-ok", "Listo para recibir reservas"));
+  const lista = nodo("ul", "puesta-lista");
+  items.forEach((item) => {
+    const fila = nodo("li", item.ok ? "puesta-ok" : "puesta-aviso");
+    fila.appendChild(nodo("span", null, (item.ok ? "✓ " : "⚠ ") + item.texto));
+    if (item.extra) fila.appendChild(nodo("p", null, item.extra));
+    if (!item.ok) {
+      const boton = nodo("button", "btn btn-sec", item.accion);
+      boton.type = "button";
+      boton.addEventListener("click", () => abrir(item.destino));
+      fila.appendChild(boton);
+    }
+    lista.appendChild(fila);
+  });
+  host.appendChild(lista);
+  if (listo) {
+    const probar = nodo("a", "btn", "Probar la reserva");
+    probar.href = "index.html#reservar";
+    probar.target = "_blank";
+    probar.rel = "noopener";
+    host.appendChild(probar);
+  }
 }
 
 async function salir() {
@@ -1580,9 +1658,15 @@ async function boot() {
     window.location.replace("admin-login.html");
     return;
   }
-  const admins = await supabase.from("admins").select("rol, barbero_id").limit(1);
-  const fila = admins.data && admins.data[0];
-  if (admins.error || !fila) {
+  const user = sesion.data.session.user;
+  const admins = await supabase.from("admins").select("id, rol, barbero_id, nombre").eq("id", user.id).maybeSingle();
+  if (admins.error) {
+    const codigo = admins.error.code || admins.error.status || "";
+    window.location.replace("admin-login.html?error=permisos&codigo=" + encodeURIComponent(String(codigo)));
+    return;
+  }
+  const fila = Array.isArray(admins.data) ? admins.data[0] : admins.data;
+  if (!fila || (fila.rol !== "dueno" && fila.rol !== "barbero")) {
     await supabase.auth.signOut();
     window.location.replace("admin-login.html");
     return;

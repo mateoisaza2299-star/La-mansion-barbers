@@ -1,7 +1,7 @@
 export const faqPreparacion = [
   {
     pregunta: "¿Cómo reservo?",
-    respuesta: "Por confirmar. Muy pronto reservas en línea."
+    respuesta: "Por confirmar."
   },
   {
     pregunta: "¿Cómo cancelo?",
@@ -32,7 +32,7 @@ export const faq = [
   },
   {
     pregunta: "¿Cómo cancelo?",
-    respuesta: "En la tarjeta Tu cita pulsa Cancelar cita. Si la página ya no deja cancelarla, escríbenos por WhatsApp con al menos 2 horas de aviso."
+    respuesta: "En la tarjeta Tu cita pulsa Cancelar. Si la página ya no deja cancelarla, avisa con al menos 2 horas de anticipación."
   },
   {
     pregunta: "¿Tengo que pagar por adelantado?",

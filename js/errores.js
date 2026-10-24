@@ -1,5 +1,5 @@
 const TABLA = [
-  ["reservas cerradas", "Por ahora no estamos recibiendo reservas en línea. Escríbenos por WhatsApp."],
+  ["reservas cerradas", "La agenda en línea no está disponible por ahora. Intenta de nuevo en unos minutos."],
   ["celular invalido", "Revisa tu celular: 10 dígitos y empieza por 3."],
   ["nombre invalido", "Escribe tu nombre."],
   ["servicio no disponible", "Ese servicio o barbero ya no está disponible. Elige otro."],

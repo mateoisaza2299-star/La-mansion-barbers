@@ -3,6 +3,8 @@ import {
   enlaceWhatsapp,
   enlaceTelefono,
   enlaceMapa,
+  enlaceDirecciones,
+  enlaceEmbed,
   urlInstagram,
   formatoPrecio,
   reservasEnLinea,
@@ -13,6 +15,7 @@ import {
   urlSitio
 } from "./config.js";
 import { iniciarCarrusel } from "./carrusel.js";
+import { prepararTrabajo } from "./trabajo.js";
 
 const textos = negocio.textos || {};
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -69,16 +72,21 @@ const anchoDe = (foto, preferido) => {
 
 const pintarEnlaces = () => {
   const wa = enlaceWhatsapp();
-  document.querySelectorAll("[data-wa]").forEach((nodo) => {
-    if (!wa) return;
-    nodo.href = wa;
+  const contacto = negocio.mostrarWhatsappContacto !== false && wa;
+  document.querySelectorAll("[data-wa-contacto]").forEach((nodo) => {
+    nodo.hidden = !contacto;
+    if (!contacto) return;
+    const numero = String(negocio.whatsapp || "").replace(/\D/g, "");
+    nodo.href = "https://wa.me/" + numero;
     nodo.target = "_blank";
     nodo.rel = "noopener";
+    const etiqueta = nodo.querySelector("[data-wa-numero]");
+    if (etiqueta && negocio.telefono) etiqueta.textContent = negocio.telefono;
   });
-  document.querySelectorAll("[data-wa-productos]").forEach((nodo) => {
-    const href = enlaceWhatsapp(negocio.mensajeProductos || "");
-    if (!href) return;
-    nodo.href = href;
+  document.querySelectorAll("[data-wa]").forEach((nodo) => {
+    if (nodo.hasAttribute("data-wa-contacto")) return;
+    if (!wa) return;
+    nodo.href = wa;
     nodo.target = "_blank";
     nodo.rel = "noopener";
   });
@@ -86,10 +94,17 @@ const pintarEnlaces = () => {
   document.querySelectorAll("[data-tel]").forEach((nodo) => {
     if (tel) nodo.href = tel;
   });
-  const mapa = enlaceMapa();
+  const llegar = enlaceDirecciones();
   document.querySelectorAll("[data-maps]").forEach((nodo) => {
-    if (!mapa) return;
-    nodo.href = mapa;
+    if (!llegar) return;
+    nodo.href = llegar;
+    nodo.target = "_blank";
+    nodo.rel = "noopener";
+  });
+  const buscar = enlaceMapa();
+  document.querySelectorAll("[data-maps-buscar]").forEach((nodo) => {
+    if (!buscar) return;
+    nodo.href = buscar;
     nodo.target = "_blank";
     nodo.rel = "noopener";
   });
@@ -150,8 +165,8 @@ const pintarTextos = () => {
   const titulo = tituloPublico();
   const descripcion = descripcionPublica();
   const etiqueta = "BARBER SHOP · " + String(negocio.zona || "").toLocaleUpperCase("es-CO");
-  const lead = "Cortes, barba y cuidado personal en " + negocio.ciudad + ". Agenda abierta.";
-  document.title = titulo;
+  const lead = "Cortes, barba y cuidado personal en " + negocio.ciudad + ".";
+  document.title = document.body.dataset.pagina === "historia" ? "Nuestra historia | La Mansión Barber Shop" : titulo;
   pintarMeta('meta[name="description"]', descripcion);
   pintarMeta('meta[property="og:title"]', titulo);
   pintarMeta('meta[property="og:description"]', descripcion);
@@ -445,34 +460,6 @@ const prepararFondos = (fotos) => {
   }
 };
 
-const prepararEquipo = (fotos) => {
-  const seccion = document.getElementById("equipo");
-  const pista = document.querySelector("[data-equipo-pista]");
-  if (!seccion || !pista) return;
-  const lista = fotos.filter((foto) => foto.categoria === "equipo" && puede(foto) && ladoDe(foto) >= 480 && !menorEnPrimerPlano(foto));
-  lista.forEach((foto) => {
-    const img = crearImagen(foto, {
-      alt: foto.alt,
-      sizes: "(max-width: 699px) 72vw, 240px",
-      ancho: 800
-    });
-    if (!img || !marcar(foto)) return;
-    const card = document.createElement("article");
-    card.className = "equipo-card";
-    const media = document.createElement("div");
-    media.className = "equipo-media mate-" + foto.id;
-    media.appendChild(img);
-    const nombre = document.createElement("h3");
-    nombre.textContent = "Barbero de La Mansión";
-    const rol = document.createElement("p");
-    rol.className = "equipo-rol";
-    rol.textContent = "Por confirmar";
-    card.append(media, nombre, rol);
-    pista.appendChild(card);
-  });
-  if (pista.children.length) seccion.hidden = false;
-};
-
 const refrescarNosotros = (fotos) => {
   fotos.filter((foto) => foto.categoria === "nosotros" && esId(foto.id)).forEach((foto) => {
     const img = document.querySelector(".mate-" + foto.id + " img");
@@ -494,9 +481,16 @@ const servicioNodo = (servicio) => {
   texto.textContent = servicio.descripcion;
   const precio = document.createElement("p");
   precio.className = "servicio-precio";
-  if (servicio.precio === null || servicio.precio === undefined || servicio.precio === "") precio.textContent = textos.consultar || "Consultar por WhatsApp";
+  if (servicio.precio === null || servicio.precio === undefined || servicio.precio === "") precio.textContent = textos.consultar || "Precio por confirmar";
   else precio.textContent = formatoPrecio(servicio.precio);
-  article.append(titulo, texto, precio);
+  const reservar = document.createElement("button");
+  reservar.type = "button";
+  reservar.className = "btn btn-sec";
+  reservar.textContent = "Reservar";
+  reservar.dataset.reservar = "1";
+  reservar.dataset.servicio = servicio.id || "";
+  reservar.dataset.servicioNombre = servicio.nombre || "";
+  article.append(titulo, texto, precio, reservar);
   return article;
 };
 
@@ -660,7 +654,7 @@ const prepararServicios = (fotos) => {
 };
 
 const fraseLocal = (categoria) => {
-  if (categoria === "equipo") return "El equipo";
+  if (categoria === "equipo") return "El lugar";
   if (categoria === "corte") return "El oficio";
   if (categoria === "producto") return "El detalle";
   return "El lugar";
@@ -903,18 +897,76 @@ const iniciar = async () => {
   reservarApariciones(fotos);
   refrescarNosotros(fotos);
   prepararHero(fotos);
-  prepararEquipo(fotos);
   prepararFondos(fotos);
   prepararServicios(fotos);
   prepararLocal(fotos);
+  prepararMapa();
+  if (document.querySelector("[data-trabajo]")) prepararTrabajo({ fotos, puede, marcar, crearImagen, reducir: reduce });
   prepararMovimiento();
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
   }
-  if (reservasEnLinea()) {
-    const modulo = await import("./reservas.js");
-    await modulo.iniciarReservas();
+  const modulo = await import("./reservas.js");
+  await modulo.iniciarReservas();
+};
+
+const prepararMapa = () => {
+  const marco = document.querySelector("[data-mapa]");
+  if (!marco) return;
+  const espera = marco.querySelector("[data-mapa-espera]");
+  const cargar = () => {
+    if (marco.dataset.listo === "1") return;
+    const src = enlaceEmbed();
+    if (!src) return;
+    marco.dataset.listo = "1";
+    const iframe = document.createElement("iframe");
+    iframe.title = "Mapa de La Mansión Barber Shop";
+    iframe.loading = "lazy";
+    iframe.referrerPolicy = "no-referrer-when-downgrade";
+    iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox");
+    iframe.src = src;
+    let resuelto = false;
+    const caer = () => {
+      if (resuelto) return;
+      resuelto = true;
+      iframe.remove();
+      marco.dataset.listo = "";
+      marco.dataset.fallo = "1";
+      if (!espera) return;
+      espera.hidden = false;
+      const boton = espera.querySelector("[data-mapa-ver]");
+      if (boton) boton.textContent = "Abrir en Google Maps";
+    };
+    const timer = window.setTimeout(caer, 8000);
+    iframe.addEventListener("load", () => {
+      if (resuelto) return;
+      resuelto = true;
+      window.clearTimeout(timer);
+      if (espera) espera.hidden = true;
+    });
+    iframe.addEventListener("error", caer);
+    marco.appendChild(iframe);
+  };
+  const ver = marco.querySelector("[data-mapa-ver]");
+  if (ver) ver.addEventListener("click", () => {
+    if (marco.dataset.fallo === "1") {
+      const url = enlaceMapa();
+      if (url) window.open(url, "_blank", "noopener");
+      return;
+    }
+    cargar();
+  });
+  if (ahorrar) return;
+  if (!("IntersectionObserver" in window)) {
+    cargar();
+    return;
   }
+  const io = new IntersectionObserver((entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    io.disconnect();
+    cargar();
+  }, { rootMargin: "300px" });
+  io.observe(marco);
 };
 
 iniciar();

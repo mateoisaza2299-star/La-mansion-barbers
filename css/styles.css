@@ -538,36 +538,6 @@ body:not(.admin-body) h3 {
   object-fit: cover;
 }
 
-.equipo-pista {
-  display: flex;
-  gap: 1rem;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  padding-bottom: 0.4rem;
-}
-
-.equipo-card {
-  flex: 0 0 min(240px, 72vw);
-  scroll-snap-align: start;
-}
-
-.equipo-media {
-  aspect-ratio: 4 / 5;
-  overflow: hidden;
-  border-radius: 16px;
-  background: var(--grafito);
-}
-
-.equipo-media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.equipo-card h3 { margin: 0.75rem 0 0.2rem; }
-
-.equipo-rol { margin: 0; color: var(--hueso); }
-
 .hero-velo {
   background:
     linear-gradient(to top, rgba(10, 10, 10, 0.85), rgba(10, 10, 10, 0) 46%),
@@ -1298,7 +1268,7 @@ html.motion .local.is-play .local-slide.is-on > img.principal.is-zoom { animatio
 
 .barra-movil.is-oculta { transform: translateY(110%); }
 
-.barra-movil .btn { min-height: 44px; height: 44px; padding-inline: 0.5rem; }
+.barra-movil .btn { min-height: 48px; height: 48px; padding-inline: 0.5rem; }
 
 body.menu-abierto { overflow: hidden; }
 
@@ -1786,13 +1756,41 @@ body.reserva-lock { overflow: hidden; }
 @keyframes check-aro { to { stroke-dashoffset: 0; } }
 @keyframes check-palo { to { stroke-dashoffset: 0; } }
 
+.reserva-velo {
+  position: fixed;
+  inset: 0;
+  z-index: 89;
+  background: rgba(10, 10, 10, 0.72);
+  transform: translateZ(0);
+}
+
+body.reserva-lock .mapa-marco iframe { visibility: hidden; }
+
+.reserva-pasos.abierta {
+  position: fixed;
+  z-index: 90;
+  top: 50%;
+  left: 50%;
+  width: min(720px, calc(100% - 2rem));
+  max-height: min(90vh, 920px);
+  overflow: auto;
+  transform: translate(-50%, -50%);
+  padding: 1rem 1.1rem 1.4rem;
+  border: 1px solid var(--oro);
+  border-radius: 20px;
+  background: var(--negro);
+}
+
 @media (max-width: 767px) {
   .reserva-pasos.abierta {
-    position: fixed;
     inset: 0;
-    z-index: 90;
-    overflow: auto;
-    background: var(--negro);
+    top: 0;
+    left: 0;
+    width: auto;
+    max-height: none;
+    transform: none;
+    border: 0;
+    border-radius: 0;
     padding: calc(12px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
   }
 }
@@ -1800,6 +1798,196 @@ body.reserva-lock { overflow: hidden; }
 @media (min-width: 800px) {
   .reserva-datos { grid-template-columns: minmax(0, 1fr) 16rem; align-items: start; }
   .reserva-resumen { top: 92px; }
+}
+
+.nosotros-compacto { display: grid; gap: 1.6rem; align-items: center; }
+
+.nosotros-marco { margin: 0; max-width: 420px; }
+
+.nosotros-marco { padding: 0 1rem 1rem 0; }
+
+.nosotros-marco-foto,
+.historia-foto {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: 18px;
+  background: var(--grafito);
+}
+
+.nosotros-marco-foto::after {
+  content: "";
+  position: absolute;
+  inset: 14px -14px -14px 14px;
+  border: 1px solid var(--oro);
+  border-radius: 18px;
+  pointer-events: none;
+}
+
+.nosotros-marco-foto img,
+.historia-foto img { border-radius: 18px; }
+
+.nosotros-marco-foto img,
+.historia-foto img,
+.mapa-marco iframe,
+.visor-foto img,
+.comparador img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nosotros-marco figcaption { margin-top: 1.4rem; color: var(--hueso); }
+
+.historia-encabezado h1 { max-width: 18em; }
+
+.historias { display: grid; gap: 2.4rem; }
+
+.historia-fila { display: grid; gap: 1.2rem; align-items: center; }
+
+.historia-foto { border: 1px solid var(--oro); }
+
+.historia-cierre { text-align: center; }
+
+.visita-grid { display: grid; gap: 1rem; align-items: stretch; }
+
+.visita-grid .visita-tarjeta { max-width: none; }
+
+.visita-contacto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  align-items: center;
+  margin: 0.8rem 0 0;
+}
+
+.visita-contacto a,
+.wa-contacto {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  color: var(--hueso);
+  text-decoration: none;
+}
+
+.mapa-marco {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 1px solid var(--oro);
+  border-radius: 20px;
+  background: #141414;
+}
+
+.mapa-espera {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.8rem;
+  min-height: 100%;
+  padding: 1.2rem;
+  text-align: center;
+}
+
+.mapa-espera .icono { width: 2rem; height: 2rem; color: var(--oro); }
+
+.mapa-marco iframe { position: absolute; inset: 0; border: 0; }
+
+.mosaico {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 160px;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.mosaico-item {
+  margin: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--grafito);
+  cursor: pointer;
+}
+
+.mosaico-item.t-alto { grid-row: span 2; }
+
+.mosaico-item img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.comparador {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  max-width: 420px;
+  margin: 1rem 0;
+  overflow: hidden;
+  border-radius: 16px;
+  touch-action: none;
+}
+
+.comparador-lado { position: absolute; inset: 0; }
+
+.comparador-barra {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--oro);
+}
+
+.visor {
+  position: fixed;
+  inset: 0;
+  z-index: 96;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(10, 10, 10, 0.9);
+}
+
+.visor-marco {
+  position: relative;
+  width: min(920px, 100%);
+  display: grid;
+  gap: 0.6rem;
+}
+
+.visor-foto { margin: 0; max-height: 70vh; }
+
+.visor-foto img { max-height: 70vh; object-fit: contain; background: #111; }
+
+.visor-contador, .visor-marco figcaption { margin: 0; text-align: center; }
+
+.visor-flecha {
+  position: absolute;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--oro);
+  border-radius: 999px;
+  background: rgba(10, 10, 10, 0.8);
+  color: var(--oro);
+}
+
+.visor-flecha .icono { width: 1.25rem; height: 1.25rem; }
+
+.visor-prev { left: 0.6rem; }
+.visor-next { right: 0.6rem; }
+
+.servicio .btn { margin-top: 0.6rem; }
+
+@media (min-width: 800px) {
+  .historia-fila { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr); }
+  .historia-fila.es-invertida .historia-foto { order: 2; }
+}
+
+@media (min-width: 900px) {
+  .nosotros-compacto { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); }
+  .visita-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .mosaico { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 180px; }
+  .mosaico-item.t-ancho { grid-column: span 2; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -141,7 +141,7 @@ const boot = () => {
         const link = origin.closest("a[href]");
         if (link) {
           const href = link.getAttribute("href") || "";
-          if (href.includes("wa.me")) insertEvent("click_whatsapp", sectionOf(link));
+          if (link.hasAttribute("data-wa") || link.hasAttribute("data-wa-contacto")) insertEvent("click_whatsapp", sectionOf(link));
           if (href.toLowerCase().startsWith("tel:")) insertEvent("click_llamar", sectionOf(link));
           if (/maps\.google\.|google\.[^/\s]+\/maps|maps\.app\.goo\.gl/i.test(href)) insertEvent("click_como_llegar", sectionOf(link));
         }

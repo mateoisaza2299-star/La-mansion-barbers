@@ -2,7 +2,7 @@
 <html lang="es-CO" class="is-preparacion">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; font-src 'self'; connect-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; font-src 'self'; connect-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src https://www.google.com https://maps.google.com">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#0A0A0A">
@@ -40,7 +40,9 @@
           <input name="password" type="password" autocomplete="current-password" required>
         </label>
         <p class="form-error" data-login-error role="alert" hidden></p>
+        <p class="login-codigo" data-login-codigo hidden></p>
         <button class="btn btn-block" type="submit" data-login-submit>Entrar</button>
+        <button class="btn btn-sec btn-block" type="button" data-login-reintentar hidden>Reintentar</button>
       </form>
     </div>
   </main>

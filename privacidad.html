@@ -2,7 +2,7 @@
 <html lang="es-CO">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; font-src 'self'; connect-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; font-src 'self'; connect-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src https://www.google.com https://maps.google.com">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Política de datos — La Mansión Barber Shop</title>
   <meta name="description" content="Qué guarda La Mansión Barber Shop cuando reservas: nombre, celular, servicio y fecha.">
@@ -37,9 +37,9 @@
         <a href="index.html#local" hidden>El local</a>
         <a href="index.html#visita">Visita</a>
       </nav>
-      <a class="btn btn-nav" data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener" aria-label="Agenda por WhatsApp">
-        <span class="btn-largo">Agenda por WhatsApp</span><span class="btn-corto">Agenda</span>
-      </a>
+      <button class="btn btn-nav" type="button" data-reservar aria-label="Reserva tu cita">
+        <span class="btn-largo">Reserva tu cita</span><span class="btn-corto">Reservar</span>
+      </button>
       <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="nav-panel">
         <span></span>
         <span class="sr-only">Abrir menú</span>
@@ -53,7 +53,7 @@
     <a class="nav-panel-link" href="index.html#local" hidden>El local</a>
     <a class="nav-panel-link" href="index.html#visita">Visita</a>
     <div class="nav-panel-acciones">
-      <a class="btn" data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">Agenda por WhatsApp</a>
+      <button class="btn" type="button" data-reservar>Reserva tu cita</button>
       <a class="btn btn-sec" data-ig href="https://www.instagram.com/lamansionbarbers/" target="_blank" rel="noopener">Instagram</a>
     </div>
   </div>
@@ -81,14 +81,14 @@
       </ul>
       <div class="footer-redes">
         <a data-ig href="https://www.instagram.com/lamansionbarbers/" target="_blank" rel="noopener">Instagram</a>
-        <a data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">WhatsApp</a>
+        <a class="wa-contacto" data-wa-contacto href="https://wa.me/573118162854" target="_blank" rel="noopener"><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14v9H8l-3 2.5z"/></svg><span data-wa-numero>311 816 2854</span></a>
       </div>
     </div>
     <div class="wrap"><p class="footer-meta"><span data-direccion-corta>Vía Funza - Siberia, Km 3.8 · La Isla, Ceuta</span> · <span data-horario>Todos los días · 10:00 a. m. a 8:00 p. m.</span> · © 2026 La Mansión Barber Shop</p></div>
   </footer>
   <nav class="barra-movil" data-barra aria-label="Contacto rápido">
-    <a class="btn" data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener">WhatsApp</a>
-    <a class="btn btn-sec" data-maps href="https://www.google.com/maps/search/?api=1&amp;query=V%C3%ADa%20Funza%20Siberia%20Km%203.8%2C%20La%20Isla%2C%20Ceuta%2C%20Funza%2C%20Cundinamarca%2C%20Colombia" target="_blank" rel="noopener">Cómo llegar</a>
+    <button class="btn" type="button" data-reservar>Reservar</button>
+    <a class="btn btn-sec" data-maps href="https://www.google.com/maps/dir/?api=1&amp;destination=V%C3%ADa%20Funza%20Siberia%20Km%203.8%2C%20La%20Isla%2C%20Ceuta%2C%20Funza%2C%20Cundinamarca%2C%20Colombia" target="_blank" rel="noopener">Cómo llegar</a>
   </nav>
   <script type="module" src="js/pagina.js"></script>
 </body>

@@ -1,14 +1,15 @@
-const CACHE = "site-shell-v11";
+const CACHE = "site-shell-v12";
 
 const ADMIN_PAGES = ["admin.html", "admin-login.html"];
-const PUBLIC_PAGES = ["index.html", "historia.html", "privacidad.html", "tratamiento-datos.html", "404.html"];
+const PUBLIC_PAGES = ["index.html", "nosotros.html", "historia.html", "privacidad.html", "tratamiento-datos.html", "404.html"];
 const ADMIN_JS = ["js/admin.js", "js/admin-login.js", "js/admin-cliente.js", "js/pwa.js"];
 const PUBLIC_JS = [
   "js/absoluto.js",
   "js/arranque.js",
   "js/pagina.js",
   "js/carrusel.js",
-  "js/reservas.js"
+  "js/reservas.js",
+  "js/trabajo.js"
 ];
 
 const SHELL = [

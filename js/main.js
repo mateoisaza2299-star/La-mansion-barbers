@@ -242,7 +242,7 @@ import {
       const messages = {
         pendiente: "Esperando confirmación del barbero",
         confirmada: "Cita confirmada. Te esperamos",
-        cancelada: "Tu cita fue cancelada. Escríbenos por WhatsApp para reagendar"
+        cancelada: "Tu cita fue cancelada. Puedes cambiarla desde la página."
       };
       let tokens = [];
       const cache = new Map();
@@ -518,7 +518,7 @@ import {
         anchor.href = link;
         anchor.target = "_blank";
         anchor.rel = "noopener";
-        anchor.textContent = "Escríbenos por WhatsApp";
+        anchor.textContent = "Contacto";
         note.appendChild(document.createTextNode(" "));
         note.appendChild(anchor);
         note.appendChild(document.createTextNode("."));

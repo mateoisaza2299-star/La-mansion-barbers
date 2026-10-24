@@ -7,9 +7,7 @@ import { hoyISO, sumarDias, diaSemanaISO, horaLegible } from "../js/tiempo.js";
 const require = createRequire("/tmp/pw/package.json");
 const { chromium } = require("playwright-core");
 
-const SEDE_CENTRO = "11111111-1111-4111-8111-111111111111";
-const SEDE_OCCIDENTE = "22222222-2222-4222-8222-222222222222";
-const MATEO = "55555555-5555-4555-8555-555555555555";
+const LUIS = "44444444-4444-4444-8444-444444444444";
 const CORTE = "66666666-6666-4666-8666-666666666666";
 const CIERRES = { 390: "12:00", 768: "12:30", 1366: "11:30" };
 const ALTOS = { 390: 844, 768: 1024, 1366: 800 };
@@ -84,9 +82,12 @@ async function llenarDatos(page, nombre, telefono) {
 
 async function reservar(page, opciones) {
   await abrirReserva(page);
-  await page.locator('[data-sede="' + opciones.sede + '"]').click();
-  await page.locator('[data-servicio="' + CORTE + '"]').click();
-  await page.locator('[data-barbero="' + opciones.barbero + '"]').click();
+  const servicio = page.locator('[data-servicio="' + CORTE + '"]');
+  exigir((await textoDe(servicio)).includes("Precio por confirmar"), "el servicio sin precio no avisa el precio");
+  await servicio.click();
+  if (await page.locator('[data-barbero="' + opciones.barbero + '"]').count()) {
+    await page.locator('[data-barbero="' + opciones.barbero + '"]').click();
+  }
   await elegirDia(page, opciones.fecha);
   const hora = await page.locator("[data-hora]").first().getAttribute("data-hora");
   await page.locator('[data-hora="' + hora + '"]').click();
@@ -113,12 +114,72 @@ async function entrar(page, correo, clave) {
   await page.waitForSelector("[data-nav]:visible [data-vista='agenda']", { timeout: 15000 });
 }
 
+async function logos(page) {
+  return page.locator(".logo img").count();
+}
+
+async function capturas(page, ancho) {
+  await page.goto(origen + "/index.html#nosotros", { waitUntil: "networkidle" });
+  await page.locator("#nosotros").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(400);
+  exigir(await logos(page) <= 2, ancho + " logos inicio " + await logos(page));
+  await page.locator("#nosotros").screenshot({ path: path.join(dir, ancho + "-nosotros.png") });
+  const extraNos = await desborde(page);
+  exigir(extraNos <= 1, ancho + " desborde nosotros " + extraNos);
+  await page.locator("[data-mapa]").scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => {
+    const marco = document.querySelector("[data-mapa]");
+    if (!marco) return false;
+    const espera = marco.querySelector("[data-mapa-espera]");
+    if (espera && espera.hidden && marco.querySelector("iframe")) return true;
+    const boton = marco.querySelector("[data-mapa-ver]");
+    return Boolean(boton && (boton.textContent || "").includes("Abrir en Google Maps"));
+  }, null, { timeout: 12000 });
+  await page.evaluate(() => document.querySelector("[data-mapa]").scrollIntoView({ block: "center" }));
+  await foto(page, ancho + "-visita");
+  await page.locator("[data-mapa]").screenshot({ path: path.join(dir, ancho + "-mapa.png") });
+  const extraVis = await desborde(page);
+  exigir(extraVis <= 1, ancho + " desborde visita " + extraVis);
+  await page.locator("[data-carta] [data-reservar][data-servicio='corte-clasico']:visible").click();
+  await page.waitForSelector("[data-paso-titulo]", { timeout: 10000 });
+  const titulo = await page.locator("[data-paso-titulo]").innerText();
+  exigir(/barbero/i.test(titulo), ancho + " reservar servicio no abrió el paso: " + titulo);
+  await page.keyboard.press("Escape");
+  await page.waitForSelector("[data-reserva-pasos]", { state: "hidden" });
+
+  await page.goto(origen + "/nosotros.html", { waitUntil: "networkidle" });
+  await page.waitForSelector("[data-mosaico] .mosaico-item", { timeout: 10000 });
+  await page.evaluate(async () => {
+    const paso = Math.max(240, Math.round(window.innerHeight * 0.7));
+    const alto = document.body.scrollHeight;
+    for (let y = 0; y < alto; y += paso) {
+      window.scrollTo(0, y);
+      await new Promise((resolver) => setTimeout(resolver, 90));
+    }
+    window.scrollTo(0, 0);
+  });
+  await page.waitForTimeout(700);
+  exigir((await page.title()).includes("Nuestra historia"), ancho + " title historia");
+  exigir(await logos(page) <= 2, ancho + " logos historia");
+  await page.screenshot({ path: path.join(dir, ancho + "-historia.png"), fullPage: true });
+  const extraHis = await desborde(page);
+  exigir(extraHis <= 1, ancho + " desborde historia " + extraHis);
+  await page.locator("[data-mosaico] .mosaico-item").first().click();
+  await page.waitForSelector("[data-visor]:not([hidden])");
+  const pie = await page.locator("[data-visor-pie]").innerText();
+  const contador = await page.locator("[data-visor-contador]").innerText();
+  exigir(pie.length > 0, ancho + " visor sin pie");
+  exigir(/\d+ \/ \d+/.test(contador), ancho + " visor sin contador " + contador);
+  await foto(page, ancho + "-visor");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector("[data-visor]", { state: "hidden" });
+}
+
 async function flujoPublico(page, ancho, telefono) {
   const fechaUno = habil(1);
   const fechaDos = habil(diaSemanaISO(fechaUno) === 6 ? 3 : 2);
   const fechaTres = habil(4);
   await reservar(page, {
-    sede: SEDE_CENTRO,
     barbero: "primero",
     fecha: fechaUno,
     nombre: "Vista " + ancho,
@@ -128,6 +189,8 @@ async function flujoPublico(page, ancho, telefono) {
   const confirmacion = await textoDe(page.locator("[data-reserva-pasos]"));
   exigir(confirmacion.includes("Ana Rojas"), ancho + " primero no asignó a Ana");
   exigir(/Cita LM-/i.test(confirmacion), ancho + " sin número de cita");
+  exigir(confirmacion.includes("Vía Funza - Siberia"), ancho + " sin dirección");
+  exigir(!confirmacion.includes("Avisar por WhatsApp"), ancho + " sigue el aviso de WhatsApp");
   await page.waitForTimeout(700);
   await foto(page, ancho + "-confirmacion");
   await page.locator("[data-reserva-atras]").click();
@@ -140,14 +203,13 @@ async function flujoPublico(page, ancho, telefono) {
   await page.locator("[data-cita-descartar]").click();
 
   const horaMateo = await reservar(page, {
-    sede: SEDE_OCCIDENTE,
-    barbero: MATEO,
+    barbero: LUIS,
     fecha: fechaDos,
     nombre: "Cambio " + ancho,
     telefono: String(Number(telefono) + 1)
   });
   const textoMateo = await textoDe(page.locator("[data-reserva-pasos]"));
-  exigir(textoMateo.includes("Mateo Díaz"), ancho + " no reservó con Mateo");
+  exigir(textoMateo.includes("Luis Gómez"), ancho + " no reservó con Luis");
   await page.locator("[data-reserva-atras]").click();
   await page.waitForSelector("[data-cita-cambiar]");
   await page.locator("[data-cita-cambiar]").click();
@@ -162,10 +224,9 @@ async function flujoPublico(page, ancho, telefono) {
     return el && (el.textContent || "").includes(hora);
   }, legible);
   const detalle = await textoDe(page.locator(".cita-detalle"));
-  exigir(detalle.includes("Mateo Díaz"), ancho + " se perdió el barbero");
+  exigir(detalle.includes("Luis Gómez"), ancho + " se perdió el barbero");
 
   await abrirReserva(page);
-  await page.locator('[data-sede="' + SEDE_CENTRO + '"]').click();
   await page.locator('[data-servicio="' + CORTE + '"]').click();
   await page.locator('[data-barbero="primero"]').click();
   await elegirDia(page, fechaTres);
@@ -216,7 +277,9 @@ async function flujoPanel(page, ancho) {
   await foto(page, ancho + "-agenda");
   const extraAgenda = await desborde(page);
   exigir(extraAgenda <= 1, ancho + " desborde agenda " + extraAgenda);
-  exigir((await page.locator("[data-servicios-aviso]").innerText()).includes("inactivos"), ancho + " sin aviso de servicios");
+  const puesta = await textoDe(page.locator("[data-puesta]"));
+  exigir(puesta.includes("Puesta en marcha"), ancho + " sin puesta en marcha");
+  exigir(puesta.includes("Precio por confirmar"), ancho + " sin aviso de precio");
   await navVisible(page, "reservas");
   const ana = page.locator("article.pa-cita", { hasText: "Cliente Ana Uno" });
   await ana.locator("[data-accion='confirmar']").click();
@@ -249,10 +312,27 @@ async function flujoPanel(page, ancho) {
 
   await navVisible(page, "equipo");
   const bloqueo = sumarDias(hoyISO(), 3 + (ancho === 390 ? 0 : ancho === 768 ? 1 : 2));
+  const opcionLocal = await page.locator("[data-bloqueo-barbero] option").first().innerText();
+  exigir(opcionLocal.includes("Cerrar el local"), ancho + " sin cerrar el local: " + opcionLocal);
   await page.locator("[data-bloqueo-fecha]").fill(bloqueo);
+  await page.locator("[data-bloqueo-dia]").uncheck();
+  await page.locator("[name='desde']").fill("10:00");
+  await page.locator("[name='hasta']").fill("12:00");
   await page.locator("[data-bloqueo-motivo]").fill("Capacitación");
   await page.locator("[data-bloqueo-guardar]").click();
   await page.waitForSelector("[data-bloqueos] >> text=Capacitación", { timeout: 10000 });
+  const textoBloqueo = await textoDe(page.locator("[data-bloqueos]"));
+  exigir(textoBloqueo.includes("Cerrar el local"), ancho + " el bloqueo no dice cerrar el local");
+  const publica = await page.context().newPage();
+  await publica.goto(origen + "/index.html#reservar", { waitUntil: "domcontentloaded" });
+  await publica.waitForSelector("[data-reserva-pasos]:not([hidden]) [data-servicio='" + CORTE + "']", { timeout: 15000 });
+  await publica.locator("[data-reserva-pasos] [data-servicio='" + CORTE + "']").click();
+  await publica.locator('[data-barbero="primero"]').click();
+  await elegirDia(publica, bloqueo);
+  const horas = await publica.locator("[data-hora]").evaluateAll((nodos) => nodos.map((nodo) => nodo.getAttribute("data-hora")));
+  exigir(!horas.includes("10:00") && !horas.includes("11:00"), ancho + " la franja cerrada sigue libre " + horas.join(","));
+  exigir(horas.includes("14:00"), ancho + " se cerró el local entero " + horas.join(","));
+  await publica.close();
   const cierra = page.locator("[data-horario-dia='1'][data-horario-campo='cierra']").first();
   await cierra.fill(CIERRES[ancho]);
   await page.locator("[data-horario-guardar]").click();
@@ -279,6 +359,72 @@ async function flujoPanel(page, ancho) {
   await foto(page, ancho + "-barbero");
 }
 
+async function casosAcceso(browser) {
+  const context = await browser.newContext({
+    viewport: { width: 1366, height: 800 },
+    serviceWorkers: "block",
+    locale: "es-CO"
+  });
+  await context.addCookies([{ name: "lm_activo", value: "1", url: origen }]);
+  const page = await context.newPage();
+  const errores = [];
+  page.on("pageerror", (error) => errores.push(String(error)));
+  page.on("console", (msg) => {
+    if (msg.type() === "error" && consolaUtil(msg.text())) errores.push(msg.text());
+  });
+  const intentar = async (correo, clave) => {
+    await page.goto(origen + "/admin-login.html", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("[data-login]", { state: "visible", timeout: 15000 });
+    await page.locator('input[name="email"]').fill(correo);
+    await page.locator('input[name="password"]').fill(clave);
+    await page.locator("[data-login-submit]").click();
+    await page.waitForSelector("[data-login-error]:not([hidden])", { timeout: 10000 });
+    return page.locator("[data-login-error]").innerText();
+  };
+  const sesion = () => page.evaluate(() => {
+    const raw = sessionStorage.getItem("lamansion-admin-auth") || "";
+    return raw.includes("access_token");
+  });
+  const desconocido = await intentar("nadie@lamansion.test", "ClaveFalsa123");
+  exigir(desconocido.includes("Correo o contraseña incorrectos."), "correo desconocido: " + desconocido);
+  const clave = await intentar("dueno@lamansion.test", "clave-mal");
+  exigir(clave.includes("Correo o contraseña incorrectos."), "clave mala: " + clave);
+  const confirmar = await intentar("sinconfirma@lamansion.test", "ClaveNo123");
+  exigir(confirmar.includes("Debes confirmar tu correo."), "sin confirmar: " + confirmar);
+  const sinFila = await intentar("sinpermiso@lamansion.test", "ClaveSin123");
+  exigir(sinFila.includes("Tu cuenta existe, pero todavía no tiene permisos"), "sin fila: " + sinFila);
+  exigir(!(await sesion()), "la cuenta sin permisos conservó la sesión");
+  const permisos = await intentar("fallopermiso@lamansion.test", "ClaveFallo123");
+  exigir(permisos.includes("No pudimos verificar tus permisos."), "42501: " + permisos);
+  exigir((await page.locator("[data-login-codigo]").innerText()).includes("42501"), "sin código 42501");
+  exigir(await page.locator("[data-login-reintentar]").isVisible(), "42501 sin reintentar");
+  exigir(await sesion(), "el error 42501 cerró la sesión");
+  await page.locator("[data-login-reintentar]").click();
+  await page.waitForFunction(() => {
+    const caja = document.querySelector("[data-login-codigo]");
+    return caja && (caja.textContent || "").includes("42501");
+  });
+  await page.evaluate(() => sessionStorage.clear());
+  const tabla = await intentar("tablano@lamansion.test", "ClaveTabla123");
+  exigir(tabla.includes("No pudimos verificar tus permisos."), "42P01: " + tabla);
+  exigir((await page.locator("[data-login-codigo]").innerText()).includes("42P01"), "sin código 42P01");
+  exigir(await sesion(), "el error 42P01 cerró la sesión");
+  await page.evaluate(() => sessionStorage.clear());
+  await page.goto(origen + "/admin-login.html", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("[data-login]", { state: "visible", timeout: 15000 });
+  await context.setOffline(true);
+  await page.locator('input[name="email"]').fill("dueno@lamansion.test");
+  await page.locator('input[name="password"]').fill("ClaveDueno123");
+  await page.locator("[data-login-submit]").click();
+  await page.waitForSelector("[data-login-error]:not([hidden])", { timeout: 10000 });
+  const red = await page.locator("[data-login-error]").innerText();
+  exigir(red.includes("No pudimos conectar."), "sin conexión: " + red);
+  exigir(await page.locator("[data-login-reintentar]").isVisible(), "sin red sin reintentar");
+  await context.setOffline(false);
+  exigir(errores.length === 0, "consola acceso: " + errores.join(" | "));
+  await context.close();
+}
+
 async function sinRed(browser) {
   const context = await browser.newContext({
     viewport: { width: 1366, height: 800 },
@@ -297,8 +443,10 @@ async function sinRed(browser) {
   await page.waitForTimeout(600);
   const prohibidas = urls.filter((url) => /supabase\.co|\/rest\/v1|\/auth\/v1/.test(url));
   exigir(prohibidas.length === 0, "en preparación llamó a " + prohibidas.join(" "));
-  exigir(await page.locator("[data-reserva-cerrada]").isVisible(), "tarjeta cerrada oculta");
-  exigir((await page.locator("[data-reserva-abrir]").count()) === 0, "había flujo con preparación");
+  await page.locator("[data-reservar]").first().click();
+  await page.waitForSelector("[data-reserva-pasos]:not([hidden])");
+  const aviso = await textoDe(page.locator("[data-reserva-pasos]"));
+  exigir(aviso.includes("La agenda en línea no está disponible por ahora"), "sin aviso de agenda: " + aviso);
   exigir(errores.length === 0, "consola en preparación: " + errores.join(" | "));
   await context.close();
 }
@@ -310,6 +458,7 @@ const browser = await chromium.launch({
 
 try {
   await sinRed(browser);
+  await casosAcceso(browser);
   for (const ancho of [390, 768, 1366]) {
     await fetch(origen + "/__reset", { method: "POST" });
     const context = await browser.newContext({
@@ -334,6 +483,7 @@ try {
     });
     page.on("popup", (popup) => popup.close().catch(() => {}));
     try {
+      await capturas(page, ancho);
       await flujoPublico(page, ancho, ancho === 390 ? "3003900001" : ancho === 768 ? "3007680001" : "3013660001");
       await flujoPanel(page, ancho);
     } catch (error) {

@@ -10,21 +10,30 @@ const clavePublica = "sb_publishable_mock_local_test";
 
 const id = {
   sede1: "11111111-1111-4111-8111-111111111111",
-  sede2: "22222222-2222-4222-8222-222222222222",
   ana: "33333333-3333-4333-8333-333333333333",
   luis: "44444444-4444-4444-8444-444444444444",
-  mateo: "55555555-5555-4555-8555-555555555555",
   corte: "66666666-6666-4666-8666-666666666666",
   barba: "77777777-7777-4777-8777-777777777777",
   nino: "88888888-8888-4888-8888-888888888888",
-  color: "99999999-9999-4999-8999-999999999999",
+  degradado: "12121212-1212-4121-8121-121212121212",
+  combo: "13131313-1313-4131-8131-131313131313",
+  completa: "14141414-1414-4141-8141-141414141414",
+  mujer: "15151515-1515-4151-8151-151515151515",
   dueno: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-  barbero: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+  barbero: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  sinpermiso: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  sinconfirma: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+  fallopermiso: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+  tablano: "f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1"
 };
 
 const usuarios = {
   "dueno@lamansion.test": { id: id.dueno, password: "ClaveDueno123", rol: "dueno", barberoId: null },
-  "barbero@lamansion.test": { id: id.barbero, password: "ClaveBarbero123", rol: "barbero", barberoId: id.ana }
+  "barbero@lamansion.test": { id: id.barbero, password: "ClaveBarbero123", rol: "barbero", barberoId: id.ana },
+  "sinpermiso@lamansion.test": { id: id.sinpermiso, password: "ClaveSin123", rol: "dueno", barberoId: null },
+  "sinconfirma@lamansion.test": { id: id.sinconfirma, password: "ClaveNo123", rol: "dueno", barberoId: null, confirmado: false },
+  "fallopermiso@lamansion.test": { id: id.fallopermiso, password: "ClaveFallo123", rol: "dueno", barberoId: null, falloAdmins: "42501" },
+  "tablano@lamansion.test": { id: id.tablano, password: "ClaveTabla123", rol: "dueno", barberoId: null, falloAdmins: "42P01" }
 };
 
 function crearEstado() {
@@ -41,19 +50,21 @@ function crearEstado() {
     politica_version: "1"
   };
   const sedes = [
-    { id: id.sede1, nombre: "Mansión Centro", direccion: "Vía Funza - Siberia, Km 3.8, La Isla, Ceuta", telefono: "3118162854", orden: 1, activa: true },
-    { id: id.sede2, nombre: "Mansión Occidente", direccion: "Vía Funza - Siberia, Km 3.8, Funza", telefono: "3118162854", orden: 2, activa: true }
+    { id: id.sede1, nombre: "La Mansión", direccion: "Vía Funza - Siberia, Km 3.8, La Isla, Ceuta", telefono: "3118162854", orden: 1, activa: true }
   ];
+  const baseServicio = (extra) => ({ descripcion: "", precio: null, duracion_min: 30, cuenta_fidelidad: false, activo: true, ...extra });
   const servicios = [
-    { id: id.corte, categoria: "Cortes", nombre: "Corte clásico", descripcion: "Tijera o máquina, con el acabado que pidas.", precio: 25000, duracion_min: 45, cuenta_fidelidad: true, orden: 1, activo: true },
-    { id: id.barba, categoria: "Barba", nombre: "Arreglo de barba", descripcion: "Perfil, forma y definición.", precio: 15000, duracion_min: 30, cuenta_fidelidad: true, orden: 2, activo: true },
-    { id: id.nino, categoria: "Niños", nombre: "Corte para niños", descripcion: "Con calma y a su ritmo.", precio: 20000, duracion_min: 30, cuenta_fidelidad: false, orden: 3, activo: true },
-    { id: id.color, categoria: "Color", nombre: "Color", descripcion: "Consulta el tono.", precio: null, duracion_min: 90, cuenta_fidelidad: false, orden: 4, activo: false }
+    baseServicio({ id: id.corte, categoria: "Cortes", nombre: "Corte clásico", descripcion: "Tijera o máquina, con el acabado que pidas.", duracion_min: 45, cuenta_fidelidad: true, orden: 1 }),
+    baseServicio({ id: id.degradado, categoria: "Cortes", nombre: "Degradado", descripcion: "Transición limpia.", orden: 2 }),
+    baseServicio({ id: id.combo, categoria: "Cortes", nombre: "Corte y barba", descripcion: "Corte y arreglo en la misma visita.", duracion_min: 60, orden: 3 }),
+    baseServicio({ id: id.barba, categoria: "Barba", nombre: "Arreglo de barba", descripcion: "Perfil, forma y definición.", orden: 4 }),
+    baseServicio({ id: id.completa, categoria: "Barba", nombre: "Barba completa", descripcion: "Diseño de toda la barba.", orden: 5 }),
+    baseServicio({ id: id.nino, categoria: "Niños", nombre: "Corte para niños", descripcion: "Con calma y a su ritmo.", orden: 6 }),
+    baseServicio({ id: id.mujer, categoria: "Mujer", nombre: "Corte para mujer", descripcion: "Consulta disponibilidad.", orden: 7 })
   ];
   const barberos = [
     { id: id.ana, nombre: "Ana Rojas", especialidad: "Cortes y barba", sede_id: id.sede1, foto: "", servicios: null, orden: 1, activo: true },
-    { id: id.luis, nombre: "Luis Gómez", especialidad: "Degradados", sede_id: id.sede1, foto: "", servicios: [id.corte], orden: 2, activo: true },
-    { id: id.mateo, nombre: "Mateo Díaz", especialidad: "Cortes clásicos", sede_id: id.sede2, foto: "", servicios: null, orden: 1, activo: true }
+    { id: id.luis, nombre: "Luis Gómez", especialidad: "Degradados", sede_id: id.sede1, foto: "", servicios: [id.corte], orden: 2, activo: true }
   ];
   const horarios = [];
   barberos.forEach((barbero) => {
@@ -103,8 +114,8 @@ function crearEstado() {
     bloqueos: [],
     eventos: [],
     admins: [
-      { id: crypto.randomUUID(), user_id: id.dueno, rol: "dueno", barbero_id: null },
-      { id: crypto.randomUUID(), user_id: id.barbero, rol: "barbero", barbero_id: id.ana }
+      { id: id.dueno, rol: "dueno", barbero_id: null, nombre: "Dueño" },
+      { id: id.barbero, rol: "barbero", barbero_id: id.ana, nombre: "Ana Rojas" }
     ],
     secuencia: 1100
   };
@@ -126,19 +137,13 @@ function tablasDe(estado) {
 
 function sesionDe(token) {
   if (!token) return { rol: "anon" };
-  if (token.startsWith("mock.dueno.")) {
-    const userId = token.slice("mock.dueno.".length);
-    const admin = usuarios["dueno@lamansion.test"];
-    if (userId !== admin.id) return { rol: "anon" };
-    return { rol: "dueno", userId, barberoId: null };
-  }
-  if (token.startsWith("mock.barbero.")) {
-    const userId = token.slice("mock.barbero.".length);
-    const admin = usuarios["barbero@lamansion.test"];
-    if (userId !== admin.id) return { rol: "anon" };
-    return { rol: "barbero", userId, barberoId: admin.barberoId };
-  }
-  return { rol: "anon" };
+  const prefijos = ["mock.user.", "mock.dueno.", "mock.barbero."];
+  const prefijo = prefijos.find((item) => token.startsWith(item));
+  if (!prefijo) return { rol: "anon" };
+  const userId = token.slice(prefijo.length);
+  const usuario = Object.values(usuarios).find((item) => item.id === userId);
+  if (!usuario) return { rol: "anon" };
+  return { rol: usuario.rol || "auth", userId, barberoId: usuario.barberoId || null, falloAdmins: usuario.falloAdmins || "" };
 }
 
 function tokenDe(req) {
@@ -179,6 +184,17 @@ function fallo(res, codigo, message) {
   enviar(res, codigo, { message, code: codigo >= 400 ? "P0001" : "ok" });
 }
 
+function authError(res, codigo, mensaje, codigoError) {
+  enviar(res, codigo, {
+    error: codigoError,
+    error_code: codigoError,
+    code: codigoError,
+    msg: mensaje,
+    message: mensaje,
+    error_description: mensaje
+  });
+}
+
 function usuarioJson(usuario) {
   const ahora = new Date().toISOString();
   return {
@@ -200,9 +216,8 @@ function usuarioJson(usuario) {
 }
 
 function emitirSesion(usuario) {
-  const prefijo = usuario.rol === "dueno" ? "mock.dueno." : "mock.barbero.";
   return {
-    access_token: prefijo + usuario.id,
+    access_token: "mock.user." + usuario.id,
     token_type: "bearer",
     expires_in: 3600,
     expires_at: Math.floor(Date.now() / 1000) + 3600,
@@ -246,7 +261,9 @@ function coincide(fila, clave, expr) {
 
 function filtrar(filas, url, sesion, tabla) {
   let lista = filas.slice();
-  if (tabla === "admins" && sesion.rol !== "anon") lista = lista.filter((fila) => fila.user_id === sesion.userId);
+  if (tabla === "admins" && sesion.rol !== "anon" && !url.searchParams.has("id")) {
+    lista = lista.filter((fila) => fila.id === sesion.userId);
+  }
   if (sesion.rol === "barbero" && tabla === "reservas") lista = lista.filter((fila) => fila.barbero_id === sesion.barberoId);
   if (sesion.rol === "barbero" && tabla === "horarios") lista = lista.filter((fila) => fila.barbero_id === sesion.barberoId);
   if (sesion.rol === "barbero" && tabla === "bloqueos") {
@@ -558,7 +575,8 @@ async function api(req, res, estado, url) {
       return enviar(res, 200, emitirSesion(usuario));
     }
     const usuario = usuarios[String(body && body.email || "").trim().toLowerCase()];
-    if (!usuario || !body || body.password !== usuario.password) return fallo(res, 400, "invalid_credentials");
+    if (!usuario || !body || body.password !== usuario.password) return authError(res, 400, "Invalid login credentials", "invalid_credentials");
+    if (usuario.confirmado === false) return authError(res, 400, "Email not confirmed", "email_not_confirmed");
     return enviar(res, 200, emitirSesion(usuario));
   }
   if (url.pathname === "/auth/v1/user") {
@@ -580,6 +598,10 @@ async function api(req, res, estado, url) {
     if (!mapa[tabla]) return fallo(res, 404, "tabla desconocida");
     const publicas = new Set(["config", "sedes", "barberos", "servicios", "horarios"]);
     if (sesion.rol === "anon" && !publicas.has(tabla)) return fallo(res, 401, "no autorizado");
+    if (req.method === "GET" && tabla === "admins" && sesion.falloAdmins) {
+      const codigo = sesion.falloAdmins;
+      return enviar(res, codigo === "42P01" ? 404 : 401, { code: codigo, message: codigo === "42P01" ? "relation does not exist" : "permission denied" });
+    }
     if (req.method === "GET") return enviar(res, 200, filtrar(mapa[tabla], url, sesion, tabla));
     const body = await leerCuerpo(req);
     if (req.method === "POST") {
