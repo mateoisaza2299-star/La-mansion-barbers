@@ -95,6 +95,33 @@ const catalogo = {
     destacada: true,
     margen: { izquierda: 0, derecha: 36, arriba: 0, abajo: 0 }
   },
+  "corte-duo": {
+    id: "corte-duo",
+    categoria: "corte",
+    alt: "Un barbero con mascarilla negra le corta el cabello a un cliente recostado.",
+    foco: { x: 0.56, y: 0.46 },
+    aptaFondo: false,
+    destacada: false,
+    margen: null
+  },
+  "corte-freestyle": {
+    id: "corte-freestyle",
+    categoria: "corte",
+    alt: "Diseño freestyle en verde y negro sobre el cabello rapado de un cliente.",
+    foco: { x: 0.62, y: 0.58 },
+    aptaFondo: false,
+    destacada: false,
+    margen: null
+  },
+  "corte-mascara": {
+    id: "corte-mascara",
+    categoria: "corte",
+    alt: "Un cliente usa una máscara LED de cuidado facial bajo la capa de La Mansión.",
+    foco: { x: 0.5, y: 0.36 },
+    aptaFondo: false,
+    destacada: false,
+    margen: null
+  },
   "interior-sala": {
     id: "interior-sala",
     categoria: "interior",

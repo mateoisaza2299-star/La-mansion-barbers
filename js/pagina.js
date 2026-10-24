@@ -332,6 +332,13 @@ const meterFoto = (contenedor, foto, opciones) => {
   return true;
 };
 
+const cartaFija = {
+  Cortes: "corte-duo",
+  "FreeStyle y diseños": "corte-freestyle",
+  "Cuidado facial": "corte-mascara"
+};
+const idsCarta = new Set(Object.values(cartaFija));
+
 const prepararHero = (fotos) => {
   const fondo = document.querySelector("[data-hero-fondo]");
   const hero = document.querySelector(".hero");
@@ -381,7 +388,7 @@ const prepararHero = (fotos) => {
     .sort((a, b) => (ordenAmbiente[a.categoria] ?? 9) - (ordenAmbiente[b.categoria] ?? 9) || ladoDe(b) - ladoDe(a))[0];
   const preferencia = ["corte-barba", "corte-facial", "corte-spray", "corte-capa"];
   const marcos = fotos
-    .filter((foto) => foto.categoria === "corte" && foto.orientacion === "vertical" && !menorEnPrimerPlano(foto) && ladoDe(foto) >= 640 && puede(foto) && (!texturaFoto || foto.id !== texturaFoto.id))
+    .filter((foto) => foto.categoria === "corte" && foto.orientacion === "vertical" && !menorEnPrimerPlano(foto) && ladoDe(foto) >= 640 && !idsCarta.has(foto.id) && puede(foto) && (!texturaFoto || foto.id !== texturaFoto.id))
     .sort((a, b) => {
       const ia = preferencia.indexOf(a.id);
       const ib = preferencia.indexOf(b.id);
@@ -540,12 +547,23 @@ const prepararServicios = async (fotos) => {
   const asignadas = new Map();
   let previa = "";
   const candidatas = (nombre) => banco.filter((foto) => {
-    if (menorEnPrimerPlano(foto)) return false;
+    if (idsCarta.has(foto.id) || menorEnPrimerPlano(foto)) return false;
     if (nombre === "Barba") return foto.categoria === "corte" || foto.categoria === "equipo";
     if (nombre === "Cuidado facial") return ["producto", "interior", "corte"].includes(foto.categoria);
     return foto.categoria === "corte";
   }).filter((foto) => foto.id !== previa);
   presentes.forEach((nombre) => {
+    const idFijo = cartaFija[nombre];
+    const fija = idFijo ? fotos.find((foto) => foto.id === idFijo) : null;
+    if (fija && esId(fija.id)) {
+      if (!enServicio.has(fija.id)) {
+        if (!marcar(fija, enServicios)) return;
+        enServicio.add(fija.id);
+      }
+      asignadas.set(nombre, fija);
+      previa = fija.id;
+      return;
+    }
     const pool = candidatas(nombre).filter((foto) => puede(foto) || enServicio.has(foto.id));
     const lista = (pool.length ? pool : candidatas(nombre).filter((foto) => enServicio.has(foto.id)))
       .slice()

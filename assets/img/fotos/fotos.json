@@ -75,6 +75,31 @@
     "huella": "50028fa87f959df9"
   },
   {
+    "id": "corte-duo",
+    "archivo": "corte-duo.jpg",
+    "categoria": "corte",
+    "orientacion": "vertical",
+    "ancho": 331,
+    "alto": 442,
+    "foco": {
+      "x": 0.56,
+      "y": 0.46
+    },
+    "tono": "oscuro",
+    "colorMedio": "#30322f",
+    "calidad": "baja",
+    "alt": "Un barbero con mascarilla negra le corta el cabello a un cliente recostado.",
+    "aptaFondo": false,
+    "destacada": false,
+    "variantes": [
+      {
+        "ancho": 331,
+        "peso": 9172
+      }
+    ],
+    "huella": "6629ae5eb39b1d0a"
+  },
+  {
     "id": "corte-facial",
     "archivo": "corte-facial.jpg",
     "categoria": "corte",
@@ -100,6 +125,31 @@
     "huella": "ebf18594fccdd271"
   },
   {
+    "id": "corte-freestyle",
+    "archivo": "corte-freestyle.jpg",
+    "categoria": "corte",
+    "orientacion": "cuadrada",
+    "ancho": 337,
+    "alto": 425,
+    "foco": {
+      "x": 0.62,
+      "y": 0.58
+    },
+    "tono": "oscuro",
+    "colorMedio": "#546664",
+    "calidad": "baja",
+    "alt": "Diseño freestyle en verde y negro sobre el cabello rapado de un cliente.",
+    "aptaFondo": false,
+    "destacada": false,
+    "variantes": [
+      {
+        "ancho": 337,
+        "peso": 16096
+      }
+    ],
+    "huella": "8429bbfc9acd247d"
+  },
+  {
     "id": "corte-manchas",
     "archivo": "corte-manchas.jpg",
     "categoria": "corte",
@@ -123,6 +173,31 @@
       }
     ],
     "huella": "bea926bfe88eb691"
+  },
+  {
+    "id": "corte-mascara",
+    "archivo": "corte-mascara.jpg",
+    "categoria": "corte",
+    "orientacion": "vertical",
+    "ancho": 335,
+    "alto": 450,
+    "foco": {
+      "x": 0.5,
+      "y": 0.36
+    },
+    "tono": "oscuro",
+    "colorMedio": "#706960",
+    "calidad": "baja",
+    "alt": "Un cliente usa una máscara LED de cuidado facial bajo la capa de La Mansión.",
+    "aptaFondo": false,
+    "destacada": false,
+    "variantes": [
+      {
+        "ancho": 335,
+        "peso": 11664
+      }
+    ],
+    "huella": "fc3e1fb5b12a3d56"
   },
   {
     "id": "corte-spray",
