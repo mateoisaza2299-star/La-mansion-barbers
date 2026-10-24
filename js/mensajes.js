@@ -45,23 +45,27 @@ export function enlaceCancelar(token) {
 
 export function mensajeCita(reserva) {
   const tipo = reserva.estado === "cancelada" ? "cancelada" : reserva.estado === "confirmada" ? "recordatorio" : "confirmacion";
-  const lineas = [
-    "👋 Hola " + primerNombre(reserva.nombre),
-    "💈 *" + negocio.nombre + "*",
-    "✂️ " + (reserva.servicio || ""),
-    "📅 " + fechaCita(reserva.fecha),
-    "🕛 " + horaLegible(reserva.hora),
-    "📍 " + DIRECCION
-  ];
+  const nombre = primerNombre(reserva.nombre);
+  const servicio = reserva.servicio || "";
+  const fecha = fechaCita(reserva.fecha);
+  const hora = horaLegible(reserva.hora);
+  const cuerpo = `\u{1F44B} Hola ${nombre}
+\u{1F488} *${negocio.nombre}*
+\u2702\uFE0F ${servicio}
+\u{1F4C5} ${fecha}
+\u{1F55B} ${hora}
+\u{1F4CD} ${DIRECCION}`;
   if (tipo === "cancelada") {
-    lineas.push("✅ Tu cita fue cancelada.");
-    return lineas.join("\n");
+    return `${cuerpo}
+\u2705 Tu cita fue cancelada.`;
   }
   const cierre = tipo === "recordatorio"
     ? "¿No puedes asistir? Cancela aquí y liberamos tu espacio:"
     : "Si necesitas cancelarla, hazlo aquí:";
-  lineas.push("✅ " + cierre);
   const enlace = enlaceCancelar(reserva.cancel_token);
-  if (enlace) lineas.push(enlace);
-  return lineas.join("\n");
+  const aviso = `\u2705 ${cierre}`;
+  return enlace ? `${cuerpo}
+${aviso}
+${enlace}` : `${cuerpo}
+${aviso}`;
 }

@@ -113,10 +113,10 @@ function digitos(valor) {
   return numero;
 }
 
-function waCliente(telefono, texto) {
-  const numero = digitos(telefono);
-  if (numero.length !== 10) return "";
-  return "https://wa.me/57" + numero + "?text=" + encodeURIComponent(texto);
+function waCliente(telefono, mensaje) {
+  const celular = digitos(telefono);
+  if (celular.length !== 10 || !mensaje) return "";
+  return `https://api.whatsapp.com/send?phone=57${celular}&text=${encodeURIComponent(mensaje)}`;
 }
 
 let armarMensaje = null;
@@ -127,7 +127,7 @@ function tomarMensaje(modulo) {
 
 async function prepararMensajes() {
   let aviso;
-  const carga = import("./mensajes.js?v=13").then(tomarMensaje).catch(() => {});
+  const carga = import("./mensajes.js?v=14").then(tomarMensaje).catch(() => {});
   await Promise.race([
     carga,
     new Promise((resolve) => {

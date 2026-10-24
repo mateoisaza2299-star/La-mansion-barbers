@@ -198,9 +198,8 @@ export function reservasEnLinea() {
 export function enlaceWhatsapp(texto) {
   const numero = String(negocio.whatsapp || "").replace(/\D/g, "");
   if (!numero) return "";
-  const base = "https://wa.me/" + numero;
-  const mensaje = texto || negocio.mensajeWhatsApp || negocio.mensajeReserva || ("Hola, quiero agendar una cita en " + negocio.nombre + ".");
-  return base + "?text=" + encodeURIComponent(mensaje);
+  const mensaje = texto || negocio.mensajeWhatsApp || negocio.mensajeReserva || `Hola, quiero agendar una cita en ${negocio.nombre}.`;
+  return `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
 }
 
 export function diaSemana(iso) {

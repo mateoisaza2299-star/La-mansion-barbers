@@ -484,7 +484,8 @@ async function flujoPanel(page, ancho) {
   });
   const aviso = page.locator("article.pa-cita", { hasText: "Cliente Ana Aviso" });
   const href = await aviso.locator("[data-accion='avisar']").getAttribute("href");
-  exigir(href && href.includes("wa.me/573101111114"), ancho + " whatsapp " + href);
+  exigir(href && href.startsWith("https://api.whatsapp.com/send?phone=573101111114&text="), ancho + " whatsapp " + href);
+  exigir(!href.includes("%EF%BF%BD") && href.includes("%F0%9F%91%8B"), ancho + " emoji roto en el enlace");
   exigir((await aviso.locator(".falta-avisar").count()) === 1, ancho + " sin falta avisar");
   await exigirMensaje(href, "confirmacion", "Cliente Ana Aviso", hoyISO(), "15:00", ancho);
   await aviso.locator("[data-accion='avisar']").click();
