@@ -4,7 +4,7 @@ const TABLA = [
   ["nombre invalido", "Escribe tu nombre."],
   ["servicio no disponible", "Ese servicio o barbero ya no está disponible. Elige otro."],
   ["barbero no disponible", "Ese servicio o barbero ya no está disponible. Elige otro."],
-  ["limite de citas", "Ya tienes 3 citas pendientes con este celular."],
+  ["limite de citas", "Ya tienes 2 citas activas con este celular. Cancela una o espera a que se cumpla para reservar otra."],
   ["horario no disponible", "Esa hora acaba de ocuparse. Elige otra."],
   ["falta autorizacion", "Debes aceptar el tratamiento de datos para reservar."],
   ["cita no encontrada", "No encontramos esa cita."],

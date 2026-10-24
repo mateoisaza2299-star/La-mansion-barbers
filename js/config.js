@@ -31,7 +31,7 @@ export const negocio = {
   politicaReserva: "Para cancelar o cambiar la cita, avisa con al menos 2 horas de anticipación por WhatsApp.",
   avisoDatos: "Guardamos tu nombre, celular, servicio y fecha para agendar la cita. El celular también se usa para la tarjeta de fidelidad y el corte gratis. También usamos un identificador anónimo para estadísticas.",
   privacidad: [
-    "Documento en preparación. Muy pronto publicaremos la política completa de tratamiento de datos personales de La Mansión Barber Shop (Ley 1581 de 2012)."
+    "Tratamos tu nombre, celular, servicio y fecha para agendar, recordar y confirmar o cancelar tu cita, y para escribirte por WhatsApp sobre esa cita. En la política de tratamiento de datos están tus derechos y el canal para pedir una corrección o la supresión."
   ],
   mensajeReserva: "",
   nosotros: {
@@ -100,8 +100,8 @@ export const negocio = {
     confianzaCortes: "Cortes, barba y cuidado facial",
     confianzaProductos: "Productos de barbería",
     serviciosTitulo: "Menú de servicios",
-    consultar: "Precio por confirmar",
-    serviciosNota: "Los servicios sin precio se muestran como Precio por confirmar.",
+    consultar: "",
+    serviciosNota: "",
     productos: "Cuidado en casa: aceite de barba y productos de barbería",
     preguntaProductos: "Pregunta por WhatsApp",
     pista: "Busca el letrero luminoso de La Mansión.",

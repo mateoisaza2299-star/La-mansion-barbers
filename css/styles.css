@@ -1314,6 +1314,54 @@ body.menu-abierto { overflow: hidden; }
 
 .legal-copy p { max-width: 68ch; }
 
+.pagina-simple.legal h1 { max-width: 100%; }
+
+.pagina-simple.legal h2 {
+  margin: 1.7rem 0 0.45rem;
+  font-size: clamp(1.15rem, 2.2vw, 1.5rem);
+}
+
+.pagina-simple.legal p,
+.pagina-simple.legal li {
+  max-width: 68ch;
+  color: var(--hueso);
+  font-size: 1.02rem;
+  line-height: 1.65;
+}
+
+.pagina-simple.legal a { color: var(--oro); }
+
+.pagina-simple.legal .btn {
+  color: #0A0A0A;
+  margin-top: 0.4rem;
+}
+
+.pagina-simple.legal ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.legal-datos {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.9rem 0 0;
+}
+
+.legal-datos div { display: grid; gap: 0.1rem; }
+
+.legal-datos dt {
+  color: var(--oro);
+  font-family: var(--impacto);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.legal-datos dd {
+  margin: 0;
+  color: var(--hueso);
+}
+
 html.motion .reveal {
   opacity: 0;
   transform: translateY(14px);
@@ -1696,6 +1744,49 @@ body.reserva-lock { overflow: hidden; }
 .reserva-check input { width: 1.2rem; height: 1.2rem; margin-top: 0.3rem; flex: none; }
 
 .reserva-check span { min-width: 0; }
+
+.reserva-check a {
+  color: var(--oro);
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.reserva-menor {
+  margin: 0;
+  color: var(--gris);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.reserva-datos { position: relative; }
+
+.reserva-datos .btn:disabled {
+  background: #3a3428;
+  color: #8a8175;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.reserva-trampa {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.reserva-trampa input {
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+}
 
 .ayuda,
 .legales,

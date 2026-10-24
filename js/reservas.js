@@ -83,7 +83,9 @@ async function registrar(tipo) {
 }
 
 function precioDe(servicio) {
-  if (!servicio || servicio.precio == null || servicio.precio === "") return "Precio por confirmar";
+  if (!servicio || servicio.precio == null || servicio.precio === "") return "";
+  const numero = Number(servicio.precio);
+  if (!Number.isFinite(numero)) return "";
   return formatoPrecio(servicio.precio);
 }
 
@@ -638,7 +640,12 @@ function pintarServicios(host) {
       const boton = nodo("button", "opcion", "");
       boton.type = "button";
       boton.dataset.servicio = servicio.id;
-      boton.append(nodo("strong", null, servicio.nombre), nodo("span", null, servicio.descripcion || ""), nodo("span", null, (servicio.duracion_min || "") + " min · " + precioDe(servicio)));
+      const meta = [];
+      if (servicio.duracion_min) meta.push(servicio.duracion_min + " min");
+      const precio = precioDe(servicio);
+      if (precio) meta.push(precio);
+      boton.append(nodo("strong", null, servicio.nombre), nodo("span", null, servicio.descripcion || ""));
+      if (meta.length) boton.append(nodo("span", null, meta.join(" · ")));
       boton.addEventListener("click", () => elegirServicio(servicio));
       lista.appendChild(boton);
     });
@@ -920,7 +927,8 @@ function resumenCita() {
   caja.appendChild(nodo("p", null, servicio ? servicio.nombre : ""));
   caja.appendChild(nodo("p", null, barbero ? barbero.nombre : "El primero disponible"));
   caja.appendChild(nodo("p", null, fechaLegible(estado.fecha) + " · " + horaLegible(estado.hora)));
-  caja.appendChild(nodo("p", null, precioDe(servicio)));
+  const precio = precioDe(servicio);
+  if (precio) caja.appendChild(nodo("p", null, precio));
   return caja;
 }
 
@@ -969,19 +977,34 @@ function pintarDatos(host) {
   });
   const labelNotas = nodo("label", "campo");
   labelNotas.append(nodo("span", null, "Notas"), notas, cuenta);
+  const trampa = document.createElement("input");
+  trampa.type = "text";
+  trampa.name = "website";
+  trampa.tabIndex = -1;
+  trampa.autocomplete = "off";
+  trampa.autocapitalize = "off";
+  trampa.spellcheck = false;
+  trampa.setAttribute("aria-hidden", "true");
+  trampa.dataset.trampa = "1";
+  const trampaCaja = nodo("div", "reserva-trampa");
+  const trampaLabel = document.createElement("label");
+  trampaLabel.append(document.createTextNode("Sitio web"), trampa);
+  trampaCaja.appendChild(trampaLabel);
   const check = document.createElement("input");
   check.type = "checkbox";
   check.name = "autoriza";
   check.required = true;
+  check.checked = false;
   const labelCheck = nodo("label", "reserva-check casilla");
-  const textoCheck = nodo("span", null, "He leído la Política de Tratamiento de Datos Personales y autorizo el tratamiento de mi nombre y celular para gestionar mi cita y avisarme por WhatsApp.");
+  const politica = nodo("a", null, "Política de tratamiento de datos");
+  politica.href = "politica-de-datos.html";
+  politica.target = "_blank";
+  politica.rel = "noopener";
+  politica.addEventListener("click", (evento) => evento.stopPropagation());
+  const textoCheck = document.createElement("span");
+  textoCheck.append(document.createTextNode("Autorizo el tratamiento de mis datos personales según la "), politica);
   labelCheck.append(check, marcaCasilla(), textoCheck);
-  const legales = nodo("p", "legales");
-  const trata = nodo("a", null, "Tratamiento de datos");
-  trata.href = "tratamiento-datos.html";
-  const priva = nodo("a", null, "Privacidad");
-  priva.href = "privacidad.html";
-  legales.append(trata, document.createTextNode(" · "), priva);
+  const menor = nodo("p", "reserva-menor", "Si reservas para un menor, declaras ser su padre, madre o representante.");
   const error = nodo("p", "form-error");
   error.hidden = true;
   error.dataset.formError = "1";
@@ -989,7 +1012,12 @@ function pintarDatos(host) {
   const enviar = nodo("button", "btn", "Confirmar reserva");
   enviar.type = "submit";
   enviar.dataset.reservaEnviar = "1";
-  campos.append(labelNombre, labelCel, labelNotas, labelCheck, legales, error, enviar);
+  enviar.disabled = true;
+  check.addEventListener("change", () => {
+    enviar.disabled = !check.checked;
+  });
+  campos.append(trampaCaja, labelNombre, labelCel, labelNotas, labelCheck, menor, error, enviar);
+  formulario.noValidate = true;
   formulario.append(campos, resumenCita());
   formulario.addEventListener("submit", (evento) => enviarReserva(evento, formulario, enviar, error));
   host.appendChild(formulario);
@@ -999,6 +1027,28 @@ async function enviarReserva(evento, formulario, boton, error) {
   evento.preventDefault();
   error.hidden = true;
   const datos = new FormData(formulario);
+  const trampa = String(datos.get("website") || "").trim();
+  if (trampa) {
+    const ofertaTrampa = estado.ofertas.get(estado.hora) || [];
+    const barberoTrampa = estado.barberoId || ofertaTrampa[0];
+    const nombreTrampa = nombreValido(datos.get("nombre"));
+    const celTrampa = celularValido(datos.get("celular"));
+    if (barberoTrampa && nombreTrampa && celTrampa.ok && estado.supabase) {
+      estado.supabase.rpc("crear_reserva", {
+        p_barbero: barberoTrampa,
+        p_servicio: estado.servicioId,
+        p_fecha: estado.fecha,
+        p_hora: estado.hora,
+        p_nombre: nombreTrampa,
+        p_telefono: celTrampa.digitos,
+        p_notas: "",
+        p_autoriza: true,
+        p_trampa: trampa
+      }).then(() => {}).catch(() => {});
+    }
+    pintarConfirmacion({ token: "", numero: "" }, nombreTrampa || "");
+    return;
+  }
   const nombre = nombreValido(datos.get("nombre"));
   const cel = celularValido(datos.get("celular"));
   if (!nombre) {
@@ -1014,6 +1064,7 @@ async function enviarReserva(evento, formulario, boton, error) {
   if (!datos.get("autoriza")) {
     error.hidden = false;
     error.textContent = "Debes aceptar el tratamiento de datos para reservar.";
+    boton.disabled = true;
     return;
   }
   const oferta = estado.ofertas.get(estado.hora) || [];
@@ -1026,7 +1077,7 @@ async function enviarReserva(evento, formulario, boton, error) {
   boton.disabled = true;
   boton.textContent = "Reservando…";
   try {
-    const { data, error: falloRpc } = await estado.supabase.rpc("crear_reserva", {
+    const payload = {
       p_barbero: barbero,
       p_servicio: estado.servicioId,
       p_fecha: estado.fecha,
@@ -1034,8 +1085,17 @@ async function enviarReserva(evento, formulario, boton, error) {
       p_nombre: nombre,
       p_telefono: cel.digitos,
       p_notas: String(datos.get("notas") || "").slice(0, 200),
-      p_autoriza: true
-    });
+      p_autoriza: true,
+      p_trampa: ""
+    };
+    let respuesta = await estado.supabase.rpc("crear_reserva", payload);
+    const avisoRpc = String((respuesta.error && (respuesta.error.message || respuesta.error.details)) || "");
+    if (respuesta.error && /p_trampa|schema cache/i.test(avisoRpc)) {
+      delete payload.p_trampa;
+      respuesta = await estado.supabase.rpc("crear_reserva", payload);
+    }
+    const data = respuesta.data;
+    const falloRpc = respuesta.error;
     if (falloRpc) throw falloRpc;
     const fila = Array.isArray(data) ? data[0] : data;
     if (!fila || !fila.token) throw new Error("sin token");
@@ -1045,7 +1105,7 @@ async function enviarReserva(evento, formulario, boton, error) {
   } catch (fallo) {
     error.hidden = false;
     error.textContent = traducir(fallo);
-    boton.disabled = false;
+    boton.disabled = !formulario.elements.autoriza.checked;
     boton.textContent = "Confirmar reserva";
   }
 }

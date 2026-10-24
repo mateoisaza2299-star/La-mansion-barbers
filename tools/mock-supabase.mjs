@@ -487,6 +487,7 @@ function crearReserva(estado, body) {
   let telefono = String(body.p_telefono || "").replace(/\D/g, "");
   if (telefono.startsWith("57") && telefono.length === 12) telefono = telefono.slice(2);
   if (!(telefono.length === 10 && telefono.startsWith("3"))) return { error: "celular invalido" };
+  if (String(body.p_trampa || "").trim()) return { data: { token: crypto.randomUUID(), numero: "" } };
   if (body.p_autoriza !== true) return { error: "falta autorizacion" };
   const servicio = estado.servicios.find((item) => item.id === body.p_servicio && item.activo);
   if (!servicio) return { error: "servicio no disponible" };
@@ -495,7 +496,7 @@ function crearReserva(estado, body) {
   const fecha = String(body.p_fecha || "");
   const hora = String(body.p_hora || "").slice(0, 5);
   const activas = estado.reservas.filter((item) => item.telefono === telefono && (item.estado === "pendiente" || item.estado === "confirmada") && item.fecha >= hoyISO());
-  if (activas.length >= 3) return { error: "limite de citas" };
+  if (activas.length >= 2) return { error: "limite de citas" };
   const libres = horasDe(estado, barbero.id, fecha, servicio.duracion_min);
   if (!libres.includes(hora)) return { error: "horario no disponible" };
   const notas = String(body.p_notas || "").slice(0, 200);
@@ -512,6 +513,8 @@ function crearReserva(estado, body) {
     nombre,
     telefono,
     notas,
+    autorizacion_datos: true,
+    autorizacion_fecha: new Date().toISOString(),
     estado: "pendiente",
     avisado: false,
     gratis: false,

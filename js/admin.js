@@ -2220,7 +2220,7 @@ async function crearCita(evento) {
     error.textContent = "Sin horarios este día";
     return;
   }
-  const { error: fallo } = await estado.supabase.rpc("crear_reserva", {
+  const payload = {
     p_barbero: form.elements.barbero.value,
     p_servicio: form.elements.servicio.value,
     p_fecha: form.elements.fecha.value,
@@ -2228,8 +2228,16 @@ async function crearCita(evento) {
     p_nombre: nombre,
     p_telefono: cel.digitos,
     p_notas: "Autorización verbal",
-    p_autoriza: true
-  });
+    p_autoriza: true,
+    p_trampa: ""
+  };
+  let respuesta = await estado.supabase.rpc("crear_reserva", payload);
+  const avisoRpc = String((respuesta.error && (respuesta.error.message || respuesta.error.details)) || "");
+  if (respuesta.error && /p_trampa|schema cache/i.test(avisoRpc)) {
+    delete payload.p_trampa;
+    respuesta = await estado.supabase.rpc("crear_reserva", payload);
+  }
+  const fallo = respuesta.error;
   if (fallo) {
     error.hidden = false;
     error.textContent = traducir(fallo);
@@ -2348,7 +2356,7 @@ async function pintarPuesta() {
   const items = [
     { ok: Boolean(sede && String(sede.direccion || "").trim()), texto: "Local con dirección cargada", destino: "ajustes", accion: "Corregir" },
     { ok: activos.length > 0, texto: "Al menos un servicio activo", destino: "servicios", accion: "Corregir" },
-    { ok: conPrecio, texto: "Al menos un servicio con precio", destino: "servicios", accion: "Corregir", extra: sinPrecio ? "Los servicios sin precio se muestran como 'Precio por confirmar'" : "" },
+    { ok: conPrecio, texto: "Al menos un servicio con precio", destino: "servicios", accion: "Corregir", extra: sinPrecio ? "Los servicios sin precio no muestran el valor en la página pública." : "" },
     { ok: barberos.length > 0, texto: "Al menos un barbero activo", destino: "equipo", accion: "Corregir" },
     { ok: barberos.length > 0 && sinHorario.length === 0, texto: "Cada barbero activo tiene horarios", destino: "equipo", accion: "Editar", extra: sinHorario.length ? sinHorario.map((item) => item.nombre).join(", ") + ". No aparecerá disponible para reservar" : "" },
     { ok: reservas, texto: "Reservas activas en Ajustes", destino: "ajustes", accion: "Corregir" },

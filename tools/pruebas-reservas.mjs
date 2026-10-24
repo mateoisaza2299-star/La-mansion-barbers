@@ -128,7 +128,7 @@ async function llenarDatos(page, nombre, telefono) {
 async function reservar(page, opciones) {
   await abrirReserva(page);
   const servicio = page.locator("[data-reserva-pasos] [data-servicio='" + CORTE + "']");
-  exigir((await textoDe(servicio)).includes("Precio por confirmar"), "el servicio sin precio no avisa el precio");
+  exigir(!(await textoDe(servicio)).includes("Precio por confirmar"), "el servicio sin precio no debe mostrar el precio");
   await servicio.click();
   if (await page.locator('[data-barbero="' + opciones.barbero + '"]').count()) {
     await page.locator('[data-barbero="' + opciones.barbero + '"]').click();
@@ -461,7 +461,7 @@ async function flujoPanel(page, ancho) {
   exigir(extraAgenda <= 1, ancho + " desborde agenda " + extraAgenda);
   const puesta = await textoDe(page.locator("[data-puesta]"));
   exigir(puesta.includes("Puesta en marcha"), ancho + " sin puesta en marcha");
-  exigir(puesta.includes("Precio por confirmar"), ancho + " sin aviso de precio");
+  exigir(puesta.includes("no muestran el valor"), ancho + " sin aviso de precio oculto");
   await navVisible(page, "reservas");
   const ana = page.locator("article.pa-cita", { hasText: "Cliente Ana Uno" });
   await ana.locator("[data-accion='confirmar']").click();

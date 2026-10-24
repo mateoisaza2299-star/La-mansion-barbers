@@ -271,7 +271,7 @@ const applyTextos = () => {
     node.textContent = negocio.politicaReserva;
   });
   document.querySelectorAll("[data-aviso-datos]").forEach((node) => {
-    const href = "privacidad.html";
+    const href = "politica-de-datos.html";
     node.replaceChildren(document.createTextNode(negocio.avisoDatos + " "));
     const link = document.createElement("a");
     link.href = href;
@@ -289,6 +289,12 @@ const applyTextos = () => {
       p.textContent = paragraph;
       node.appendChild(p);
     });
+    const politicaP = document.createElement("p");
+    const politica = document.createElement("a");
+    politica.href = "politica-de-datos.html";
+    politica.textContent = "Política de tratamiento de datos";
+    politicaP.appendChild(politica);
+    node.appendChild(politicaP);
     const href = enlaceWhatsapp("Hola, quiero pedir que borren mis datos de " + negocio.nombre + ".");
     if (!href) return;
     const p = document.createElement("p");

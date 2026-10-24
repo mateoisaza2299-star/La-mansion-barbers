@@ -166,12 +166,14 @@ const pintarTextos = () => {
   const descripcion = descripcionPublica();
   const etiqueta = "BARBER SHOP · " + String(negocio.zona || "").toLocaleUpperCase("es-CO");
   const lead = "Cortes, barba y cuidado personal en " + negocio.ciudad + ".";
-  document.title = document.body.dataset.pagina === "historia" ? "Nuestra historia | La Mansión Barber Shop" : titulo;
-  pintarMeta('meta[name="description"]', descripcion);
-  pintarMeta('meta[property="og:title"]', titulo);
-  pintarMeta('meta[property="og:description"]', descripcion);
-  pintarMeta('meta[name="twitter:title"]', titulo);
-  pintarMeta('meta[name="twitter:description"]', descripcion);
+  if (document.body.dataset.pagina !== "politica") {
+    document.title = document.body.dataset.pagina === "historia" ? "Nuestra historia | La Mansión Barber Shop" : titulo;
+    pintarMeta('meta[name="description"]', descripcion);
+    pintarMeta('meta[property="og:title"]', titulo);
+    pintarMeta('meta[property="og:description"]', descripcion);
+    pintarMeta('meta[name="twitter:title"]', titulo);
+    pintarMeta('meta[name="twitter:description"]', descripcion);
+  }
   pintarMeta('meta[property="og:image:alt"]', "Letrero de neón de " + negocio.nombre + " en " + (negocio.zona || "") + ".");
   pintarMeta('meta[name="twitter:image:alt"]', "Letrero de neón de " + negocio.nombre + " en " + (negocio.zona || "") + ".");
   document.querySelectorAll("[data-texto]").forEach((nodo) => {
@@ -255,6 +257,61 @@ const pintarPrivacidad = () => {
     p.textContent = parrafo;
     caja.appendChild(p);
   });
+  const enlaceP = document.createElement("p");
+  const enlace = document.createElement("a");
+  enlace.href = "politica-de-datos.html";
+  enlace.textContent = "Política de tratamiento de datos";
+  enlaceP.appendChild(enlace);
+  caja.appendChild(enlaceP);
+};
+
+const textoPolitica = (valor, vacio) => {
+  const limpio = String(valor == null ? "" : valor).trim();
+  return limpio || vacio;
+};
+
+const pintarPolitica = () => {
+  const nodo = document.getElementById("politica-datos");
+  if (!nodo) return;
+  let datos = {};
+  try {
+    datos = JSON.parse(nodo.textContent || "{}");
+  } catch (error) {
+    datos = {};
+  }
+  const poner = (clave, valor) => {
+    document.querySelectorAll('[data-politica="' + clave + '"]').forEach((el) => {
+      el.textContent = valor;
+    });
+  };
+  poner("razonSocial", textoPolitica(datos.razonSocial, "Por confirmar"));
+  poner("nit", textoPolitica(datos.nit, "Por confirmar"));
+  const correo = textoPolitica(datos.correo, "Por confirmar");
+  document.querySelectorAll('[data-politica="correo"]').forEach((el) => {
+    el.replaceChildren();
+    if (correo.includes("@")) {
+      const enlace = document.createElement("a");
+      enlace.href = "mailto:" + correo;
+      enlace.textContent = correo;
+      el.appendChild(enlace);
+    } else {
+      el.textContent = correo;
+    }
+  });
+  const anios = Number(datos.aniosConservacion);
+  const plazo = Number.isFinite(anios) && anios > 0 ? (anios === 1 ? "1 año" : String(anios) + " años") : "2 años";
+  poner("aniosConservacion", plazo);
+  const fecha = String(datos.actualizacion || "").trim();
+  if (fecha) poner("actualizacion", fecha);
+  const boton = document.querySelector("[data-politica-correo]");
+  if (boton) {
+    if (correo.includes("@")) {
+      boton.hidden = false;
+      boton.href = "mailto:" + correo;
+    } else {
+      boton.hidden = true;
+    }
+  }
 };
 
 const usos = new Map();
@@ -512,10 +569,6 @@ const servicioNodo = (servicio) => {
   titulo.textContent = servicio.nombre;
   const texto = document.createElement("p");
   texto.textContent = servicio.descripcion;
-  const precio = document.createElement("p");
-  precio.className = "servicio-precio";
-  if (servicio.precio === null || servicio.precio === undefined || servicio.precio === "") precio.textContent = textos.consultar || "Precio por confirmar";
-  else precio.textContent = formatoPrecio(servicio.precio);
   const reservar = document.createElement("button");
   reservar.type = "button";
   reservar.className = "btn btn-sec";
@@ -523,7 +576,15 @@ const servicioNodo = (servicio) => {
   reservar.dataset.reservar = "1";
   reservar.dataset.servicio = servicio.id || "";
   reservar.dataset.servicioNombre = servicio.nombre || "";
-  article.append(titulo, texto, precio, reservar);
+  const precioNumero = Number(servicio.precio);
+  if (servicio.precio != null && servicio.precio !== "" && Number.isFinite(precioNumero)) {
+    const precio = document.createElement("p");
+    precio.className = "servicio-precio";
+    precio.textContent = formatoPrecio(servicio.precio);
+    article.append(titulo, texto, precio, reservar);
+  } else {
+    article.append(titulo, texto, reservar);
+  }
   return article;
 };
 
@@ -965,6 +1026,7 @@ const iniciar = async () => {
   pintarTextos();
   pintarNosotros();
   pintarPrivacidad();
+  pintarPolitica();
   prepararFaq();
   prepararCarrusel();
   prepararMenu();

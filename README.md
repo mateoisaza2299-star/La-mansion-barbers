@@ -12,7 +12,7 @@ Eso ejecuta `node tools/procesar-fotos.mjs`. Genera WebP en `assets/img/fotos/`,
 
 ## Reservas
 
-El sitio reserva sin cuenta y con un horario por barbero. El cliente elige servicio, barbero (o el primero libre), fecha y hora, y deja nombre, celular y la autorización de datos. La cita queda en el navegador, se puede cancelar o cambiar, y la tarjeta de fidelidad se consulta con el celular. El panel (Agenda, Reservas, Barberos, Servicios, Fidelidad, Resumen y Ajustes) distingue al dueño del barbero: el barbero solo ve su agenda y su horario. Las páginas legales están en preparación. La URL y la clave pública viven solo en `negocio.supabase`. Si falta alguna, o `enPreparacion` sigue en `true`, la página no llama a Supabase.
+El sitio reserva sin cuenta y con un horario por barbero. El cliente elige servicio, barbero (o el primero libre), fecha y hora, y deja nombre, celular y la autorización de datos. La cita queda en el navegador, se puede cancelar o cambiar, y la tarjeta de fidelidad se consulta con el celular. El panel (Agenda, Reservas, Barberos, Servicios, Fidelidad, Resumen y Ajustes) distingue al dueño del barbero: el barbero solo ve su agenda y su horario. La política de tratamiento de datos está en `politica-de-datos.html`. La URL y la clave pública viven solo en `negocio.supabase`. Si falta alguna, o `enPreparacion` sigue en `true`, la página no llama a Supabase.
 
 ## Activar reservas
 
@@ -21,7 +21,7 @@ Mientras `negocio.supabase.url` esté vacía o `negocio.enPreparacion` sea `true
 1. En `js/config.js`, `negocio.supabase.url` es la URL del proyecto (sin barra final y sin `/rest/v1`) y `negocio.supabase.key` la clave pública. Tiene que empezar por `sb_publishable_`. No guardes la clave privada del servidor.
 2. Con `negocio.enPreparacion` en `false` se encienden las reservas. `negocio.indexable` en `false` mantiene la etiqueta `noindex, nofollow` hasta pasarlo a `true`.
 3. Crea el usuario del dueño en Supabase Auth y su fila en `admins` con rol `dueno`.
-4. Entra por el enlace «Acceso del equipo» del pie (`admin-login.html`) y carga servicios, barberos y horarios.
+4. Entra por la dirección directa `admin-login.html` y carga servicios, barberos y horarios.
 5. En Servicios, revisa los que estén inactivos y actívalos.
 6. Ejecuta `node tools/verificar-listo.mjs`. Si falta algo, lo lista.
 
