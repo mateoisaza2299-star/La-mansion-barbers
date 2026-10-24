@@ -3,7 +3,6 @@ import { obtenerAdmin } from "./admin-cliente.js";
 import { traducir, celularValido, nombreValido } from "./errores.js";
 import { hoyISO, sumarDias, fechaLegible, horaLegible, aMinutos, aHora, lunesDe, diaSemanaISO } from "./tiempo.js";
 import { nodo, hojaEstilos, marcaCasilla } from "./dom.js";
-import { mensajeCita } from "./mensajes.js";
 
 const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const SEMANA = [
@@ -118,6 +117,40 @@ function waCliente(telefono, texto) {
   const numero = digitos(telefono);
   if (numero.length !== 10) return "";
   return "https://wa.me/57" + numero + "?text=" + encodeURIComponent(texto);
+}
+
+let armarMensaje = null;
+
+function tomarMensaje(modulo) {
+  if (modulo && typeof modulo.mensajeCita === "function") armarMensaje = modulo.mensajeCita;
+}
+
+async function prepararMensajes() {
+  let aviso;
+  const carga = import("./mensajes.js?v=13").then(tomarMensaje).catch(() => {});
+  await Promise.race([
+    carga,
+    new Promise((resolve) => {
+      aviso = setTimeout(resolve, 4000);
+    })
+  ]);
+  clearTimeout(aviso);
+}
+
+function textoAviso(reserva) {
+  if (typeof armarMensaje !== "function") return "";
+  try {
+    return armarMensaje({
+      estado: reserva.estado,
+      nombre: reserva.nombre,
+      servicio: nombreServicio(reserva.servicio_id),
+      fecha: reserva.fecha,
+      hora: reserva.hora,
+      cancel_token: reserva.cancel_token
+    });
+  } catch (error) {
+    return "";
+  }
 }
 
 function preguntar(texto, si, no) {
@@ -471,14 +504,8 @@ function accionesDe(reserva) {
     });
   }
   if (reserva.estado === "pendiente" || reserva.estado === "confirmada" || reserva.estado === "cancelada") {
-    const href = waCliente(reserva.telefono, mensajeCita({
-      estado: reserva.estado,
-      nombre: reserva.nombre,
-      servicio: nombreServicio(reserva.servicio_id),
-      fecha: reserva.fecha,
-      hora: reserva.hora,
-      cancel_token: reserva.cancel_token
-    }));
+    const texto = textoAviso(reserva);
+    const href = texto ? waCliente(reserva.telefono, texto) : "";
     if (href) {
       const enlace = nodo("a", "btn", "Avisar por WhatsApp");
       enlace.href = href;
@@ -2383,6 +2410,7 @@ async function salir() {
 }
 
 async function boot() {
+  await prepararMensajes();
   if (!reservasEnLinea()) {
     document.documentElement.classList.add("is-preparacion");
     return;

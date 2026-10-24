@@ -721,6 +721,40 @@ async function sinRed(browser) {
   await context.close();
 }
 
+async function probarMensajeRoto(browser) {
+  await fetch(origen + "/__reset", { method: "POST" });
+  const context = await browser.newContext({
+    viewport: { width: 1366, height: 800 },
+    serviceWorkers: "block",
+    locale: "es-CO"
+  });
+  await context.addCookies([{ name: "lm_activo", value: "1", url: origen }]);
+  const page = await context.newPage();
+  const errores = [];
+  page.on("pageerror", (error) => errores.push(String(error)));
+  await page.route("**/js/mensajes.js*", (route) => route.fulfill({
+    status: 200,
+    contentType: "text/javascript; charset=utf-8",
+    body: "throw new Error(\"mensajes roto\");\n"
+  }));
+  try {
+    await page.goto(origen + "/admin-login.html", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("[data-login]", { state: "visible", timeout: 15000 });
+    await page.locator('input[name="email"]').fill("dueno@lamansion.test");
+    await page.locator('input[name="password"]').fill("ClaveDueno123");
+    await page.locator("[data-login-submit]").click();
+    await page.waitForURL(/admin\.html/, { timeout: 15000 });
+    await page.waitForSelector("[data-nav]:visible [data-vista='agenda']", { timeout: 15000 });
+    exigir(await page.locator("[data-panel-cerrado]").isVisible() === false, "un mensaje roto deja el panel cerrado");
+    exigir(await page.locator("text=Cliente Ana Uno").count() > 0, "un mensaje roto oculta las citas");
+  } catch (error) {
+    falla("mensaje roto " + (error && error.message ? error.message : error));
+  }
+  const graves = errores.filter((texto) => !/mensajes roto/i.test(texto));
+  exigir(graves.length === 0, "mensaje roto consola: " + errores.join(" | "));
+  await context.close();
+}
+
 const browser = await chromium.launch({
   executablePath: "/usr/local/bin/google-chrome",
   args: ["--no-sandbox", "--disable-dev-shm-usage"]
@@ -803,6 +837,7 @@ try {
     if (errores.length) falla(ancho + " consola: " + errores.join(" | "));
     await context.close();
   }
+  await probarMensajeRoto(browser);
 } finally {
   await browser.close();
   servidor.close();
