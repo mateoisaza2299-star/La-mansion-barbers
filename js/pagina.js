@@ -334,10 +334,36 @@ const meterFoto = (contenedor, foto, opciones) => {
 
 const cartaFija = {
   Cortes: "corte-duo",
+  Barba: "corte-barba",
+  FreeStyle: "corte-freestyle",
+  Freestyle: "corte-freestyle",
   "FreeStyle y diseños": "corte-freestyle",
   "Cuidado facial": "corte-mascara"
 };
 const idsCarta = new Set(Object.values(cartaFija));
+const VERSION_CARTA = "2";
+
+const idFijoDe = (nombre) => {
+  const limpio = String(nombre || "").trim();
+  if (cartaFija[limpio]) return cartaFija[limpio];
+  const clave = limpio.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (clave.includes("freestyle")) return "corte-freestyle";
+  return "";
+};
+
+const urlCarta = (foto, ancho) => {
+  const base = urlDe(foto, ancho);
+  if (!base || base.startsWith("/") || base.startsWith("http")) return "";
+  return base + (base.includes("?") ? "&" : "?") + "v=" + VERSION_CARTA;
+};
+
+const srcsetCarta = (foto) => variantesDe(foto)
+  .map((item) => {
+    const url = urlCarta(foto, item.ancho);
+    return url ? url + " " + item.ancho + "w" : "";
+  })
+  .filter(Boolean)
+  .join(", ");
 
 const prepararHero = (fotos) => {
   const fondo = document.querySelector("[data-hero-fondo]");
@@ -388,7 +414,7 @@ const prepararHero = (fotos) => {
     .sort((a, b) => (ordenAmbiente[a.categoria] ?? 9) - (ordenAmbiente[b.categoria] ?? 9) || ladoDe(b) - ladoDe(a))[0];
   const preferencia = ["corte-barba", "corte-facial", "corte-spray", "corte-capa"];
   const marcos = fotos
-    .filter((foto) => foto.categoria === "corte" && foto.orientacion === "vertical" && !menorEnPrimerPlano(foto) && ladoDe(foto) >= 640 && !idsCarta.has(foto.id) && puede(foto) && (!texturaFoto || foto.id !== texturaFoto.id))
+    .filter((foto) => foto.categoria === "corte" && foto.orientacion === "vertical" && !menorEnPrimerPlano(foto) && ladoDe(foto) >= 640 && foto.id !== "corte-freestyle" && puede(foto) && (!texturaFoto || foto.id !== texturaFoto.id))
     .sort((a, b) => {
       const ia = preferencia.indexOf(a.id);
       const ib = preferencia.indexOf(b.id);
@@ -530,7 +556,7 @@ const prepararServicios = async (fotos) => {
     carta.hidden = true;
     return;
   }
-  const orden = ["Cortes", "Barba", "FreeStyle y diseños", "Cuidado facial"];
+  const orden = ["Cortes", "Barba", "FreeStyle", "Freestyle", "FreeStyle y diseños", "Cuidado facial"];
   const presentes = [];
   orden.forEach((nombre) => {
     if (catalogo.some((item) => item.categoria === nombre)) presentes.push(nombre);
@@ -553,13 +579,11 @@ const prepararServicios = async (fotos) => {
     return foto.categoria === "corte";
   }).filter((foto) => foto.id !== previa);
   presentes.forEach((nombre) => {
-    const idFijo = cartaFija[nombre];
+    const idFijo = idFijoDe(nombre);
     const fija = idFijo ? fotos.find((foto) => foto.id === idFijo) : null;
     if (fija && esId(fija.id)) {
-      if (!enServicio.has(fija.id)) {
-        if (!marcar(fija, enServicios)) return;
-        enServicio.add(fija.id);
-      }
+      if (!enServicio.has(fija.id) && puede(fija)) marcar(fija, enServicios);
+      enServicio.add(fija.id);
       asignadas.set(nombre, fija);
       previa = fija.id;
       return;
@@ -578,38 +602,59 @@ const prepararServicios = async (fotos) => {
     previa = foto.id;
   });
   if (hueco && !asignadas.size) hueco.hidden = true;
-  let fotoNodo = null;
-  let fotoActual = "";
+  const nombresDe = (nombre) => catalogo
+    .filter((item) => item.categoria === nombre)
+    .map((item) => item.nombre)
+    .filter(Boolean);
+  const ponerRespaldo = (destino, nombre) => {
+    destino.classList.add("sin-foto");
+    const leyenda = document.createElement("p");
+    leyenda.className = "carta-foto-nombre";
+    const nombres = nombresDe(nombre);
+    leyenda.textContent = nombres.length ? nombres.join(" · ") : nombre;
+    destino.replaceChildren(leyenda);
+  };
   const ponerFoto = (nombre) => {
     const foto = asignadas.get(nombre);
     const estrecha = window.matchMedia("(max-width: 899px)").matches;
     const destino = estrecha ? carta.querySelector(".acordeon-item.is-open .acordeon-foto") : hueco;
-    if (!foto || !destino) return;
-    const ancho = anchoDe(foto, 800);
-    if (!ancho) return;
-    const aplicar = () => {
-      if (!fotoNodo) {
-        fotoNodo = document.createElement("img");
-        fotoNodo.decoding = "async";
-        fotoNodo.loading = "lazy";
-      }
-      fotoNodo.src = urlDe(foto, ancho);
-      fotoNodo.srcset = srcsetDe(foto);
-      fotoNodo.sizes = estrecha ? "100vw" : "(min-width: 900px) 40vw, 100vw";
-      fotoNodo.alt = foto.alt;
-      fotoNodo.width = foto.ancho;
-      fotoNodo.height = foto.alto;
-      fotoNodo.className = "mate-" + foto.id;
-      destino.replaceChildren(fotoNodo);
-      fotoActual = foto.id;
-      window.requestAnimationFrame(() => fotoNodo.classList.remove("is-out"));
-    };
-    if (!fotoNodo || fotoActual === foto.id || reduce || estatico) {
-      aplicar();
+    if (!destino) return;
+    carta.querySelectorAll(".acordeon-foto, [data-carta-foto]").forEach((caja) => {
+      if (caja === destino) return;
+      caja.classList.remove("sin-foto");
+      caja.replaceChildren();
+    });
+    const ancho = foto ? anchoDe(foto, 800) : 0;
+    const src = foto && ancho ? urlCarta(foto, ancho) : "";
+    if (!src) {
+      ponerRespaldo(destino, nombre);
       return;
     }
-    fotoNodo.classList.add("is-out");
-    window.setTimeout(aplicar, 220);
+    const img = document.createElement("img");
+    img.decoding = "async";
+    img.loading = "lazy";
+    img.alt = foto.alt || nombresDe(nombre).join(", ");
+    img.width = foto.ancho;
+    img.height = foto.alto;
+    img.className = "mate-" + foto.id + " carta-foto-pendiente";
+    img.sizes = estrecha ? "100vw" : "(min-width: 900px) 40vw, 100vw";
+    const srcset = srcsetCarta(foto);
+    if (srcset) img.srcset = srcset;
+    const lista = () => {
+      if (img.naturalWidth > 0) {
+        img.classList.remove("carta-foto-pendiente");
+        return;
+      }
+      if (destino.contains(img)) ponerRespaldo(destino, nombre);
+    };
+    img.addEventListener("load", lista);
+    img.addEventListener("error", () => {
+      if (destino.contains(img)) ponerRespaldo(destino, nombre);
+    });
+    destino.classList.remove("sin-foto");
+    destino.replaceChildren(img);
+    img.src = src;
+    if (img.complete) lista();
   };
   const seleccionar = (nombre) => {
     tabs.querySelectorAll("[role='tab']").forEach((tab) => {

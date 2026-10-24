@@ -77,7 +77,7 @@ export const negocio = {
     { id: "corte-barba", categoria: "Cortes", nombre: "Corte y barba", descripcion: "El corte y el arreglo de barba en la misma visita.", precio: null },
     { id: "arreglo-barba", categoria: "Barba", nombre: "Arreglo de barba", descripcion: "Perfil, forma y definición.", precio: null },
     { id: "barba-completa", categoria: "Barba", nombre: "Barba completa", descripcion: "Diseño y limpieza de toda la barba.", precio: null },
-    { id: "disenos", categoria: "FreeStyle y diseños", nombre: "Diseños", descripcion: "Líneas, figuras y freestyle sobre el corte.", precio: null },
+    { id: "disenos", categoria: "FreeStyle", nombre: "Diseños", descripcion: "Líneas, figuras y freestyle sobre el corte.", precio: null },
     { id: "facial", categoria: "Cuidado facial", nombre: "Cuidado facial", descripcion: "Limpieza y cuidado de la piel del rostro.", precio: null }
   ],
   preguntas: [

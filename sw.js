@@ -1,4 +1,4 @@
-const CACHE = "site-shell-v14";
+const CACHE = "site-shell-v15";
 
 const ADMIN_PAGES = ["admin.html", "admin-login.html"];
 const PUBLIC_PAGES = ["index.html", "nosotros.html", "historia.html", "privacidad.html", "tratamiento-datos.html", "404.html", "cancelar/index.html"];
