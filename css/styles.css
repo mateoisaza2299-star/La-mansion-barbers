@@ -28,6 +28,9 @@
   --serif: var(--display);
   --sans: Outfit, system-ui, sans-serif;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --r-control: 6px;
+  --r-tarjeta: 12px;
+  --r-etiqueta: 4px;
   color-scheme: dark;
 }
 
@@ -89,7 +92,7 @@ a { color: inherit; }
 
 :focus-visible {
   outline: 3px solid var(--oro);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 
 .skip-link {
@@ -635,7 +638,7 @@ main section[id],
   align-items: center;
   padding: 0 0.9rem;
   border: 1px solid var(--oro);
-  border-radius: 999px;
+  border-radius: var(--r-etiqueta);
   color: var(--hueso);
   font-family: var(--impacto);
   font-size: 0.78rem;
@@ -1723,7 +1726,13 @@ body.reserva-lock { overflow: hidden; }
   animation: pulso 1s linear infinite;
 }
 
-.check { width: 64px; height: 64px; }
+.check {
+  width: 64px;
+  height: 64px;
+  border: 1.5px solid var(--oro);
+  border-radius: var(--r-control);
+  box-sizing: border-box;
+}
 
 .check-anillo,
 .check-palo {
@@ -1970,7 +1979,7 @@ body.reserva-lock .mapa-marco iframe { visibility: hidden; }
   min-width: 44px;
   min-height: 44px;
   border: 1px solid var(--oro);
-  border-radius: 999px;
+  border-radius: var(--r-control);
   background: rgba(10, 10, 10, 0.8);
   color: var(--oro);
 }
@@ -2015,4 +2024,231 @@ body.reserva-lock .mapa-marco iframe { visibility: hidden; }
   .check-palo { stroke-dashoffset: 0; }
   html.motion .reveal,
   html.motion .nosotros-media { opacity: 1; transform: none; clip-path: none; }
+  .btn:active,
+  button:active,
+  a.btn:active { transform: none; }
+  .casilla-svg path { transition: none; stroke-dashoffset: 0; }
+  .casilla input:not(:checked) + .casilla-svg path { stroke-dashoffset: 22; }
+}
+
+button,
+.btn,
+a.btn,
+.chip,
+.opcion,
+.dia-btn,
+.hora-btn,
+.nav-toggle,
+.nav-cerrar,
+.local-flecha,
+.visor-flecha,
+.carta-tabs button,
+.acordeon-q,
+.faq-q,
+.nosotros-controles button,
+select,
+.campo input,
+.campo textarea,
+.campo select {
+  border-radius: var(--r-control);
+  transition: color 160ms ease-out, border-color 160ms ease-out, background-color 160ms ease-out, opacity 160ms ease-out, transform 160ms ease-out;
+}
+
+.btn,
+a.btn {
+  min-height: 48px;
+  height: auto;
+  padding: 15px 22px;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+}
+
+.btn:active,
+button:active,
+a.btn:active { transform: scale(0.98); }
+
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--oro);
+  box-shadow: none;
+}
+
+.btn-ghost:hover { background: rgba(201, 162, 75, 0.08); }
+
+.btn-peligro {
+  border: 1px solid #e7b4a8;
+  background: transparent;
+  color: #e7b4a8;
+  box-shadow: none;
+}
+
+.btn-icono,
+.ayuda-btn,
+.clave-ver,
+.contador button {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: var(--r-control);
+}
+
+.visita-tarjeta,
+.reserva-card,
+.pagina-simple .caja,
+.cita-card,
+.fid-card,
+.reserva-resumen,
+.reserva-confirma-card,
+.pa-modal-card,
+.login-card,
+.mapa-marco,
+.comparador,
+.mosaico-item,
+.carta-foto,
+.acordeon-foto,
+.nosotros-media,
+.nosotros-marco-foto,
+.historia-foto,
+.nosotros-marco-foto img,
+.historia-foto img,
+.reserva-pasos.abierta {
+  border-radius: var(--r-tarjeta);
+}
+
+.nosotros-card::before,
+.nosotros-card figcaption,
+.nosotros-marco-foto::after { border-radius: var(--r-tarjeta); }
+
+.chips li { border-radius: var(--r-etiqueta); }
+
+.opcion,
+.dia-btn,
+.hora-btn,
+.chip { border-radius: var(--r-control); }
+
+select,
+.campo select,
+.pa-form select,
+.login-card select {
+  appearance: none;
+  height: 48px;
+  min-height: 48px;
+  padding-right: 2.4rem;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-control);
+  background-color: var(--grafito-2);
+  background-image: none;
+  color: var(--hueso);
+  color-scheme: dark;
+  font-size: 16px;
+}
+
+select:focus,
+.campo input:focus,
+.campo textarea:focus,
+.campo select:focus {
+  border-color: var(--oro);
+}
+
+.campo:has(> select),
+.con-flecha { position: relative; display: block; min-width: 0; }
+
+.campo:has(> select)::after,
+.con-flecha::after {
+  content: "";
+  position: absolute;
+  right: 16px;
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid var(--oro);
+  border-bottom: 1.5px solid var(--oro);
+  pointer-events: none;
+}
+
+.campo:has(> select)::after { bottom: 18px; transform: rotate(45deg); }
+
+.con-flecha::after { top: calc(50% - 5px); transform: rotate(45deg); }
+
+.casilla {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.casilla input[type="checkbox"] {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  margin: 0.15rem 0 0;
+  border: 1.5px solid var(--oro);
+  border-radius: var(--r-etiqueta);
+  background: transparent;
+  display: grid;
+  place-items: center;
+  flex: none;
+  cursor: pointer;
+}
+
+.casilla input[type="checkbox"]:checked {
+  background: var(--oro);
+  border-color: var(--oro);
+}
+
+.casilla input[type="checkbox"]:indeterminate { background: rgba(201, 162, 75, 0.1); }
+
+.casilla input[type="checkbox"]:indeterminate::after {
+  content: "";
+  width: 10px;
+  height: 2px;
+  background: var(--oro);
+}
+
+.casilla-svg {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+}
+
+.reserva-check.casilla .casilla-svg { left: 0; top: 0.15rem; }
+
+.casilla-svg path {
+  fill: none;
+  stroke: #0A0A0A;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 22;
+  stroke-dashoffset: 22;
+  transition: stroke-dashoffset 180ms ease-out;
+}
+
+.casilla input:checked + .casilla-svg path { stroke-dashoffset: 0; }
+
+.opcion.is-on { border-radius: var(--r-control); }
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  .btn,
+  a.btn,
+  .chip,
+  .opcion,
+  .dia-btn,
+  .hora-btn,
+  select,
+  .casilla-svg path,
+  .segmento-indicador,
+  .dia-turnos,
+  .turno-alta,
+  .horario-total,
+  .horario-tabs .subrayado,
+  .horario-hoja { transition: none; animation: none; }
+  .btn:active,
+  button:active,
+  a.btn:active { transform: none; }
+  .casilla input:checked + .casilla-svg path { stroke-dashoffset: 0; }
 }

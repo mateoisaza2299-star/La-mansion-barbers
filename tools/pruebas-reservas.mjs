@@ -53,6 +53,51 @@ async function desborde(page) {
   return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 }
 
+async function radiosControl(page) {
+  return page.evaluate(() => {
+    const mal = [];
+    document.querySelectorAll("button, a.btn, [role='switch'], [role='radio'], [role='tab'], select, input[type='checkbox']").forEach((el) => {
+      if (el.closest("[hidden]")) return;
+      const estilo = getComputedStyle(el);
+      if (estilo.display === "none" || estilo.visibility === "hidden") return;
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 2 || rect.height < 2) return;
+      const px = Math.max(...estilo.borderRadius.split(/\s+/).map((parte) => parseFloat(parte) || 0));
+      if (px > 8) mal.push((el.getAttribute("aria-label") || el.textContent || el.tagName).trim().slice(0, 40) + " " + Math.round(px));
+    });
+    return mal.slice(0, 6);
+  });
+}
+
+async function fueraDeTarjeta(page) {
+  return page.evaluate(() => {
+    const fuera = [];
+    document.querySelectorAll(".horario-hoja, .pa-cita, .horario-semana-card, .login-card, .visita-tarjeta, .reserva-card").forEach((card) => {
+      if (card.closest("[hidden]") || card.hidden) return;
+      const caja = card.getBoundingClientRect();
+      if (caja.width < 2) return;
+      card.querySelectorAll("*").forEach((hijo) => {
+        if (hijo.closest("[hidden]")) return;
+        const estilo = getComputedStyle(hijo);
+        if (estilo.display === "none" || estilo.visibility === "hidden") return;
+        const r = hijo.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2) return;
+        if (r.right > caja.right + 2 || r.left < caja.left - 2) fuera.push((hijo.className && String(hijo.className).slice(0, 48)) || hijo.tagName);
+      });
+    });
+    return [...new Set(fuera)].slice(0, 8);
+  });
+}
+
+async function revisar(page, ancho, nombre) {
+  const extra = await desborde(page);
+  exigir(extra <= 1, ancho + " desborde " + nombre + " " + extra);
+  const radios = await radiosControl(page);
+  exigir(radios.length === 0, ancho + " radio " + nombre + " " + radios.join(" | "));
+  const fuera = await fueraDeTarjeta(page);
+  exigir(fuera.length === 0, ancho + " sale de la tarjeta " + nombre + " " + fuera.join(" | "));
+}
+
 async function foto(page, nombre) {
   await page.screenshot({ path: path.join(dir, nombre + ".png"), fullPage: false });
 }
@@ -285,6 +330,48 @@ async function flujoPublico(page, ancho, telefono) {
   await foto(page, ancho + "-fidelidad");
   const anchoExtra = await desborde(page);
   exigir(anchoExtra <= 1, ancho + " desborde público " + anchoExtra);
+  await revisar(page, ancho, "publico");
+}
+
+async function probarFicha(page) {
+  exigir(await page.locator("[data-barbero-form] [name=orden]").count() === 0, "sigue el campo orden");
+  const textos = await page.locator("[data-barbero-servicios]").innerText();
+  exigir(!textos.includes("Niños") && !textos.includes("Mujer") && !textos.includes("Color"), "servicios inactivos en la ficha: " + textos);
+  exigir(textos.includes("7 de 7 servicios"), "contador inicial " + textos);
+  exigir(textos.includes("Todos los servicios"), "sin todos los servicios");
+  await page.locator("article.pa-cita", { hasText: "Ana Rojas" }).locator("button", { hasText: "Editar" }).click();
+  await page.waitForFunction(() => (document.querySelector("[data-servicios-cuenta]") || {}).textContent === "7 de 7 servicios");
+  const corte = page.locator(".servicio-op", { hasText: "Degradado" }).locator("input");
+  await corte.uncheck();
+  await page.waitForFunction(() => (document.querySelector("[data-servicios-cuenta]") || {}).textContent === "6 de 7 servicios");
+  const todos = page.locator("[data-servicios-todos]");
+  await todos.click();
+  await page.waitForFunction(() => (document.querySelector("[data-servicios-cuenta]") || {}).textContent === "7 de 7 servicios");
+  await todos.click();
+  await page.waitForSelector("[data-servicios-aviso]:not([hidden])");
+  exigir(await page.locator("[data-barbero-form] [type=submit]").isDisabled(), "guarda sin servicios");
+  await page.locator(".servicio-op", { hasText: "Corte clásico" }).locator("input").check();
+  await page.locator("[data-barbero-form] [type=submit]").click();
+  await page.waitForFunction(() => document.querySelector("[data-barbero-form] [name=id]").value === "");
+  await page.locator("article.pa-cita", { hasText: "Ana Rojas" }).locator("button", { hasText: "Editar" }).click();
+  await page.waitForFunction(() => (document.querySelector("[data-servicios-cuenta]") || {}).textContent === "1 de 7 servicios");
+  await page.locator("[data-servicios-todos]").click();
+  await page.locator("[data-barbero-form] [type=submit]").click();
+  await page.waitForFunction(() => document.querySelector("[data-barbero-form] [name=id]").value === "");
+  await page.locator("[data-barbero-form] [name=nombre]").fill("Barbero Nuevo");
+  await page.locator("[data-barbero-form] [type=submit]").click();
+  await page.waitForSelector("text=Barbero Nuevo", { timeout: 10000 });
+  const ordenes = await page.evaluate(async () => {
+    const modulo = await import("./js/admin-cliente.js");
+    const supabase = await modulo.obtenerAdmin();
+    const { data, error } = await supabase.from("barberos").select("nombre,orden,servicios");
+    if (error) throw new Error(error.message || "barberos");
+    return data;
+  });
+  const nuevo = ordenes.find((item) => item.nombre === "Barbero Nuevo");
+  exigir(nuevo && Number(nuevo.orden) === 3, "orden automático " + JSON.stringify(ordenes));
+  const ana = ordenes.find((item) => item.nombre === "Ana Rojas");
+  exigir(ana && ana.servicios == null, "no guardó todos los servicios");
 }
 
 async function flujoPanel(page, ancho) {
@@ -327,6 +414,11 @@ async function flujoPanel(page, ancho) {
   await foto(page, ancho + "-reservas");
 
   await navVisible(page, "equipo");
+  await page.locator("[data-barbero-servicios]").screenshot({ path: path.join(dir, ancho + "-servicios-barbero.png") });
+  await page.waitForSelector("[data-horario-dia='2'][data-horario-campo='abre']");
+  const martesInicial = await page.locator("[data-horario-dia='2']").evaluateAll((nodos) => nodos.map((nodo) => nodo.dataset.horarioCampo + ":" + nodo.value));
+  exigir(martesInicial.includes("abre:09:00") && martesInicial.includes("cierra:13:00") && martesInicial.includes("abre:14:00") && martesInicial.includes("cierra:19:00"), ancho + " martes inicial " + martesInicial.join(","));
+  if (ancho === 1366) await probarFicha(page);
   const bloqueo = sumarDias(hoyISO(), 3 + (ancho === 390 ? 0 : ancho === 768 ? 1 : 2));
   const opcionLocal = await page.locator("[data-bloqueo-barbero] option").first().innerText();
   exigir(opcionLocal.includes("Cerrar el local"), ancho + " sin cerrar el local: " + opcionLocal);
@@ -359,14 +451,14 @@ async function flujoPanel(page, ancho) {
   await foto(page, ancho + "-equipo");
   await page.locator(".pa-top").screenshot({ path: path.join(dir, ancho + "-panel-cabecera.png") });
   await page.getByRole("button", { name: "Lunes a sábado" }).click();
-  const lunes = page.locator("fieldset.horario-dia", { has: page.locator("legend", { hasText: "Lunes" }) });
+  const lunes = page.locator(".horario-dia", { has: page.locator(".horario-nombre", { hasText: "Lunes" }) });
   await lunes.locator("[data-horario-campo='cierra']").selectOption("13:00");
-  await lunes.getByRole("button", { name: "Agregar descanso o turno" }).click();
+  await lunes.getByRole("button", { name: "Agregar turno" }).click();
   await lunes.locator("[data-horario-campo='abre']").nth(1).selectOption("14:00");
   await page.getByRole("button", { name: "Copiar el lunes a todos los días" }).click();
-  const domingo = page.locator("fieldset.horario-dia", { has: page.locator("legend", { hasText: "Domingo" }) });
-  if ((await domingo.locator("[role='switch']").getAttribute("aria-checked")) === "true") {
-    await domingo.locator("[role='switch']").click();
+  const domingo = page.locator(".horario-dia", { has: page.locator(".horario-nombre", { hasText: "Domingo" }) });
+  if ((await domingo.getByRole("radio", { name: "Abierto" }).getAttribute("aria-checked")) === "true") {
+    await domingo.getByRole("radio", { name: "Cerrado" }).click();
   }
   await page.locator("[data-horario-guardar]").click();
   await page.waitForFunction(() => {
@@ -382,28 +474,28 @@ async function flujoPanel(page, ancho) {
   await page.waitForSelector("[data-horario-dia='2'][data-horario-campo='abre']");
   const leido = await page.locator("[data-horario-dia='2'][data-horario-campo='abre']").evaluateAll((nodos) => nodos.map((nodo) => nodo.value));
   exigir(leido.includes("10:00") && leido.includes("14:00"), ancho + " horario no se leyó " + leido.join(","));
-  const domingoCerrado = await page.locator("fieldset.horario-dia", { has: page.locator("legend", { hasText: "Domingo" }) }).locator("[role='switch']").getAttribute("aria-checked");
-  exigir(domingoCerrado === "false", ancho + " el domingo quedó abierto");
+  const domingoCerrado = await page.locator(".horario-dia", { has: page.locator(".horario-nombre", { hasText: "Domingo" }) }).getByRole("radio", { name: "Cerrado" }).getAttribute("aria-checked");
+  exigir(domingoCerrado === "true", ancho + " el domingo quedó abierto");
+  await revisar(page, ancho, "horarios");
 
   await navVisible(page, "ajustes");
   await page.locator("[data-ajuste='paso_min']").selectOption("45");
   await page.locator("[data-ajuste='anticipacion_min']").selectOption("120");
   await page.locator("[data-ajuste='dias_max']").selectOption("30");
   await page.locator("[data-ajuste='cancelar_min']").selectOption("60");
-  await page.locator("[data-ajuste='reservas_activas']").click();
+  await page.locator("[data-ajuste='reservas_activas'] [data-valor='0']").click();
   await page.waitForFunction(() => {
     const estado = document.querySelector("[data-ajuste-estado]");
     return estado && (estado.textContent || "").includes("Pausadas");
   });
-  await page.locator("[data-ajuste='reservas_activas']").click();
+  await page.locator("[data-ajuste='reservas_activas'] [data-valor='1']").click();
   await page.locator("[data-ajuste='fidelidad_meta'] [data-mas]").click();
   const frase = await page.locator("[data-ajuste-frase]").innerText();
   exigir(frase.includes("Horas cada 45 min") && frase.includes("30 días adelante") && frase.includes("1 h antes"), ancho + " frase " + frase);
   await page.locator("[data-ajustes-guardar]").click();
   await page.waitForSelector("[data-ajustes-ok]:not([hidden])", { timeout: 10000 });
   await page.locator("[data-panel='ajustes']").screenshot({ path: path.join(dir, ancho + "-ajustes.png") });
-  const extraAjustes = await desborde(page);
-  exigir(extraAjustes <= 1, ancho + " desborde ajustes " + extraAjustes);
+  await revisar(page, ancho, "ajustes");
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector("[data-nav]:visible [data-vista='agenda']", { timeout: 15000 });
   await navVisible(page, "ajustes");
@@ -555,6 +647,45 @@ const browser = await chromium.launch({
 try {
   await sinRed(browser);
   await casosAcceso(browser);
+  for (const ancho of [360, 1920]) {
+    await fetch(origen + "/__reset", { method: "POST" });
+    const context = await browser.newContext({
+      viewport: { width: ancho, height: ancho === 360 ? 800 : 1080 },
+      serviceWorkers: "block",
+      locale: "es-CO"
+    });
+    await context.addCookies([{ name: "lm_activo", value: "1", url: origen }]);
+    const page = await context.newPage();
+    const errores = [];
+    page.on("pageerror", (error) => errores.push(String(error)));
+    page.on("console", (msg) => {
+      if (msg.type() === "error" && consolaUtil(msg.text())) errores.push(msg.text());
+    });
+    try {
+      await page.goto(origen + "/index.html", { waitUntil: "domcontentloaded" });
+      await page.waitForSelector("[data-reserva-abrir]", { timeout: 15000 });
+      await revisar(page, ancho, "inicio");
+      await page.goto(origen + "/nosotros.html", { waitUntil: "domcontentloaded" });
+      await page.waitForSelector("h1", { timeout: 15000 });
+      await revisar(page, ancho, "nosotros");
+      await entrar(page, "dueno@lamansion.test", "ClaveDueno123");
+      await page.waitForSelector("text=Cliente Ana Uno", { timeout: 10000 });
+      for (const vista of ["agenda", "reservas", "equipo", "servicios", "fidelidad", "resumen", "ajustes"]) {
+        await navVisible(page, vista);
+        await revisar(page, ancho, vista);
+        if (vista === "equipo") {
+          await page.locator("[data-horario-editor]").screenshot({ path: path.join(dir, ancho + "-horarios.png") });
+          await page.locator("[data-barbero-servicios]").screenshot({ path: path.join(dir, ancho + "-servicios-barbero.png") });
+        }
+        if (vista === "ajustes") await page.locator("[data-panel='ajustes']").screenshot({ path: path.join(dir, ancho + "-ajustes.png") });
+      }
+    } catch (error) {
+      await foto(page, ancho + "-error").catch(() => {});
+      falla(ancho + " " + (error && error.stack ? error.stack.split("\n").slice(0, 6).join(" ") : error));
+    }
+    if (errores.length) falla(ancho + " consola: " + errores.join(" | "));
+    await context.close();
+  }
   for (const ancho of [390, 768, 1366]) {
     await fetch(origen + "/__reset", { method: "POST" });
     const context = await browser.newContext({

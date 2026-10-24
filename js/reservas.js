@@ -2,7 +2,7 @@ import { negocio, enlaceTelefono, enlaceDirecciones, formatoPrecio, reservasEnLi
 import { obtenerSupabase } from "./supabase.js";
 import { traducir, celularValido, nombreValido } from "./errores.js";
 import { hoyISO, sumarDias, fechaLegible, fechaCorta, horaLegible, aMinutos, instanteBogota } from "./tiempo.js";
-import { nodo, hojaEstilos } from "./dom.js";
+import { nodo, hojaEstilos, marcaCasilla } from "./dom.js";
 
 const LLAVE = "lamansion_citas";
 const VISITA = "lamansion_visita";
@@ -973,9 +973,9 @@ function pintarDatos(host) {
   check.type = "checkbox";
   check.name = "autoriza";
   check.required = true;
-  const labelCheck = nodo("label", "reserva-check");
+  const labelCheck = nodo("label", "reserva-check casilla");
   const textoCheck = nodo("span", null, "He leído la Política de Tratamiento de Datos Personales y autorizo el tratamiento de mi nombre y celular para gestionar mi cita y avisarme por WhatsApp.");
-  labelCheck.append(check, textoCheck);
+  labelCheck.append(check, marcaCasilla(), textoCheck);
   const legales = nodo("p", "legales");
   const trata = nodo("a", null, "Tratamiento de datos");
   trata.href = "tratamiento-datos.html";
@@ -1075,15 +1075,10 @@ function pintarConfirmacion(creada, nombre) {
   svg.setAttribute("height", "64");
   svg.setAttribute("class", "check");
   svg.setAttribute("aria-hidden", "true");
-  const circulo = document.createElementNS(svg.namespaceURI, "circle");
-  circulo.setAttribute("cx", "32");
-  circulo.setAttribute("cy", "32");
-  circulo.setAttribute("r", "26");
-  circulo.setAttribute("class", "check-anillo");
   const palo = document.createElementNS(svg.namespaceURI, "path");
-  palo.setAttribute("d", "M20 33 l8 8 16-18");
+  palo.setAttribute("d", "M18 33 l8 8 18-18");
   palo.setAttribute("class", "check-palo");
-  svg.append(circulo, palo);
+  svg.appendChild(palo);
   listo.appendChild(svg);
   const numero = nodo("p", "cita-numero", "Cita " + (creada.numero || fila.numero || ""));
   numero.dataset.reservaNumero = "1";

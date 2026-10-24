@@ -69,8 +69,9 @@ function crearEstado() {
   const horarios = [];
   barberos.forEach((barbero) => {
     for (let dia = 1; dia <= 6; dia += 1) {
-      horarios.push({ id: crypto.randomUUID(), barbero_id: barbero.id, dia, abre: "09:00", cierra: "13:00" });
-      horarios.push({ id: crypto.randomUUID(), barbero_id: barbero.id, dia, abre: "14:00", cierra: "19:00" });
+      const martesAna = dia === 2 && barbero.id === id.ana;
+      horarios.push({ id: crypto.randomUUID(), barbero_id: barbero.id, dia, abre: martesAna ? "9:00:00" : "09:00", cierra: martesAna ? "13:00:00" : "13:00" });
+      horarios.push({ id: crypto.randomUUID(), barbero_id: barbero.id, dia, abre: martesAna ? "14:00:00" : "14:00", cierra: "19:00" });
     }
   });
   const reservas = [];

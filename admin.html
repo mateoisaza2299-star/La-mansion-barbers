@@ -92,7 +92,6 @@
             <h2>Barberos</h2>
             <p>Elige a quién editas y marca los días que atiende.</p>
           </div>
-          <button class="btn" type="button" data-horario-todos-abrir data-solo="dueno">Aplicar este horario a todos los barberos</button>
         </header>
         <div data-solo="dueno">
           <h2>Barberos</h2>
@@ -103,30 +102,33 @@
             <label class="campo">Especialidad <input name="especialidad" maxlength="120"></label>
             <label class="campo">Foto <select name="foto" data-barbero-foto></select></label>
             <div data-barbero-servicios></div>
-            <label class="campo">Orden <input name="orden" type="number" min="0" value="1"></label>
-            <label class="reserva-check"><input name="activo" type="checkbox" checked> Activo</label>
+            <label class="reserva-check casilla"><input name="activo" type="checkbox" checked><svg class="casilla-svg" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5 9 15.5 17 6.5"></path></svg><span>Activo</span></label>
             <div data-barbero-horario>
-              <label class="reserva-check"><input name="horario_sede" type="checkbox" data-horario-sede checked> Usar el horario del local (todos los días de 10:00 a 20:00)</label>
+              <label class="reserva-check casilla"><input name="horario_sede" type="checkbox" data-horario-sede checked><svg class="casilla-svg" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5 9 15.5 17 6.5"></path></svg><span>Usar el horario del local (todos los días de 10:00 a 20:00)</span></label>
               <div data-horario-manual hidden></div>
             </div>
             <button class="btn" type="submit">Guardar barbero</button>
           </form>
           <div data-barberos></div>
         </div>
-        <div class="chips" data-horario-chips role="group" aria-label="Barbero"></div>
+        <div class="horario-hoja">
+        <div class="horario-tabs" data-horario-chips role="tablist" aria-label="Barbero"></div>
         <h2 data-horario-titulo>Horario</h2>
         <p>Marca los días que atiende y a qué horas. Si un día está cerrado, no se podrán reservar citas ese día.</p>
-        <div class="chips" data-horario-atajos></div>
+        <div class="horario-atajos" data-horario-atajos></div>
         <div data-horario-editor></div>
-        <div data-horario-semana aria-hidden="true"></div>
+        <div class="horario-semana-card" data-horario-semana></div>
         <p class="form-error" data-horario-error role="alert" hidden></p>
+        <p class="horario-ok" data-horario-ok role="status" hidden>Horario guardado</p>
         <div class="pa-barra" data-barra="horario">
           <p data-horario-aviso hidden>Tienes cambios sin guardar</p>
           <div class="cita-acciones">
             <button class="btn" type="button" data-horario-guardar disabled>Guardar horario</button>
             <button class="btn btn-sec" type="button" data-horario-reintentar hidden>Reintentar</button>
             <button class="btn btn-sec" type="button" data-horario-descartar>Descartar</button>
+            <button class="btn btn-sec" type="button" data-horario-todos-abrir data-solo="dueno">Aplicar este horario a todos los barberos</button>
           </div>
+        </div>
         </div>
         <h2>Cerrar el local</h2>
         <p>Elige una fecha y una franja. Si eliges un barbero, ese día queda libre solo para él.</p>
@@ -134,7 +136,7 @@
           <input type="hidden" name="sede_id" data-bloqueo-sede>
           <label class="campo">A quién aplica <select name="barbero_id" data-bloqueo-barbero></select></label>
           <label class="campo">Fecha <input type="date" name="fecha" data-bloqueo-fecha required></label>
-          <label class="interruptor-linea"><input class="interruptor-caja" type="checkbox" name="todo_dia" data-bloqueo-dia checked> Todo el día</label>
+          <label class="reserva-check casilla"><input class="casilla-input" type="checkbox" name="todo_dia" data-bloqueo-dia checked><svg class="casilla-svg" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5 9 15.5 17 6.5"></path></svg><span>Todo el día</span></label>
           <div class="pa-horas-bloqueo" data-bloqueo-horas hidden>
             <label class="campo">Desde <select class="pa-select" name="desde"></select></label>
             <label class="campo">Hasta <select class="pa-select" name="hasta"></select></label>
@@ -165,9 +167,9 @@
           <label class="campo">Descripción <input name="descripcion" maxlength="180"></label>
           <label class="campo">Precio <input name="precio" inputmode="numeric" placeholder="Vacío si se consulta"></label>
           <label class="campo">Duración (min) <input name="duracion_min" type="number" min="5" max="480" required value="30"></label>
-          <label class="reserva-check"><input name="cuenta_fidelidad" type="checkbox"> Cuenta para fidelidad</label>
+          <label class="reserva-check casilla"><input name="cuenta_fidelidad" type="checkbox"><svg class="casilla-svg" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5 9 15.5 17 6.5"></path></svg><span>Cuenta para fidelidad</span></label>
           <label class="campo">Orden <input name="orden" type="number" min="0" value="1"></label>
-          <label class="reserva-check"><input name="activo" type="checkbox"> Activo</label>
+          <label class="reserva-check casilla"><input name="activo" type="checkbox"><svg class="casilla-svg" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5 9 15.5 17 6.5"></path></svg><span>Activo</span></label>
           <button class="btn" type="submit">Guardar servicio</button>
         </form>
         <div data-servicios></div>
@@ -237,10 +239,11 @@
               <button class="ayuda-btn" type="button" data-ayuda-btn aria-expanded="false" aria-controls="ayuda-reservas" aria-label="Ayuda de reservas en línea">?</button>
             </header>
             <p class="ayuda-texto" id="ayuda-reservas" hidden>Si está apagado, el botón Reservar dice que la agenda no está disponible.</p>
-            <button class="interruptor" type="button" role="switch" aria-checked="true" data-ajuste="reservas_activas">
-              <span class="interruptor-ui" aria-hidden="true"></span>
-              <span>Recibir reservas en línea</span>
-            </button>
+            <div class="segmento" role="radiogroup" aria-label="Reservas en línea" data-ajuste="reservas_activas" data-on="1">
+              <span class="segmento-indicador" aria-hidden="true"></span>
+              <button type="button" role="radio" data-valor="1" aria-checked="true">Activado</button>
+              <button type="button" role="radio" data-valor="0" aria-checked="false" tabindex="-1">Desactivado</button>
+            </div>
             <p data-ajuste-estado></p>
           </article>
           <article class="pa-cita">
@@ -252,20 +255,20 @@
             </header>
             <label class="campo">Cada cuánto hay una hora disponible
               <span class="campo-ayuda">
-                <select class="pa-select" data-ajuste="paso_min">
+                <span class="con-flecha"><select class="pa-select" data-ajuste="paso_min">
                   <option value="15">15 minutos</option>
                   <option value="20">20 minutos</option>
                   <option value="30">30 minutos</option>
                   <option value="45">45 minutos</option>
                   <option value="60">60 minutos</option>
-                </select>
+                </select></span>
                 <button class="ayuda-btn" type="button" data-ayuda-btn aria-expanded="false" aria-controls="ayuda-paso" aria-label="Ayuda del intervalo">?</button>
               </span>
             </label>
             <p class="ayuda-texto" id="ayuda-paso" hidden>Con 30 minutos el cliente verá 10:00, 10:30, 11:00…</p>
             <label class="campo">Tiempo mínimo antes de la cita
               <span class="campo-ayuda">
-                <select class="pa-select" data-ajuste="anticipacion_min">
+                <span class="con-flecha"><select class="pa-select" data-ajuste="anticipacion_min">
                   <option value="0">Sin mínimo</option>
                   <option value="30">30 minutos</option>
                   <option value="60">1 hora</option>
@@ -274,20 +277,20 @@
                   <option value="360">6 horas</option>
                   <option value="720">12 horas</option>
                   <option value="1440">24 horas</option>
-                </select>
+                </select></span>
                 <button class="ayuda-btn" type="button" data-ayuda-btn aria-expanded="false" aria-controls="ayuda-antes" aria-label="Ayuda del tiempo mínimo">?</button>
               </span>
             </label>
             <p class="ayuda-texto" id="ayuda-antes" hidden>No se puede reservar una hora que empiece antes de este tiempo. Con 1 hora, a las 3:00 p. m. lo primero disponible será las 4:00 p. m.</p>
             <label class="campo">Hasta cuántos días adelante se puede reservar
               <span class="campo-ayuda">
-                <select class="pa-select" data-ajuste="dias_max">
+                <span class="con-flecha"><select class="pa-select" data-ajuste="dias_max">
                   <option value="7">7 días</option>
                   <option value="14">14 días</option>
                   <option value="30">30 días</option>
                   <option value="60">60 días</option>
                   <option value="90">90 días</option>
-                </select>
+                </select></span>
                 <button class="ayuda-btn" type="button" data-ayuda-btn aria-expanded="false" aria-controls="ayuda-dias" aria-label="Ayuda de los días">?</button>
               </span>
             </label>
@@ -303,7 +306,7 @@
             </header>
             <p class="ayuda-texto" id="ayuda-cancelar" hidden>Con 2 horas, una cita de las 5:00 p. m. se puede cancelar o cambiar hasta las 3:00 p. m.</p>
             <label class="campo">El cliente puede cancelar o cambiar su cita hasta…
-              <select class="pa-select" data-ajuste="cancelar_min">
+              <span class="con-flecha"><select class="pa-select" data-ajuste="cancelar_min">
                 <option value="0">En cualquier momento</option>
                 <option value="30">30 minutos antes</option>
                 <option value="60">1 hora antes</option>
@@ -312,7 +315,7 @@
                 <option value="360">6 horas antes</option>
                 <option value="720">12 horas antes</option>
                 <option value="1440">24 horas antes</option>
-              </select>
+              </select></span>
             </label>
           </article>
           <article class="pa-cita">
@@ -324,10 +327,11 @@
               <button class="ayuda-btn" type="button" data-ayuda-btn aria-expanded="false" aria-controls="ayuda-fid" aria-label="Ayuda de la tarjeta">?</button>
             </header>
             <p class="ayuda-texto" id="ayuda-fid" hidden>Cada corte completado suma un sello. Al llegar a la meta, el siguiente corte es gratis. Solo cuentan los servicios marcados «Cuenta para fidelidad» en Servicios.</p>
-            <button class="interruptor" type="button" role="switch" aria-checked="false" data-ajuste="fidelidad_activa">
-              <span class="interruptor-ui" aria-hidden="true"></span>
-              <span>Activar la tarjeta</span>
-            </button>
+            <div class="segmento" role="radiogroup" aria-label="Tarjeta de fidelidad" data-ajuste="fidelidad_activa" data-on="0">
+              <span class="segmento-indicador" aria-hidden="true"></span>
+              <button type="button" role="radio" data-valor="1" aria-checked="false" tabindex="-1">Activado</button>
+              <button type="button" role="radio" data-valor="0" aria-checked="true">Desactivado</button>
+            </div>
             <div class="contador" data-ajuste="fidelidad_meta">
               <span>Cortes para ganar uno gratis</span>
               <button type="button" data-menos aria-label="Menos sellos">−</button>
