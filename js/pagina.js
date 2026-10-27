@@ -14,9 +14,6 @@ import {
   callePublica,
   urlSitio
 } from "./config.js";
-import { iniciarCarrusel } from "./carrusel.js";
-import { prepararTrabajo } from "./trabajo.js";
-
 const textos = negocio.textos || {};
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const red = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -360,7 +357,7 @@ const crearImagen = (foto, opciones) => {
   img.height = foto.alto;
   img.decoding = "async";
   if (opciones.prioridad) img.setAttribute("fetchpriority", "high");
-  else img.loading = "lazy";
+  else if (!opciones.eager) img.loading = "lazy";
   img.className = "mate-" + foto.id;
   return img;
 };
@@ -484,14 +481,17 @@ const prepararHero = (fotos) => {
   const principal = marcos[0];
   const secundaria = marcos[1];
   if (principal) {
-    precargar(principal);
     const caja = document.querySelector("[data-hero-principal]");
-    if (caja) {
+    const existente = caja && caja.querySelector("img.mate-" + principal.id);
+    if (caja && existente) {
+      if (marcar(principal, enHero)) caja.classList.add("mate-" + principal.id);
+    } else if (caja) {
+      if (!document.head.querySelector('link[data-hero-preload]')) precargar(principal);
       caja.classList.add("mate-" + principal.id);
       const img = crearImagen(principal, {
         alt: principal.alt,
         sizes: "(max-width: 899px) 92vw, 38vw",
-        ancho: 1200,
+        ancho: 800,
         prioridad: true
       });
       if (img && marcar(principal, enHero)) caja.appendChild(img);
@@ -511,10 +511,18 @@ const prepararHero = (fotos) => {
   }
   const textura = document.querySelector("[data-hero-textura]");
   if (textura && texturaFoto) {
-    const img = crearImagen(texturaFoto, { alt: "", sizes: "100vw", ancho: 480, maximo: 480 });
-    if (img && marcar(texturaFoto, enHero)) {
+    const lista = textura.querySelector("img");
+    if (textura.hasAttribute("data-textura-fija")) {
+      if (marcar(texturaFoto, enHero)) textura.classList.add("tiene-foto", "mate-" + texturaFoto.id);
+    } else if (lista && marcar(texturaFoto, enHero)) {
       textura.classList.add("tiene-foto", "mate-" + texturaFoto.id);
-      textura.appendChild(img);
+      lista.classList.add("mate-" + texturaFoto.id);
+    } else if (!lista) {
+      const img = crearImagen(texturaFoto, { alt: "", sizes: "100vw", ancho: 800, prioridad: true });
+      if (img && marcar(texturaFoto, enHero)) {
+        textura.classList.add("tiene-foto", "mate-" + texturaFoto.id);
+        textura.appendChild(img);
+      }
     }
   }
 };
@@ -618,6 +626,17 @@ const prepararServicios = async (fotos) => {
   if (!catalogo.length) {
     if (estatica) estatica.hidden = true;
     carta.hidden = true;
+    let aviso = document.querySelector("[data-carta-aviso]");
+    if (!aviso && carta.parentElement) {
+      aviso = document.createElement("p");
+      aviso.className = "servicios-nota";
+      aviso.setAttribute("data-carta-aviso", "");
+      carta.parentElement.appendChild(aviso);
+    }
+    if (aviso) {
+      aviso.hidden = false;
+      aviso.textContent = "No pudimos cargar el menú. Intenta de nuevo en un momento.";
+    }
     return;
   }
   const orden = ["Cortes", "Barba", "FreeStyle", "Freestyle", "FreeStyle y diseños", "Cuidado facial"];
@@ -809,7 +828,7 @@ const fraseLocal = (categoria) => {
   return "El lugar";
 };
 
-const prepararLocal = (fotos) => {
+const prepararLocal = async (fotos) => {
   const seccion = document.getElementById("local");
   const enlaces = document.querySelectorAll("a[href='#local'], a[href='index.html#local']");
   const ocultarEnlace = (nodo) => {
@@ -838,6 +857,7 @@ const prepararLocal = (fotos) => {
   if (!seccion) return;
   lista.forEach((foto) => marcar(foto));
   seccion.hidden = false;
+  const { iniciarCarrusel } = await import("./carrusel.js");
   iniciarCarrusel({
     raiz: seccion,
     fotos: lista,
@@ -1024,6 +1044,91 @@ const prepararMovimiento = () => {
   alScroll();
 };
 
+const observarCuando = (nodo, fn, margen) => {
+  if (!nodo) return;
+  if (!("IntersectionObserver" in window)) {
+    fn();
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    io.disconnect();
+    fn();
+  }, { rootMargin: margen || "0px" });
+  io.observe(nodo);
+};
+
+let reservasListas = false;
+let reservaCarga = null;
+
+const pintarEsqueletoReserva = () => {
+  const raiz = document.querySelector("[data-reserva-app]");
+  if (!raiz || raiz.dataset.listo === "1" || raiz.querySelector(".esqueleto")) return;
+  raiz.hidden = false;
+  raiz.setAttribute("aria-busy", "true");
+  for (let i = 0; i < 3; i += 1) {
+    const barra = document.createElement("div");
+    barra.className = "esqueleto";
+    raiz.appendChild(barra);
+  }
+};
+
+const cargarReservas = () => {
+  if (!reservaCarga) {
+    pintarEsqueletoReserva();
+    reservaCarga = import("./reservas.js")
+      .then((mod) => mod.iniciarReservas())
+      .then(() => {
+        reservasListas = true;
+        const raiz = document.querySelector("[data-reserva-app]");
+        if (raiz) {
+          raiz.dataset.listo = "1";
+          raiz.removeAttribute("aria-busy");
+        }
+      })
+      .catch(() => {
+        reservaCarga = null;
+        const raiz = document.querySelector("[data-reserva-app]");
+        if (raiz) {
+          raiz.hidden = true;
+          raiz.replaceChildren();
+          raiz.removeAttribute("aria-busy");
+        }
+        const aviso = document.querySelector("[data-reserva-aviso]");
+        if (aviso) {
+          aviso.hidden = false;
+          aviso.textContent = "No pudimos abrir la reserva. Intenta de nuevo.";
+        }
+      });
+  }
+  return reservaCarga;
+};
+
+const engancharReservas = () => {
+  window.__paginaEnganchada = true;
+  document.addEventListener("click", (evento) => {
+    const reservar = evento.target.closest("[data-reservar]");
+    if (!reservar || reservasListas) return;
+    evento.preventDefault();
+    evento.stopPropagation();
+    const aviso = document.querySelector("[data-reserva-aviso]");
+    if (aviso) aviso.hidden = true;
+    reservar.setAttribute("aria-busy", "true");
+    cargarReservas().then(() => {
+      reservar.removeAttribute("aria-busy");
+      if (reservasListas) reservar.click();
+    }).catch(() => {
+      reservar.removeAttribute("aria-busy");
+    });
+  }, true);
+  observarCuando(document.getElementById("reservas"), () => cargarReservas(), "160px");
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (window.location.hash === "#reservar" || params.get("servicio") || params.get("reservar") === "1") cargarReservas();
+  } catch (error) {}
+  if (typeof window.__paginaLista === "function") window.__paginaLista();
+};
+
 const iniciar = async () => {
   pintarEnlaces();
   pintarTextos();
@@ -1048,16 +1153,27 @@ const iniciar = async () => {
   refrescarNosotros(fotos);
   prepararHero(fotos);
   prepararFondos(fotos);
-  await prepararServicios(fotos);
-  prepararLocal(fotos);
   prepararMapa();
-  if (document.querySelector("[data-trabajo]")) prepararTrabajo({ fotos, puede, marcar, crearImagen, reducir: reduce });
   prepararMovimiento();
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
+  engancharReservas();
+  if (document.querySelector("[data-trabajo]")) {
+    import("./trabajo.js").then((mod) => {
+      mod.prepararTrabajo({ fotos, puede, marcar, crearImagen, reducir: reduce });
+    }).catch(() => {});
   }
-  const modulo = await import("./reservas.js");
-  await modulo.iniciarReservas();
+  observarCuando(document.getElementById("servicios"), () => {
+    prepararServicios(fotos).catch(() => {
+      const aviso = document.querySelector("[data-carta-aviso]");
+      if (!aviso) return;
+      aviso.hidden = false;
+      aviso.textContent = "No pudimos cargar el menú. Intenta de nuevo en un momento.";
+    }).then(() => prepararLocal(fotos)).catch(() => {});
+  }, "80px");
+  const registrarSW = () => {
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
+  };
+  if ("requestIdleCallback" in window) window.requestIdleCallback(registrarSW, { timeout: 4000 });
+  else window.addEventListener("load", () => window.setTimeout(registrarSW, 1500));
 };
 
 const prepararMapa = () => {

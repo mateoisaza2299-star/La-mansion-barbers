@@ -65,6 +65,7 @@ export function iniciarCarrusel(opciones) {
       fondo.width = foto.ancho;
       fondo.height = foto.alto;
       fondo.decoding = "async";
+      fondo.loading = "lazy";
       capa.appendChild(fondo);
       slide.appendChild(capa);
     }
@@ -74,7 +75,8 @@ export function iniciarCarrusel(opciones) {
     img.width = foto.ancho;
     img.height = foto.alto;
     img.decoding = "async";
-    img.sizes = "(max-width: 767px) 100vw, 1600px";
+    img.loading = "lazy";
+    img.sizes = "(max-width: 767px) 100vw, 800px";
     slide.appendChild(img);
     pista.appendChild(slide);
     const boton = document.createElement("button");
