@@ -1,7 +1,6 @@
 import { negocio, urlSitio } from "./config.js";
 import * as tiempo from "./tiempo.js";
 
-const DIRECCION = "Vía Funza - Siberia, Km 3.8, La Isla, Ceuta, Funza";
 const DIAS_CITA = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const MESES_CITA = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
@@ -54,7 +53,7 @@ export function mensajeCita(reserva) {
 \u2702\uFE0F ${servicio}
 \u{1F4C5} ${fecha}
 \u{1F55B} ${hora}
-\u{1F4CD} ${DIRECCION}`;
+\u{1F4CD} ${negocio.direccion}`;
   if (tipo === "cancelada") {
     return `${cuerpo}
 \u2705 Tu cita fue cancelada.`;

@@ -334,7 +334,7 @@
   <section class="hero">
     <div>
       <h1 class="display">Un buen corte no se afana.</h1>
-      <p>Barbería de barrio en Funza, de las que quedan pocas. Corte, barba y navaja, con tiempo y buena charla.</p>
+      <p>Barbería de barrio, de las que quedan pocas. Corte, barba y navaja, con tiempo y buena charla.</p>
       <div class="cta-row">
         <a class="stamp-btn" href="https://wa.me/573001234567" target="_blank" rel="noopener">Agendar por WhatsApp</a>
         <a class="ticket-link" href="#tarifa">Ver la tarifa</a>
@@ -395,7 +395,7 @@
       </div>
       <div>
         <h3>Visítanos</h3>
-        <p>Cra 6 #23-70, Zuame, Funza</p>
+        <p>Cra 6 #23-70, Zuame</p>
         <p><a class="tel" href="tel:+573001234567">300 123 4567</a></p>
         <p><a class="wsp" href="https://wa.me/573001234567" target="_blank" rel="noopener">WhatsApp</a></p>
       </div>

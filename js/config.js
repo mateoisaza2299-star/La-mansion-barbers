@@ -1,4 +1,5 @@
 const NUMERO_WHATSAPP = "573118162854";
+const DIRECCION = "CR 3 No. 13-12, C.C. El Trébol, LC 18, Mosquera, Cundinamarca";
 
 function telefonoVisible(numero) {
   const local = numero.startsWith("57") && numero.length === 12 ? numero.slice(2) : numero;
@@ -8,17 +9,17 @@ function telefonoVisible(numero) {
 export const negocio = {
   nombre: "La Mansión Barber Shop",
   nombreCorto: "La Mansión",
-  ciudad: "Funza, Cundinamarca",
-  eslogan: "Barber Shop · Funza",
+  ciudad: "Mosquera, Cundinamarca",
+  eslogan: "Barber Shop · Mosquera",
   enPreparacion: false,
   indexable: false,
   whatsapp: NUMERO_WHATSAPP,
   telefono: telefonoVisible(NUMERO_WHATSAPP),
-  direccion: "Vía Funza - Siberia, Km 3.8, La Isla, Ceuta, Funza, Cundinamarca, Colombia",
-  direccionCorta: "Vía Funza - Siberia, Km 3.8 · La Isla, Ceuta",
+  direccion: DIRECCION,
+  direccionCorta: DIRECCION,
   instagram: "lamansionbarbers",
   horario: { texto: "Todos los días · 10:00 a. m. a 8:00 p. m.", dias: [1, 2, 3, 4, 5, 6, 7], abre: "10:00", cierra: "20:00" },
-  mapaConsulta: "Vía Funza Siberia Km 3.8, La Isla, Ceuta, Funza, Cundinamarca, Colombia",
+  mapaConsulta: DIRECCION,
   unaSede: true,
   mostrarWhatsappContacto: true,
   mensajeWhatsApp: "Hola, quiero información sobre La Mansión Barber Shop.",
@@ -29,7 +30,7 @@ export const negocio = {
   email: "",
   mapsUrl: "",
   mapaEmbed: "",
-  zona: "Funza",
+  zona: "Mosquera",
   horasAntesDeCerrar: 1,
   bloqueMinutos: 60,
   redes: { resenas: "" },
@@ -94,7 +95,7 @@ export const negocio = {
     { pregunta: "¿Cuál es el horario?", respuesta: "Todos los días, de 10:00 a. m. a 8:00 p. m." }
   ],
   textos: {
-    heroEtiqueta: "BARBER SHOP · FUNZA",
+    heroEtiqueta: "BARBER SHOP · MOSQUERA",
     heroAntes: "¡Los verdaderos ",
     heroPalabra: "HOMBRES",
     heroDespues: " van a la barbería!",
@@ -139,9 +140,7 @@ export function enlaceMapa() {
 }
 
 export function enlaceDirecciones() {
-  const consulta = consultaMapa();
-  if (!consulta) return "";
-  return "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(consulta);
+  return enlaceMapa();
 }
 
 export function enlaceEmbed() {
@@ -149,7 +148,7 @@ export function enlaceEmbed() {
   if (guardado) return guardado;
   const consulta = consultaMapa();
   if (!consulta) return "";
-  return "https://www.google.com/maps?q=" + encodeURIComponent(consulta) + "&output=embed&hl=es";
+  return "https://www.google.com/maps?q=" + encodeURIComponent(consulta) + "&output=embed";
 }
 
 export function enlaceTelefono() {
@@ -232,9 +231,10 @@ export function textoHorarioPublico() {
 
 export function callePublica() {
   const completa = String(negocio.direccion || "").trim();
-  const cola = ", " + String(negocio.ciudad || "").trim() + ", Colombia";
-  if (cola !== ", , Colombia" && completa.endsWith(cola)) return completa.slice(0, -cola.length);
-  return completa;
+  const ciudad = String(negocio.ciudad || "").trim();
+  const colas = ciudad ? [", " + ciudad + ", Colombia", ", " + ciudad] : [];
+  const cola = colas.find((item) => completa.endsWith(item));
+  return cola ? completa.slice(0, -cola.length) : completa;
 }
 
 export function partesBogota(date) {

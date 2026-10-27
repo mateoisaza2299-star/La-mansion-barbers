@@ -250,7 +250,7 @@ async function flujoPublico(page, ancho, telefono) {
   const confirmacion = await textoDe(page.locator("[data-reserva-pasos]"));
   exigir(confirmacion.includes("Ana Rojas"), ancho + " primero no asignó a Ana");
   exigir(/Cita LM-/i.test(confirmacion), ancho + " sin número de cita");
-  exigir(confirmacion.includes("Vía Funza - Siberia"), ancho + " sin dirección");
+  exigir(confirmacion.includes("CR 3 No. 13-12, C.C. El Trébol, LC 18, Mosquera, Cundinamarca"), ancho + " sin dirección");
   exigir(!confirmacion.includes("Avisar por WhatsApp"), ancho + " sigue el aviso de WhatsApp");
   await page.waitForTimeout(700);
   await foto(page, ancho + "-confirmacion");
@@ -388,7 +388,7 @@ async function exigirMensaje(href, tipo, nombre, fecha, hora, ancho) {
   exigir(texto.includes("📅 " + fechaCita(fecha)), ancho + " fecha");
   exigir(texto.includes("🕛 " + horaLegible(hora)), ancho + " hora");
   exigir(!texto.includes("m.."), ancho + " doble punto");
-  exigir(texto.includes("📍 Vía Funza - Siberia, Km 3.8, La Isla, Ceuta, Funza"), ancho + " sin dirección");
+  exigir(texto.includes("📍 CR 3 No. 13-12, C.C. El Trébol, LC 18, Mosquera, Cundinamarca"), ancho + " sin dirección");
   exigir(!/LM-\d/.test(texto), ancho + " muestra el número interno");
   if (resto) exigir(!texto.includes(resto), ancho + " usa el nombre completo");
   const cierre = tipo === "recordatorio"
