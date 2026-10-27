@@ -230,7 +230,6 @@ html.is-offline:has(.login-main) .offline-screen { display: none; }
 
 .pa-cita,
 .pa-tarjeta,
-.horario-dia,
 .semana-col {
   margin: 0.7rem 0;
   padding: 0.9rem;
@@ -639,7 +638,7 @@ html.is-offline:has(.login-main) .offline-screen { display: none; }
 .login-card,
 .pa-cita,
 .pa-tarjeta,
-.horario-dia,
+.horario-card,
 .pa-modal-card,
 .install-guide-card,
 .pa-aviso,
@@ -835,6 +834,23 @@ html.is-offline:has(.login-main) .offline-screen { display: none; }
   overflow: visible;
   border: 1px solid var(--linea);
   background: var(--grafito);
+  min-width: 0;
+}
+
+.horario-card {
+  min-width: 0;
+  margin: 0 0 1rem;
+  padding: 16px;
+  border: 1px solid var(--linea);
+  background: var(--grafito-2);
+}
+
+.horario-card h3 { margin-bottom: 0.7rem; }
+
+.horario-aviso {
+  margin: 0;
+  color: var(--gris);
+  font-size: 0.85rem;
 }
 
 .horario-hoja > *,
@@ -895,28 +911,26 @@ html.is-offline:has(.login-main) .offline-screen { display: none; }
 
 .horario-dia {
   display: grid;
-  grid-template-columns: 130px 220px minmax(0, 1fr) 90px;
-  grid-template-areas: "nombre control turnos total";
-  gap: 16px;
-  align-items: start;
+  grid-template-columns: minmax(7rem, 9rem) minmax(11rem, 16rem) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
   margin: 0;
-  padding: 16px 20px;
+  padding: 12px 0;
   border: 0;
   border-bottom: 1px solid var(--linea);
   border-radius: 0;
   background: transparent;
+  min-width: 0;
 }
 
 .horario-nombre {
-  grid-area: nombre;
   margin: 0;
-  padding-top: 12px;
   font-family: var(--display);
   font-size: 16px;
   line-height: 1.3;
 }
 
-.horario-dia .segmento { grid-area: control; }
+.horario-dia .segmento { max-width: none; }
 
 .horario-total {
   grid-area: total;
@@ -989,20 +1003,33 @@ html.is-offline:has(.login-main) .offline-screen { display: none; }
 .horario-flecha { color: var(--oro); }
 
 .horario-semana-card {
-  margin-top: 1rem;
-  padding: 16px;
+  margin-top: 0;
+  margin-bottom: 0.8rem;
+  padding: 10px 12px;
   border: 1px solid var(--linea);
-  background: var(--grafito-2);
+  background: var(--negro);
+  min-width: 0;
+}
+
+.horario-preview .semana-pista { height: 8px; }
+
+.horario-preview .semana-barra { margin: 0.15rem 0; }
+
+.horario-preview .semana-escala {
+  margin: 0.35rem 0 0 2.8rem;
+  font-size: 11px;
 }
 
 .semana-escala {
   display: flex;
   justify-content: space-between;
-  gap: 0.4rem;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.4rem;
   margin: 0.45rem 0 0 2.8rem;
   color: var(--gris);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+  min-width: 0;
 }
 
 .horario-hoja .pa-barra {
@@ -1015,37 +1042,31 @@ html.is-offline:has(.login-main) .offline-screen { display: none; }
   border-radius: 0 0 var(--r-tarjeta) var(--r-tarjeta);
 }
 
-.horario-ok { margin: 0.6rem 0 0; color: var(--oro-claro); }
-
-@media (max-width: 900px) {
-  .horario-dia {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto;
-    grid-template-areas: "nombre control total" "turnos turnos turnos" "cerrado cerrado cerrado";
-  }
-  .horario-nombre { grid-area: nombre; }
-  .horario-dia .segmento { grid-area: control; max-width: none; }
-  .horario-total { grid-area: total; }
-  .dia-turnos { grid-area: turnos; }
-  .horario-cerrado { grid-area: cerrado; }
+.horario-hoja .cita-acciones {
+  width: 100%;
+  min-width: 0;
 }
 
-@media (max-width: 560px) {
-  .horario-hoja { padding: 16px; }
-  .horario-dia { padding: 16px 0; }
+.horario-hoja .cita-acciones .btn {
+  max-width: 100%;
+  white-space: normal;
+}
+
+.horario-ok { margin: 0.6rem 0 0; color: var(--oro-claro); }
+
+@media (max-width: 720px) {
   .horario-dia {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "nombre total" "control control" "turnos turnos" "cerrado cerrado";
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
   }
+  .horario-hoja { padding: 16px; }
+  .horario-card { padding: 12px; }
+  .horario-hoja .pa-barra { margin: 1rem -16px -16px; }
+  .horario-preview .semana-escala { margin-left: 2.8rem; flex-wrap: wrap; }
   .turno {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
-  .turno-campo { flex: none; }
-  .horario-flecha { display: none; }
-  .horario-duracion,
-  .turno .btn-quitar { grid-column: 1 / -1; justify-self: start; }
-  .horario-hoja .pa-barra { margin: 1rem -16px -16px; }
-  .semana-escala { margin-left: 0; flex-wrap: wrap; }
 }
 
 @media (min-width: 900px) {

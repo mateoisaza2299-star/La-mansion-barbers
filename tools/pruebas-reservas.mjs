@@ -498,9 +498,15 @@ async function flujoPanel(page, ancho) {
 
   await navVisible(page, "equipo");
   await page.locator("[data-barbero-servicios]").screenshot({ path: path.join(dir, ancho + "-servicios-barbero.png") });
-  await page.waitForSelector("[data-horario-dia='2'][data-horario-campo='abre']");
-  const martesInicial = await page.locator("[data-horario-dia='2']").evaluateAll((nodos) => nodos.map((nodo) => nodo.dataset.horarioCampo + ":" + nodo.value));
-  exigir(martesInicial.includes("abre:09:00") && martesInicial.includes("cierra:13:00") && martesInicial.includes("abre:14:00") && martesInicial.includes("cierra:19:00"), ancho + " martes inicial " + martesInicial.join(","));
+  await page.waitForSelector("[data-horario-barbero] [data-horario-dia='2'][data-horario-campo='abre']");
+  const anaHorario = page.locator("[data-horario-barbero]").first();
+  const martesAbre = await anaHorario.locator("[data-horario-dia='2'][data-horario-campo='abre']").inputValue();
+  const martesCierra = await anaHorario.locator("[data-horario-dia='2'][data-horario-campo='cierra']").inputValue();
+  exigir(martesAbre.slice(0, 5) === "09:00" && martesCierra.slice(0, 5) === "19:00", ancho + " martes inicial " + martesAbre + " " + martesCierra);
+  const cinco = await anaHorario.locator("[data-horario-dia='1'][data-horario-campo='abre']").locator("option").evaluateAll((nodos) => nodos.map((nodo) => nodo.value));
+  exigir(cinco.includes("05:00") && cinco.includes("23:00"), ancho + " sin las 5:00 a. m. " + cinco.slice(0, 3).join(","));
+  const escala = await anaHorario.locator(".semana-escala").innerText();
+  exigir(escala.includes("5:00 a. m.") && escala.includes("11:30 p. m."), ancho + " el gráfico no empieza a las 5: " + escala);
   if (ancho === 1366) await probarFicha(page);
   const bloqueo = sumarDias(hoyISO(), 3 + (ancho === 390 ? 0 : ancho === 768 ? 1 : 2));
   const opcionLocal = await page.locator("[data-bloqueo-barbero] option").first().innerText();
@@ -524,29 +530,24 @@ async function flujoPanel(page, ancho) {
   exigir(!horas.includes("10:00") && !horas.includes("11:00"), ancho + " la franja cerrada sigue libre " + horas.join(","));
   exigir(horas.includes("14:00"), ancho + " se cerró el local entero " + horas.join(","));
   await publica.close();
-  const cierra = page.locator("[data-horario-dia='1'][data-horario-campo='cierra']").first();
+  const cierra = anaHorario.locator("[data-horario-dia='1'][data-horario-campo='cierra']");
   await cierra.selectOption(CIERRES[ancho]);
   await page.locator("[data-horario-guardar]").click();
-  await page.waitForFunction((valor) => {
-    const campo = document.querySelector("[data-horario-dia='1'][data-horario-campo='cierra']");
-    return campo && campo.value.slice(0, 5) === valor;
-  }, CIERRES[ancho]);
+  await page.waitForSelector("[data-horario-ok]:not([hidden])", { timeout: 10000 });
   await foto(page, ancho + "-equipo");
   await page.locator(".pa-top").screenshot({ path: path.join(dir, ancho + "-panel-cabecera.png") });
-  await page.getByRole("button", { name: "Lunes a sábado" }).click();
-  const lunes = page.locator(".horario-dia", { has: page.locator(".horario-nombre", { hasText: "Lunes" }) });
+  const lunes = anaHorario.locator(".horario-dia", { has: page.locator(".horario-nombre", { hasText: "Lunes" }) });
+  await lunes.locator("[data-horario-campo='abre']").selectOption("05:00");
   await lunes.locator("[data-horario-campo='cierra']").selectOption("13:00");
-  await lunes.getByRole("button", { name: "Agregar turno" }).click();
-  await lunes.locator("[data-horario-campo='abre']").nth(1).selectOption("14:00");
-  await page.getByRole("button", { name: "Copiar el lunes a todos los días" }).click();
-  const domingo = page.locator(".horario-dia", { has: page.locator(".horario-nombre", { hasText: "Domingo" }) });
-  if ((await domingo.getByRole("radio", { name: "Abierto" }).getAttribute("aria-checked")) === "true") {
-    await domingo.getByRole("radio", { name: "Cerrado" }).click();
+  const domingo = anaHorario.locator(".horario-dia", { has: page.locator(".horario-nombre", { hasText: "Domingo" }) });
+  if ((await domingo.getByRole("radio", { name: "Trabaja" }).getAttribute("aria-checked")) === "true") {
+    await domingo.getByRole("radio", { name: "Descanso" }).click();
   }
   await page.locator("[data-horario-guardar]").click();
   await page.waitForFunction(() => {
     const aviso = document.querySelector("[data-horario-aviso]");
-    return aviso && aviso.hidden;
+    const ok = document.querySelector("[data-horario-ok]");
+    return aviso && aviso.hidden && ok && !ok.hidden;
   });
   await page.locator("[data-horario-editor]").screenshot({ path: path.join(dir, ancho + "-horarios.png") });
   const extraHorario = await desborde(page);
@@ -554,10 +555,12 @@ async function flujoPanel(page, ancho) {
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector("[data-nav]:visible [data-vista='agenda']", { timeout: 15000 });
   await navVisible(page, "equipo");
-  await page.waitForSelector("[data-horario-dia='2'][data-horario-campo='abre']");
-  const leido = await page.locator("[data-horario-dia='2'][data-horario-campo='abre']").evaluateAll((nodos) => nodos.map((nodo) => nodo.value));
-  exigir(leido.includes("10:00") && leido.includes("14:00"), ancho + " horario no se leyó " + leido.join(","));
-  const domingoCerrado = await page.locator(".horario-dia", { has: page.locator(".horario-nombre", { hasText: "Domingo" }) }).getByRole("radio", { name: "Cerrado" }).getAttribute("aria-checked");
+  await page.waitForSelector("[data-horario-barbero] [data-horario-dia='1'][data-horario-campo='abre']");
+  const anaLeida = page.locator("[data-horario-barbero]").first();
+  const leidoAbre = await anaLeida.locator("[data-horario-dia='1'][data-horario-campo='abre']").inputValue();
+  const leidoCierra = await anaLeida.locator("[data-horario-dia='1'][data-horario-campo='cierra']").inputValue();
+  exigir(leidoAbre.slice(0, 5) === "05:00" && leidoCierra.slice(0, 5) === "13:00", ancho + " horario no se leyó " + leidoAbre + " " + leidoCierra);
+  const domingoCerrado = await anaLeida.locator(".horario-dia", { has: page.locator(".horario-nombre", { hasText: "Domingo" }) }).getByRole("radio", { name: "Descanso" }).getAttribute("aria-checked");
   exigir(domingoCerrado === "true", ancho + " el domingo quedó abierto");
   await revisar(page, ancho, "horarios");
 
@@ -756,12 +759,61 @@ async function probarMensajeRoto(browser) {
   await context.close();
 }
 
+async function flujoHorario(browser, ancho) {
+  await fetch(origen + "/__reset", { method: "POST" });
+  const context = await browser.newContext({
+    viewport: { width: ancho, height: ancho === 390 ? 844 : 800 },
+    serviceWorkers: "block",
+    locale: "es-CO"
+  });
+  await context.addCookies([{ name: "lm_activo", value: "1", url: origen }]);
+  const page = await context.newPage();
+  const errores = [];
+  page.on("pageerror", (error) => errores.push(String(error)));
+  page.on("console", (msg) => {
+    if (msg.type() === "error" && consolaUtil(msg.text())) errores.push(msg.text());
+  });
+  try {
+    await entrar(page, "dueno@lamansion.test", "ClaveDueno123");
+    await navVisible(page, "equipo");
+    await page.waitForSelector("[data-horario-barbero] [data-horario-dia='1'][data-horario-campo='abre']");
+    const ana = page.locator("[data-horario-barbero]").first();
+    await ana.locator("[data-horario-dia='1'][data-horario-campo='abre']").selectOption("05:00");
+    await ana.locator("[data-horario-dia='1'][data-horario-campo='cierra']").selectOption("18:00");
+    await page.locator("[data-horario-todos-abrir]").click();
+    await page.locator("[data-confirmar-si]").click();
+    await page.waitForSelector("[data-horario-ok]:not([hidden])", { timeout: 10000 });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector("[data-nav]:visible [data-vista='agenda']", { timeout: 15000 });
+    await navVisible(page, "equipo");
+    await page.waitForSelector("[data-horario-barbero] [data-horario-dia='1'][data-horario-campo='abre']");
+    const tarjetas = page.locator("[data-horario-barbero]");
+    const total = await tarjetas.count();
+    exigir(total >= 2, ancho + " faltan barberos " + total);
+    for (let i = 0; i < total; i += 1) {
+      const abre = await tarjetas.nth(i).locator("[data-horario-dia='1'][data-horario-campo='abre']").inputValue();
+      const cierra = await tarjetas.nth(i).locator("[data-horario-dia='1'][data-horario-campo='cierra']").inputValue();
+      exigir(abre.slice(0, 5) === "05:00" && cierra.slice(0, 5) === "18:00", ancho + " aplicar a todos " + i + " " + abre + " " + cierra);
+    }
+    const extra = await desborde(page);
+    exigir(extra <= 1, ancho + " desborde horario " + extra);
+    await revisar(page, ancho, "horario-vista");
+  } catch (error) {
+    await foto(page, ancho + "-horario-error").catch(() => {});
+    falla(ancho + " horario " + (error && error.message ? error.message : error));
+  }
+  if (errores.length) falla(ancho + " consola horario: " + errores.join(" | "));
+  await context.close();
+}
+
 const browser = await chromium.launch({
   executablePath: "/usr/local/bin/google-chrome",
   args: ["--no-sandbox", "--disable-dev-shm-usage"]
 });
 
 try {
+  await flujoHorario(browser, 390);
+  await flujoHorario(browser, 1280);
   await sinRed(browser);
   await casosAcceso(browser);
   for (const ancho of [360, 1920]) {

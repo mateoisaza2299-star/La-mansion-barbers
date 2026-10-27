@@ -57,7 +57,8 @@ const estado = {
   serviciosTab: "activos",
   ajustesFoto: "",
   horarioFoto: "",
-  horarioPendientes: [],
+  horarioGuardando: false,
+  horarioFallo: false,
   reglasSemana: [],
   reglaTab: "",
   horarioAbrir: 0,
@@ -836,32 +837,35 @@ function diaPanel(valor) {
   return dia;
 }
 
-const HORA_MIN = 5 * 60;
-const HORA_MAX = 23 * 60 + 30;
+const FRANJA = { inicio: 5 * 60, fin: 23 * 60 + 30, paso: 30 };
+
+function horasDeFranja(desdeMin, hastaMin, extra) {
+  const valores = [];
+  for (let minuto = desdeMin; minuto <= hastaMin; minuto += FRANJA.paso) valores.push(aHora(minuto));
+  const extraCorta = hhmm(extra);
+  if (extraCorta && aMinutos(extraCorta) >= desdeMin && aMinutos(extraCorta) <= hastaMin && !valores.includes(extraCorta)) valores.push(extraCorta);
+  valores.sort();
+  return valores;
+}
 
 function opcionesHora(extra) {
-  const valores = [];
-  for (let minuto = HORA_MIN; minuto <= HORA_MAX; minuto += 30) valores.push(aHora(minuto));
-  const extraCorta = hhmm(extra);
-  if (extraCorta && !valores.includes(extraCorta)) valores.push(extraCorta);
-  valores.sort();
-  return valores.map((valor) => ({ valor, texto: horaLegible(valor) }));
+  return horasDeFranja(FRANJA.inicio, FRANJA.fin, extra).map((valor) => ({ valor, texto: horaLegible(valor) }));
+}
+
+function opcionesDesde(extra) {
+  return horasDeFranja(FRANJA.inicio, FRANJA.fin - FRANJA.paso, extra).map((valor) => ({ valor, texto: horaLegible(valor) }));
 }
 
 function opcionesHasta(desde, extra) {
   const base = aMinutos(desde);
-  const valores = [];
-  for (let minuto = base + 30; minuto <= HORA_MAX; minuto += 30) valores.push(aHora(minuto));
-  const extraCorta = hhmm(extra);
-  if (extraCorta && aMinutos(extraCorta) > base && !valores.includes(extraCorta)) valores.push(extraCorta);
-  valores.sort();
+  const valores = horasDeFranja(base + FRANJA.paso, FRANJA.fin, extra).filter((valor) => aMinutos(valor) > base);
   return valores.map((valor) => ({ valor, texto: horaLegible(valor) }));
 }
 
-function selectHora(valor) {
+function selectHora(valor, opciones) {
   const select = document.createElement("select");
   select.className = "pa-select";
-  llenarSelect(select, opcionesHora(valor), hhmm(valor) || "10:00");
+  llenarSelect(select, opciones || opcionesHora(valor), hhmm(valor) || "10:00");
   return select;
 }
 
@@ -871,22 +875,12 @@ function cajaSelect(select) {
   return caja;
 }
 
-function duracionLegible(abre, cierra) {
-  const mins = aMinutos(cierra) - aMinutos(abre);
-  if (mins <= 0) return "";
-  const horas = Math.floor(mins / 60);
-  const resto = mins % 60;
-  if (horas && resto) return horas + " h " + resto + " min";
-  if (horas) return horas + " h";
-  return resto + " min";
-}
-
 function normalizarRango(abre, cierra) {
   const desde = hhmm(abre) || "10:00";
   let hasta = hhmm(cierra);
   if (!hasta || aMinutos(hasta) <= aMinutos(desde)) {
-    const siguiente = aMinutos(desde) + 30;
-    hasta = siguiente <= HORA_MAX ? aHora(siguiente) : hasta || desde;
+    const siguiente = aMinutos(desde) + FRANJA.paso;
+    hasta = siguiente <= FRANJA.fin ? aHora(siguiente) : hasta || desde;
   }
   return { abre: desde, cierra: hasta };
 }
@@ -940,10 +934,6 @@ function leerHorarioManual() {
   return filas;
 }
 
-function barberosActivos() {
-  return estado.barberos.filter((item) => item.activo !== false);
-}
-
 function fotoHorario() {
   return JSON.stringify(estado.horarioModelo || {});
 }
@@ -951,28 +941,62 @@ function fotoHorario() {
 function marcarHorario() {
   const aviso = document.querySelector("[data-horario-aviso]");
   const guardar = document.querySelector("[data-horario-guardar]");
+  const descartar = document.querySelector("[data-horario-descartar]");
   const error = document.querySelector("[data-horario-error]");
   const ok = document.querySelector("[data-horario-ok]");
+  const reintentar = document.querySelector("[data-horario-reintentar]");
+  const todos = document.querySelector("[data-horario-todos-abrir]");
   const sucio = fotoHorario() !== estado.horarioFoto;
   const mensaje = validarModelo();
   if (aviso) aviso.hidden = !sucio;
-  if (guardar) guardar.disabled = !sucio || Boolean(mensaje);
-  if (error) {
-    error.hidden = !mensaje;
-    error.textContent = mensaje || "";
+  if (guardar && !estado.horarioGuardando) {
+    guardar.disabled = !sucio || Boolean(mensaje);
+    guardar.textContent = "Guardar horario";
   }
-  if (ok && (sucio || mensaje)) ok.hidden = true;
+  if (descartar) descartar.disabled = Boolean(estado.horarioGuardando) || !sucio;
+  if (todos && dueno()) todos.disabled = Boolean(estado.horarioGuardando) || Boolean(mensaje);
+  if (estado.horarioFallo) {
+    if (reintentar) reintentar.hidden = false;
+    if (ok) ok.hidden = true;
+  } else {
+    if (reintentar) reintentar.hidden = true;
+    if (error) {
+      error.hidden = !mensaje;
+      error.textContent = mensaje || "";
+    }
+    if (ok && (sucio || mensaje)) ok.hidden = true;
+  }
+}
+
+function inicioDe(item) {
+  if (item && item.inicio != null && String(item.inicio).trim() !== "") return item.inicio;
+  return item ? item.abre : "";
+}
+
+function finDe(item) {
+  if (item && item.fin != null && String(item.fin).trim() !== "") return item.fin;
+  return item ? item.cierra : "";
+}
+
+function horaSql(valor) {
+  const corta = hhmm(valor);
+  return corta ? corta + ":00" : "";
+}
+
+function barberosDelHorario() {
+  return barberosOrdenados(dueno() ? estado.barberos : estado.barberos.filter((item) => item.id === estado.barberoId));
 }
 
 function validarModelo() {
-  const dias = Object.keys(estado.horarioModelo || {});
-  for (let i = 0; i < dias.length; i += 1) {
-    const lista = (estado.horarioModelo[dias[i]] || []).map((rango) => ({ abre: hhmm(rango.abre), cierra: hhmm(rango.cierra) }));
-    lista.sort((a, b) => a.abre.localeCompare(b.abre));
-    for (let n = 0; n < lista.length; n += 1) {
-      if (aMinutos(lista[n].cierra) <= aMinutos(lista[n].abre)) return "La hora de cierre debe ser después de la de apertura";
-      if (aMinutos(lista[n].cierra) - aMinutos(lista[n].abre) < 30) return "Cada turno debe durar al menos 30 minutos.";
-      if (n > 0 && aMinutos(lista[n].abre) < aMinutos(lista[n - 1].cierra)) return "Los turnos no pueden cruzarse";
+  const modelo = estado.horarioModelo || {};
+  const ids = Object.keys(modelo);
+  for (let i = 0; i < ids.length; i += 1) {
+    const dias = modelo[ids[i]] || {};
+    for (let n = 0; n < SEMANA.length; n += 1) {
+      const item = SEMANA[n];
+      const rango = dias[item.dia];
+      if (!rango) continue;
+      if (aMinutos(rango.cierra) <= aMinutos(rango.abre)) return "El " + item.nombre.toLowerCase() + ", Hasta tiene que ser después de Desde.";
     }
   }
   return "";
@@ -980,33 +1004,59 @@ function validarModelo() {
 
 function filasDe(barberoId) {
   const filas = [];
+  const dias = (estado.horarioModelo || {})[barberoId] || {};
   SEMANA.forEach((item) => {
-    (estado.horarioModelo[item.dia] || []).forEach((rango) => {
-      filas.push({ barbero_id: barberoId, dia: item.dia, abre: hhmm(rango.abre), cierra: hhmm(rango.cierra) });
-    });
+    const rango = dias[item.dia];
+    if (!rango) return;
+    const inicio = horaSql(rango.abre);
+    const fin = horaSql(rango.cierra);
+    if (!inicio || !fin) return;
+    filas.push({ barbero_id: barberoId, dia: item.dia, inicio, fin, activo: true });
   });
   return filas;
 }
 
-async function reemplazarHorario(barberoId, filas) {
-  const anteriores = estado.horarios.filter((item) => item.barbero_id === barberoId).map((item) => item.id).filter(Boolean);
-  if (filas.length) {
-    const alta = await estado.supabase.from("horarios").insert(filas).select();
-    if (alta.error) return { ok: false, parcial: false };
-  }
-  if (anteriores.length) {
-    const borrado = await estado.supabase.from("horarios").delete().in("id", anteriores);
-    if (borrado.error) return { ok: false, parcial: true, anteriores };
-  }
-  return { ok: true };
+function reportarHorario(error) {
+  const texto = error && error.message ? error.message : "Error al guardar el horario";
+  console.error("No se pudo guardar el horario:", texto);
 }
 
-async function recargarHorarios() {
-  const recarga = await estado.supabase.from("horarios").select("*");
-  if (!recarga.error) estado.horarios = recarga.data || [];
-  cargarModelo();
-  pintarEditor();
-  if (dueno()) pintarBarberos();
+async function reemplazarHorario(barberoId, filas) {
+  const actuales = estado.horarios.filter((item) => item.barbero_id === barberoId);
+  const usados = new Set();
+  for (let i = 0; i < filas.length; i += 1) {
+    const fila = filas[i];
+    const previo = actuales.find((item) => item.id && !usados.has(item.id) && diaPanel(item.dia) === Number(fila.dia));
+    if (previo) {
+      usados.add(previo.id);
+      const cambio = await estado.supabase.from("horarios").update({
+        dia: fila.dia,
+        inicio: fila.inicio,
+        fin: fila.fin,
+        activo: true
+      }).eq("id", previo.id).select();
+      if (cambio.error) {
+        reportarHorario(cambio.error);
+        return { ok: false, parcial: false, error: cambio.error };
+      }
+    } else {
+      const alta = await estado.supabase.from("horarios").insert(fila).select();
+      if (alta.error) {
+        reportarHorario(alta.error);
+        return { ok: false, parcial: false, error: alta.error };
+      }
+      if (alta.data && alta.data[0] && alta.data[0].id) usados.add(alta.data[0].id);
+    }
+  }
+  const sobrantes = actuales.map((item) => item.id).filter((id) => id && !usados.has(id));
+  if (sobrantes.length) {
+    const borrado = await estado.supabase.from("horarios").delete().in("id", sobrantes);
+    if (borrado.error) {
+      reportarHorario(borrado.error);
+      return { ok: false, parcial: true, anteriores: sobrantes, error: borrado.error };
+    }
+  }
+  return { ok: true };
 }
 
 function fijarSegmento(grupo, activo) {
@@ -1066,84 +1116,37 @@ function aplicarHoja() {
   if (estado.reglaTab) regla(estado.reglaTab);
 }
 
-function colocarSubrayado() {
-  window.requestAnimationFrame(() => {
-    const host = document.querySelector("[data-horario-chips]");
-    const activo = host && host.querySelector("[aria-selected='true']");
-    if (!host || !activo || !activo.offsetWidth) {
-      estado.reglaTab = "";
-      aplicarHoja();
-      return;
-    }
-    estado.reglaTab = ".horario-tabs .subrayado{width:" + activo.offsetWidth + "px;transform:translateX(" + activo.offsetLeft + "px)}";
-    aplicarHoja();
-  });
+function avisarFalloHorario(texto) {
+  estado.horarioFallo = true;
+  const caja = document.querySelector("[data-horario-error]");
+  const reintentar = document.querySelector("[data-horario-reintentar]");
+  const ok = document.querySelector("[data-horario-ok]");
+  if (caja) {
+    caja.hidden = false;
+    caja.textContent = texto;
+  }
+  if (reintentar) reintentar.hidden = false;
+  if (ok) ok.hidden = true;
 }
 
-function pintarChipsHorario() {
-  const host = document.querySelector("[data-horario-chips]");
-  if (!host) return;
-  const lista = barberosOrdenados(dueno() ? estado.barberos : estado.barberos.filter((item) => item.id === estado.barberoId));
-  host.replaceChildren();
-  lista.forEach((barbero) => {
-    const activo = barbero.id === estado.horarioBarbero;
-    const boton = nodo("button", null, barbero.nombre);
-    boton.type = "button";
-    boton.setAttribute("role", "tab");
-    boton.setAttribute("aria-selected", activo ? "true" : "false");
-    boton.addEventListener("click", async () => {
-      if (barbero.id === estado.horarioBarbero) return;
-      if (document.querySelector("[data-horario-aviso]:not([hidden])")) {
-        const ok = await preguntar("Tienes cambios sin guardar. ¿Cambiar de barbero?", "Cambiar", "Quedarme");
-        if (!ok) return;
+function horarioCoincide(deseado) {
+  const lista = barberosDelHorario();
+  for (let i = 0; i < lista.length; i += 1) {
+    const barbero = lista[i];
+    const dias = deseado[barbero.id] || {};
+    for (let n = 0; n < SEMANA.length; n += 1) {
+      const item = SEMANA[n];
+      const rango = dias[item.dia] || null;
+      const filas = estado.horarios.filter((fila) => fila.barbero_id === barbero.id && diaPanel(fila.dia) === item.dia && fila.activo !== false);
+      if (!rango) {
+        if (filas.length) return false;
+        continue;
       }
-      estado.horarioBarbero = barbero.id;
-      cargarModelo();
-      pintarEditor();
-    });
-    host.appendChild(boton);
-  });
-  const subrayado = nodo("span", "subrayado", "");
-  subrayado.setAttribute("aria-hidden", "true");
-  host.appendChild(subrayado);
-  colocarSubrayado();
-}
-
-function aplicarAtajo(id) {
-  if (id === "local") {
-    SEMANA.forEach((item) => { estado.horarioModelo[item.dia] = [{ abre: "10:00", cierra: "20:00" }]; });
+      if (filas.length !== 1) return false;
+      if (hhmm(inicioDe(filas[0])) !== hhmm(rango.abre) || hhmm(finDe(filas[0])) !== hhmm(rango.cierra)) return false;
+    }
   }
-  if (id === "semana") {
-    SEMANA.forEach((item) => {
-      estado.horarioModelo[item.dia] = item.dia === 7 ? [] : [{ abre: "10:00", cierra: "20:00" }];
-    });
-  }
-  if (id === "copiar") {
-    const lunes = (estado.horarioModelo[1] || []).map((rango) => ({ abre: rango.abre, cierra: rango.cierra }));
-    SEMANA.forEach((item) => {
-      estado.horarioModelo[item.dia] = lunes.map((rango) => ({ abre: rango.abre, cierra: rango.cierra }));
-    });
-  }
-  if (id === "cerrar") {
-    SEMANA.forEach((item) => { estado.horarioModelo[item.dia] = []; });
-  }
-  pintarEditor();
-}
-
-function pintarAtajos() {
-  const host = document.querySelector("[data-horario-atajos]");
-  if (!host || host.childElementCount) return;
-  [
-    ["local", "Igual que el local (10:00 a. m. a 8:00 p. m. todos los días)"],
-    ["semana", "Lunes a sábado"],
-    ["copiar", "Copiar el lunes a todos los días"],
-    ["cerrar", "Cerrar todos los días"]
-  ].forEach(([id, texto]) => {
-    const boton = nodo("button", "btn btn-sec", texto);
-    boton.type = "button";
-    boton.addEventListener("click", () => aplicarAtajo(id));
-    host.appendChild(boton);
-  });
+  return true;
 }
 
 function avisarHorario(texto) {
@@ -1170,326 +1173,272 @@ async function aplicarHorarioTodos() {
     }
     return;
   }
-  const ok = await preguntar("¿Aplicar este horario a todos los barberos? Se reemplazan sus horas actuales.", "Aplicar", "Cancelar");
+  const lista = barberosDelHorario();
+  if (lista.length < 2) return;
+  const origen = lista[0];
+  const ok = await preguntar("¿Aplicar el horario de " + origen.nombre + " a todos los barberos? Se reemplazan sus horas.", "Aplicar", "Cancelar");
   if (!ok) return;
-  const plantilla = filasDe("x").map((item) => ({ dia: item.dia, abre: item.abre, cierra: item.cierra }));
-  const lista = barberosActivos();
-  for (let i = 0; i < lista.length; i += 1) {
-    const barbero = lista[i];
-    const filas = plantilla.map((item) => ({ barbero_id: barbero.id, dia: item.dia, abre: item.abre, cierra: item.cierra }));
-    const resultado = await reemplazarHorario(barbero.id, filas);
-    const recarga = await estado.supabase.from("horarios").select("*");
-    if (!recarga.error) estado.horarios = recarga.data || [];
-    if (!resultado.ok) {
-      if (caja) {
-        caja.hidden = false;
-        caja.textContent = resultado.parcial
-          ? "Se guardó el horario de " + barbero.nombre + ", pero no se pudieron quitar las horas anteriores."
-          : "No se pudo guardar el horario de " + barbero.nombre + ".";
-      }
-      const reintentar = document.querySelector("[data-horario-reintentar]");
-      if (reintentar) reintentar.hidden = false;
-      cargarModelo();
-      pintarEditor();
-      return;
-    }
-  }
-  await recargarHorarios();
-  if (caja) caja.hidden = true;
-  avisarHorario("Horario guardado");
-  fail("");
+  const plantilla = JSON.parse(JSON.stringify(estado.horarioModelo[origen.id] || {}));
+  lista.forEach((barbero) => {
+    estado.horarioModelo[barbero.id] = JSON.parse(JSON.stringify(plantilla));
+  });
+  estado.horarioFallo = false;
+  pintarEditor();
+  await guardarHorarios();
 }
 
 async function guardarHorarioBarbero(barberoId, filas) {
-  const resultado = await reemplazarHorario(barberoId, filas);
+  const lista = (filas || []).map((item) => ({
+    barbero_id: barberoId,
+    dia: item.dia,
+    inicio: horaSql(item.inicio || item.abre),
+    fin: horaSql(item.fin || item.cierra),
+    activo: item.activo !== false
+  })).filter((item) => item.inicio && item.fin);
+  const resultado = await reemplazarHorario(barberoId, lista);
   if (!resultado.ok) return false;
   const recarga = await estado.supabase.from("horarios").select("*");
-  if (!recarga.error) estado.horarios = recarga.data || [];
+  if (recarga.error) {
+    reportarHorario(recarga.error);
+    return false;
+  }
+  estado.horarios = recarga.data || [];
   return true;
+}
+
+function rangoDelDia(filas) {
+  const vivas = (filas || []).filter((item) => item.activo !== false);
+  if (!vivas.length) return null;
+  vivas.sort((a, b) => hhmm(inicioDe(a)).localeCompare(hhmm(inicioDe(b))));
+  return normalizarRango(inicioDe(vivas[0]), finDe(vivas[vivas.length - 1]));
 }
 
 function cargarModelo() {
   const modelo = {};
-  SEMANA.forEach((item) => { modelo[item.dia] = []; });
-  estado.horarios.filter((item) => item.barbero_id === estado.horarioBarbero).forEach((item) => {
-    const dia = diaPanel(item.dia);
-    if (!modelo[dia]) return;
-    modelo[dia].push(normalizarRango(item.abre, item.cierra));
+  barberosDelHorario().forEach((barbero) => {
+    const dias = {};
+    const porDia = {};
+    SEMANA.forEach((item) => { dias[item.dia] = null; });
+    estado.horarios.filter((item) => item.barbero_id === barbero.id).forEach((item) => {
+      const dia = diaPanel(item.dia);
+      if (!Object.prototype.hasOwnProperty.call(dias, dia)) return;
+      if (!porDia[dia]) porDia[dia] = [];
+      porDia[dia].push(item);
+    });
+    SEMANA.forEach((item) => { dias[item.dia] = rangoDelDia(porDia[item.dia]); });
+    modelo[barbero.id] = dias;
   });
-  SEMANA.forEach((item) => modelo[item.dia].sort((a, b) => a.abre.localeCompare(b.abre)));
   estado.horarioModelo = modelo;
   estado.horarioTomarFoto = true;
-  const titulo = document.querySelector("[data-horario-titulo]");
-  if (titulo) titulo.textContent = "Horario de " + (nombreBarbero(estado.horarioBarbero) || "");
-  pintarChipsHorario();
-  pintarAtajos();
+  estado.horarioFallo = false;
 }
 
-function totalDia(dia) {
-  const mins = (estado.horarioModelo[dia] || []).reduce((suma, rango) => suma + Math.max(0, aMinutos(rango.cierra) - aMinutos(rango.abre)), 0);
-  if (!mins) return "";
-  return duracionLegible("00:00", aHora(mins));
+function marcasFranja() {
+  const marcas = [];
+  for (let minuto = FRANJA.inicio; minuto <= FRANJA.fin; minuto += FRANJA.paso * 12) marcas.push(minuto);
+  if (marcas[marcas.length - 1] !== FRANJA.fin) marcas.push(FRANJA.fin);
+  return marcas;
 }
 
-function pintarSemanaVisual() {
-  const host = document.querySelector("[data-horario-semana]");
-  if (!host || !estado.horarioModelo) return;
+function pintarSemanaVisual(host, modelo, indice) {
+  if (!host || !modelo) return;
   host.replaceChildren();
-  const inicio = HORA_MIN;
-  const fin = HORA_MAX;
-  estado.reglasSemana = [];
+  const inicio = FRANJA.inicio;
+  const fin = FRANJA.fin;
+  const anchoTotal = Math.max(FRANJA.paso, fin - inicio);
   SEMANA.forEach((item) => {
     const fila = nodo("div", "semana-barra");
     fila.appendChild(nodo("span", null, item.nombre.slice(0, 3)));
     const pista = nodo("div", "semana-pista");
-    (estado.horarioModelo[item.dia] || []).forEach((rango, indice) => {
-      const clase = "tramo-" + item.dia + "-" + indice;
+    const rango = modelo[item.dia];
+    if (rango) {
+      const clase = "tramo-b" + indice + "-d" + item.dia;
       const barra = nodo("span", "semana-tramo " + clase);
-      const izq = ((aMinutos(rango.abre) - inicio) / (fin - inicio)) * 100;
-      const ancho = ((aMinutos(rango.cierra) - aMinutos(rango.abre)) / (fin - inicio)) * 100;
+      const izq = ((aMinutos(rango.abre) - inicio) / anchoTotal) * 100;
+      const ancho = ((aMinutos(rango.cierra) - aMinutos(rango.abre)) / anchoTotal) * 100;
       estado.reglasSemana.push("." + clase + "{left:" + Math.max(0, izq).toFixed(2) + "%;width:" + Math.max(0, ancho).toFixed(2) + "%}");
       pista.appendChild(barra);
-    });
+    }
     fila.appendChild(pista);
     host.appendChild(fila);
   });
   const escala = nodo("div", "semana-escala");
-  ["05:00", "11:00", "17:00", "23:30"].forEach((hora) => escala.appendChild(nodo("span", null, horaLegible(hora))));
+  marcasFranja().forEach((minuto) => escala.appendChild(nodo("span", null, horaLegible(aHora(minuto)))));
   host.appendChild(escala);
-  aplicarHoja();
-}
-
-function turnoNuevo(lista) {
-  const ultimo = lista[lista.length - 1];
-  const inicio = ultimo ? aMinutos(ultimo.cierra) + 30 : 10 * 60;
-  if (inicio + 30 > HORA_MAX) return null;
-  let cierre = 20 * 60;
-  if (cierre < inicio + 30) cierre = HORA_MAX;
-  return { abre: aHora(inicio), cierra: aHora(cierre) };
-}
-
-function actualizarTotal(dia) {
-  const total = document.querySelector('[data-horario-total="' + dia + '"]');
-  if (!total) return;
-  const texto = totalDia(dia) || "—";
-  if (total.textContent !== texto) {
-    total.textContent = texto;
-    if (estado.horarioAnima && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      total.classList.remove("is-funde");
-      void total.offsetWidth;
-      total.classList.add("is-funde");
-    }
-  }
 }
 
 function ponerHasta(select, desde, valor) {
   const deseado = hhmm(valor);
-  const minimo = aMinutos(desde) + 30;
-  const elegido = deseado && aMinutos(deseado) > aMinutos(desde) ? deseado : (minimo <= HORA_MAX ? aHora(minimo) : "");
+  const minimo = aMinutos(desde) + FRANJA.paso;
+  const elegido = deseado && aMinutos(deseado) > aMinutos(desde) ? deseado : (minimo <= FRANJA.fin ? aHora(minimo) : "");
   llenarSelect(select, opcionesHasta(desde, elegido), elegido);
   return select.value;
+}
+
+function refrescarGraficos() {
+  estado.reglasSemana = [];
+  barberosDelHorario().forEach((barbero, indice) => {
+    const host = document.querySelector('[data-horario-semana="' + barbero.id + '"]');
+    pintarSemanaVisual(host, (estado.horarioModelo || {})[barbero.id], indice);
+  });
+  aplicarHoja();
+}
+
+function tocarHorario() {
+  estado.horarioFallo = false;
+  marcarHorario();
+}
+
+function filaDia(barbero, item) {
+  const bloque = nodo("div", "horario-dia");
+  bloque.dataset.horarioFila = String(item.dia);
+  const rango = (estado.horarioModelo[barbero.id] || {})[item.dia];
+  const trabaja = Boolean(rango);
+  bloque.appendChild(nodo("p", "horario-nombre", item.nombre));
+  const control = crearSegmento("Horario del " + item.nombre, "Trabaja", "Descanso", trabaja, (encendido) => {
+    if (!estado.horarioModelo[barbero.id]) estado.horarioModelo[barbero.id] = {};
+    if (encendido) {
+      if (!estado.horarioModelo[barbero.id][item.dia]) estado.horarioModelo[barbero.id][item.dia] = { abre: "10:00", cierra: "20:00" };
+    } else {
+      estado.horarioModelo[barbero.id][item.dia] = null;
+    }
+    estado.horarioFallo = false;
+    pintarEditor();
+  });
+  bloque.appendChild(control);
+  const linea = nodo("div", "turno");
+  linea.hidden = !trabaja;
+  const actual = rango || { abre: "10:00", cierra: "20:00" };
+  const desde = selectHora(actual.abre, opcionesDesde(actual.abre));
+  desde.dataset.horarioDia = String(item.dia);
+  desde.dataset.horarioCampo = "abre";
+  desde.setAttribute("aria-label", "Desde el " + item.nombre);
+  const hasta = document.createElement("select");
+  hasta.className = "pa-select";
+  hasta.dataset.horarioDia = String(item.dia);
+  hasta.dataset.horarioCampo = "cierra";
+  hasta.setAttribute("aria-label", "Hasta el " + item.nombre);
+  const cierre = ponerHasta(hasta, desde.value, actual.cierra);
+  if (trabaja) {
+    estado.horarioModelo[barbero.id][item.dia].abre = desde.value;
+    estado.horarioModelo[barbero.id][item.dia].cierra = cierre;
+  }
+  const campoDesde = nodo("label", "turno-campo");
+  campoDesde.append(nodo("span", null, "Desde"), cajaSelect(desde));
+  const campoHasta = nodo("label", "turno-campo");
+  campoHasta.append(nodo("span", null, "Hasta"), cajaSelect(hasta));
+  desde.addEventListener("change", () => {
+    const dia = estado.horarioModelo[barbero.id][item.dia];
+    if (!dia) return;
+    dia.abre = desde.value;
+    dia.cierra = ponerHasta(hasta, desde.value, hasta.value);
+    refrescarGraficos();
+    tocarHorario();
+  });
+  hasta.addEventListener("change", () => {
+    const dia = estado.horarioModelo[barbero.id][item.dia];
+    if (!dia) return;
+    dia.cierra = hasta.value;
+    refrescarGraficos();
+    tocarHorario();
+  });
+  linea.append(campoDesde, campoHasta);
+  bloque.appendChild(linea);
+  return bloque;
 }
 
 function pintarEditor() {
   const host = document.querySelector("[data-horario-editor]");
   if (!host || !estado.horarioModelo) return;
   host.replaceChildren();
-  const reducir = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  SEMANA.forEach((item) => {
-    const bloque = nodo("div", "horario-dia");
-    bloque.dataset.horarioFila = String(item.dia);
-    const lista = estado.horarioModelo[item.dia] || [];
-    const abierto = lista.length > 0;
-    bloque.appendChild(nodo("p", "horario-nombre", item.nombre));
-    const control = crearSegmento("Horario del " + item.nombre, "Abierto", "Cerrado", abierto, (encendido) => {
-      if (encendido) {
-        if (!(estado.horarioModelo[item.dia] || []).length) estado.horarioModelo[item.dia] = [{ abre: "10:00", cierra: "20:00" }];
-        estado.horarioAbrir = item.dia;
-        pintarEditor();
-        return;
-      }
-      estado.horarioModelo[item.dia] = [];
-      const fila = document.querySelector('[data-horario-fila="' + item.dia + '"]');
-      pintarSemanaVisual();
-      marcarHorario();
-      if (fila && !reducir) {
-        fila.classList.add("is-cerrado");
-        window.setTimeout(() => pintarEditor(), 220);
-        return;
-      }
-      pintarEditor();
-    });
-    bloque.appendChild(control);
-    const total = nodo("p", "horario-total" + (estado.horarioAnima ? " is-funde" : ""), abierto ? (totalDia(item.dia) || "—") : "—");
-    total.dataset.horarioTotal = String(item.dia);
-    bloque.appendChild(total);
-    const plego = nodo("div", "dia-turnos");
-    const caja = nodo("div", "dia-turnos-caja");
-    if (!abierto) {
-      caja.appendChild(nodo("p", "horario-cerrado", "Cerrado"));
-    } else {
-      lista.forEach((rango, indice) => {
-        const alta = nodo("div", "turno-alta" + (estado.horarioNuevo && estado.horarioNuevo.dia === item.dia && estado.horarioNuevo.indice === indice && !reducir ? "" : " is-lista"));
-        const altaCaja = nodo("div", "turno-alta-caja");
-        const linea = nodo("div", "turno");
-        const desde = selectHora(rango.abre);
-        desde.dataset.horarioDia = String(item.dia);
-        desde.dataset.horarioCampo = "abre";
-        desde.dataset.horarioIndice = String(indice);
-        desde.setAttribute("aria-label", "Desde");
-        const hasta = document.createElement("select");
-        hasta.className = "pa-select";
-        hasta.dataset.horarioDia = String(item.dia);
-        hasta.dataset.horarioCampo = "cierra";
-        hasta.dataset.horarioIndice = String(indice);
-        hasta.setAttribute("aria-label", "Hasta");
-        ponerHasta(hasta, desde.value, rango.cierra);
-        estado.horarioModelo[item.dia][indice].cierra = hasta.value;
-        const duracion = nodo("span", "horario-duracion", duracionLegible(desde.value, hasta.value));
-        const campoDesde = nodo("label", "turno-campo");
-        campoDesde.append(nodo("span", null, "Desde"), cajaSelect(desde));
-        const campoHasta = nodo("label", "turno-campo");
-        campoHasta.append(nodo("span", null, "Hasta"), cajaSelect(hasta));
-        const tocar = () => {
-          const actual = estado.horarioModelo[item.dia][indice];
-          actual.abre = desde.value;
-          actual.cierra = ponerHasta(hasta, desde.value, hasta.value);
-          duracion.textContent = duracionLegible(actual.abre, actual.cierra);
-          actualizarTotal(item.dia);
-          pintarSemanaVisual();
-          marcarHorario();
-        };
-        desde.addEventListener("change", tocar);
-        hasta.addEventListener("change", () => {
-          estado.horarioModelo[item.dia][indice].cierra = hasta.value;
-          duracion.textContent = duracionLegible(desde.value, hasta.value);
-          actualizarTotal(item.dia);
-          pintarSemanaVisual();
-          marcarHorario();
-        });
-        const quitar = nodo("button", "btn btn-icono btn-peligro btn-quitar", "×");
-        quitar.type = "button";
-        quitar.setAttribute("aria-label", "Quitar turno");
-        quitar.addEventListener("click", () => {
-          estado.horarioModelo[item.dia].splice(indice, 1);
-          if (reducir) {
-            pintarEditor();
-            return;
-          }
-          alta.classList.remove("is-lista");
-          actualizarTotal(item.dia);
-          pintarSemanaVisual();
-          marcarHorario();
-          window.setTimeout(() => pintarEditor(), 220);
-        });
-        linea.append(campoDesde, nodo("span", "horario-flecha", "→"), campoHasta, duracion, quitar);
-        altaCaja.appendChild(linea);
-        alta.appendChild(altaCaja);
-        caja.appendChild(alta);
-        if (!alta.classList.contains("is-lista")) {
-          window.requestAnimationFrame(() => alta.classList.add("is-lista"));
-        }
-      });
-      if (lista.length < 3 && turnoNuevo(lista)) {
-        const ayuda = nodo("p", "ayuda-texto", "Úsalo para descansos: por ejemplo 10:00 a. m. a 1:00 p. m. y 2:00 p. m. a 8:00 p. m.");
-        ayuda.id = "ayuda-turno-" + item.dia;
-        const agregar = nodo("button", "btn btn-ghost", "+ Agregar turno");
-        agregar.type = "button";
-        agregar.setAttribute("aria-describedby", ayuda.id);
-        agregar.addEventListener("click", () => {
-          const nuevo = turnoNuevo(estado.horarioModelo[item.dia]);
-          if (!nuevo) return;
-          estado.horarioNuevo = { dia: item.dia, indice: estado.horarioModelo[item.dia].length };
-          estado.horarioModelo[item.dia].push(nuevo);
-          pintarEditor();
-        });
-        caja.append(agregar, ayuda);
-      }
-    }
-    plego.appendChild(caja);
-    bloque.appendChild(plego);
-    if (estado.horarioAbrir === item.dia && !reducir) bloque.classList.add("is-cerrado");
-    host.appendChild(bloque);
+  estado.reglasSemana = [];
+  const lista = barberosDelHorario();
+  lista.forEach((barbero, indice) => {
+    if (!estado.horarioModelo[barbero.id]) return;
+    const card = nodo("article", "horario-card");
+    card.dataset.horarioBarbero = barbero.id;
+    card.appendChild(nodo("h3", null, barbero.nombre));
+    const preview = nodo("div", "horario-semana-card horario-preview");
+    preview.dataset.horarioSemana = barbero.id;
+    preview.setAttribute("aria-hidden", "true");
+    card.appendChild(preview);
+    SEMANA.forEach((item) => card.appendChild(filaDia(barbero, item)));
+    host.appendChild(card);
+    pintarSemanaVisual(preview, estado.horarioModelo[barbero.id], indice);
   });
-  if (estado.horarioAbrir && !reducir) {
-    const abierto = estado.horarioAbrir;
-    window.requestAnimationFrame(() => {
-      const fila = document.querySelector('[data-horario-fila="' + abierto + '"]');
-      if (fila) fila.classList.remove("is-cerrado");
-    });
-  }
-  estado.horarioAbrir = 0;
-  estado.horarioNuevo = null;
+  aplicarHoja();
+  const todos = document.querySelector("[data-horario-todos-abrir]");
+  if (todos && dueno()) todos.hidden = lista.length < 2;
   if (estado.horarioTomarFoto) {
     estado.horarioFoto = fotoHorario();
     estado.horarioTomarFoto = false;
   }
-  pintarSemanaVisual();
   marcarHorario();
-  estado.horarioAnima = true;
-  colocarSubrayado();
 }
 
 async function guardarHorarios() {
-  const caja = document.querySelector("[data-horario-error]");
-  const reintentar = document.querySelector("[data-horario-reintentar]");
-  if (caja) caja.hidden = true;
-  if (reintentar) reintentar.hidden = true;
-  if (estado.horarioPendientes.length) {
-    const borrado = await estado.supabase.from("horarios").delete().in("id", estado.horarioPendientes);
-    if (borrado.error) {
-      if (caja) {
-        caja.hidden = false;
-        caja.textContent = "Se guardó el horario nuevo, pero no se pudieron quitar las horas anteriores.";
-      }
-      if (reintentar) reintentar.hidden = false;
-      return;
-    }
-    estado.horarioPendientes = [];
-    await recargarHorarios();
-    avisarHorario("Horario guardado");
-    return;
-  }
+  if (estado.horarioGuardando) return;
   const mensaje = validarModelo();
+  const caja = document.querySelector("[data-horario-error]");
+  const guardar = document.querySelector("[data-horario-guardar]");
   if (mensaje) {
+    estado.horarioFallo = false;
     if (caja) {
       caja.hidden = false;
       caja.textContent = mensaje;
     }
-    const guardar = document.querySelector("[data-horario-guardar]");
     if (guardar) guardar.disabled = true;
     return;
   }
-  const id = estado.horarioBarbero;
-  if (!id) return;
-  const resultado = await reemplazarHorario(id, filasDe(id));
-  const recarga = await estado.supabase.from("horarios").select("*");
-  if (!recarga.error) estado.horarios = recarga.data || [];
-  if (!resultado.ok && resultado.parcial) {
-    estado.horarioPendientes = resultado.anteriores || [];
-    if (caja) {
-      caja.hidden = false;
-      caja.textContent = "Se guardó el horario nuevo, pero no se pudieron quitar las horas anteriores.";
+  const lista = barberosDelHorario();
+  if (!lista.length) return;
+  estado.horarioGuardando = true;
+  estado.horarioFallo = false;
+  if (guardar) {
+    guardar.disabled = true;
+    guardar.textContent = "Guardando…";
+  }
+  const reintentar = document.querySelector("[data-horario-reintentar]");
+  if (reintentar) reintentar.hidden = true;
+  if (caja) caja.hidden = true;
+  const deseado = JSON.parse(JSON.stringify(estado.horarioModelo));
+  try {
+    for (let i = 0; i < lista.length; i += 1) {
+      const barbero = lista[i];
+      const resultado = await reemplazarHorario(barbero.id, filasDe(barbero.id));
+      if (!resultado.ok) {
+        const lectura = await estado.supabase.from("horarios").select("*");
+        if (!lectura.error) estado.horarios = lectura.data || [];
+        avisarFalloHorario(resultado.parcial
+          ? "Se guardó el horario, pero no se pudieron quitar las horas anteriores."
+          : "No se pudo guardar el horario.");
+        return;
+      }
     }
-    if (reintentar) reintentar.hidden = false;
+    const recarga = await estado.supabase.from("horarios").select("*");
+    if (recarga.error) {
+      reportarHorario(recarga.error);
+      avisarFalloHorario("No se pudo guardar el horario.");
+      return;
+    }
+    estado.horarios = recarga.data || [];
+    if (!horarioCoincide(deseado)) {
+      console.error("No se pudo guardar el horario:", "Los datos releídos no coinciden.");
+      estado.horarioModelo = deseado;
+      estado.horarioTomarFoto = false;
+      avisarFalloHorario("No se pudo guardar el horario.");
+      return;
+    }
     cargarModelo();
     pintarEditor();
-    return;
+    if (dueno()) pintarBarberos();
+    avisarHorario("Horario guardado");
+    fail("");
+  } finally {
+    estado.horarioGuardando = false;
+    if (guardar) guardar.textContent = "Guardar horario";
+    marcarHorario();
   }
-  if (!resultado.ok) {
-    if (caja) {
-      caja.hidden = false;
-      caja.textContent = "No se pudo guardar el horario.";
-    }
-    if (reintentar) reintentar.hidden = false;
-    return;
-  }
-  estado.horarioPendientes = [];
-  cargarModelo();
-  pintarEditor();
-  if (dueno()) pintarBarberos();
-  avisarHorario("Horario guardado");
-  fail("");
 }
 function avisarDeshacer(texto, accion) {
   const aviso = document.querySelector("[data-deshacer]");
@@ -1968,7 +1917,10 @@ function enlazar() {
   document.querySelector("[data-servicio-form]").addEventListener("submit", guardarServicio);
   document.querySelector("[data-horario-guardar]").addEventListener("click", guardarHorarios);
   const descartarHorario = document.querySelector("[data-horario-descartar]");
-  if (descartarHorario) descartarHorario.addEventListener("click", () => {
+  if (descartarHorario) descartarHorario.addEventListener("click", async () => {
+    if (fotoHorario() === estado.horarioFoto) return;
+    const ok = await preguntar("¿Descartar los cambios del horario?", "Descartar", "Cancelar");
+    if (!ok) return;
     cargarModelo();
     pintarEditor();
   });
@@ -2000,7 +1952,11 @@ function enlazar() {
   document.querySelectorAll("[data-ajuste][role='radiogroup']").forEach((grupo) => {
     cablearSegmento(grupo, () => marcarAjustes());
   });
-  window.addEventListener("resize", () => colocarSubrayado());
+  window.addEventListener("resize", () => {
+    const panel = document.querySelector("[data-panel='equipo']");
+    if (!panel || panel.hidden) return;
+    refrescarGraficos();
+  });
   const meta = document.querySelector("[data-ajuste='fidelidad_meta']");
   if (meta) {
     meta.querySelector("[data-menos]").addEventListener("click", () => moverMeta(-1));

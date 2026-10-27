@@ -348,8 +348,11 @@ function horasDe(estado, barberoId, fecha, duracion) {
   const ahora = minutosAhora() + (Number(estado.config.anticipacion_min) || 0);
   const slots = [];
   rangos.forEach((rango) => {
-    let cursor = aMinutos(rango.abre);
-    const fin = aMinutos(rango.cierra);
+    if (rango.activo === false) return;
+    const abre = rango.inicio != null && String(rango.inicio).trim() !== "" ? rango.inicio : rango.abre;
+    const cierra = rango.fin != null && String(rango.fin).trim() !== "" ? rango.fin : rango.cierra;
+    let cursor = aMinutos(abre);
+    const fin = aMinutos(cierra);
     while (cursor + minutos <= fin) {
       const hora = aHora(cursor);
       const pasado = fecha < hoy || (fecha === hoy && cursor < ahora);
@@ -647,6 +650,9 @@ async function api(req, res, estado, url) {
     const body = await leerCuerpo(req);
     if (req.method === "POST") {
       const entradas = Array.isArray(body) ? body : [body];
+      if (tabla === "horarios" && entradas.some((item) => item && (Object.prototype.hasOwnProperty.call(item, "abre") || Object.prototype.hasOwnProperty.call(item, "cierra") || item.inicio == null || item.fin == null))) {
+        return enviar(res, 400, { code: "PGRST204", message: "Could not find the 'abre' column of 'horarios' in the schema cache", details: null, hint: null });
+      }
       if (entradas.some((item) => !puedeEscribir(sesion, tabla, item))) return fallo(res, 401, "no autorizado");
       const creadas = entradas.map((item) => {
         const fila = { ...item, id: item.id || crypto.randomUUID() };

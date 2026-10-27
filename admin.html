@@ -90,7 +90,7 @@
         <header class="pa-pantalla">
           <div>
             <h2>Barberos</h2>
-            <p>Elige a quién editas y marca los días que atiende.</p>
+            <p>Marca los días que atiende cada barbero.</p>
           </div>
         </header>
         <div data-solo="dueno">
@@ -112,21 +112,16 @@
           <div data-barberos></div>
         </div>
         <div class="horario-hoja">
-        <div class="horario-tabs" data-horario-chips role="tablist" aria-label="Barbero"></div>
-        <h2 data-horario-titulo>Horario</h2>
-        <p>Marca los días que atiende y a qué horas. Si un día está cerrado, no se podrán reservar citas ese día.</p>
-        <div class="horario-atajos" data-horario-atajos></div>
         <div data-horario-editor></div>
-        <div class="horario-semana-card" data-horario-semana></div>
         <p class="form-error" data-horario-error role="alert" hidden></p>
         <p class="horario-ok" data-horario-ok role="status" hidden>Horario guardado</p>
         <div class="pa-barra" data-barra="horario">
-          <p data-horario-aviso hidden>Tienes cambios sin guardar</p>
+          <p class="horario-aviso" data-horario-aviso hidden>Cambios sin guardar</p>
           <div class="cita-acciones">
             <button class="btn" type="button" data-horario-guardar disabled>Guardar horario</button>
             <button class="btn btn-sec" type="button" data-horario-reintentar hidden>Reintentar</button>
-            <button class="btn btn-sec" type="button" data-horario-descartar>Descartar</button>
-            <button class="btn btn-sec" type="button" data-horario-todos-abrir data-solo="dueno">Aplicar este horario a todos los barberos</button>
+            <button class="btn btn-sec" type="button" data-horario-descartar disabled>Descartar</button>
+            <button class="btn btn-sec" type="button" data-horario-todos-abrir data-solo="dueno">Aplicar a todos los barberos</button>
           </div>
         </div>
         </div>
@@ -392,7 +387,7 @@
         <li>Para ver las citas de hoy, abre Agenda y deja la fecha de hoy.</li>
         <li>Para confirmar, abre Reservas y pulsa Confirmar en la cita.</li>
         <li>Para cerrar una hora, en Barberos usa Cerrar el local, elige la fecha y la franja.</li>
-        <li>Para cambiar el horario, elige al barbero, marca los días y pulsa Guardar horario.</li>
+        <li>Para cambiar el horario, en Barberos marca Trabaja o Descanso y pulsa Guardar horario.</li>
         <li>Para subir un precio, abre Servicios, pulsa Editar y escribe el precio nuevo.</li>
       </ul>
       <button class="btn btn-sec" type="button" data-ayuda-cerrar>Cerrar</button>
@@ -426,6 +421,6 @@
       <button class="btn" type="button" data-install-close>Listo</button>
     </div>
   </div>
-  <script type="module" src="js/admin.js?v=14"></script>
+  <script type="module" src="js/admin.js?v=15"></script>
 </body>
 </html>
