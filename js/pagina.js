@@ -70,25 +70,28 @@ const anchoDe = (foto, preferido) => {
   return mayor ? mayor.ancho : 0;
 };
 
+const aplicarWhatsapp = (nodo, href) => {
+  if (!href) return;
+  nodo.href = href;
+  nodo.target = "_blank";
+  nodo.rel = "noopener noreferrer";
+  nodo.setAttribute("aria-label", "Escribir por WhatsApp");
+};
+
 const pintarEnlaces = () => {
   const wa = enlaceWhatsapp();
   const contacto = negocio.mostrarWhatsappContacto !== false && wa;
   document.querySelectorAll("[data-wa-contacto]").forEach((nodo) => {
     nodo.hidden = !contacto;
     if (!contacto) return;
-    const numero = String(negocio.whatsapp || "").replace(/\D/g, "");
-    nodo.href = "https://wa.me/" + numero;
-    nodo.target = "_blank";
-    nodo.rel = "noopener";
+    aplicarWhatsapp(nodo, wa);
     const etiqueta = nodo.querySelector("[data-wa-numero]");
     if (etiqueta && negocio.telefono) etiqueta.textContent = negocio.telefono;
   });
   document.querySelectorAll("[data-wa]").forEach((nodo) => {
     if (nodo.hasAttribute("data-wa-contacto")) return;
-    if (!wa) return;
-    nodo.href = wa;
-    nodo.target = "_blank";
-    nodo.rel = "noopener";
+    const propio = String(nodo.getAttribute("data-wa") || "").trim();
+    aplicarWhatsapp(nodo, propio ? enlaceWhatsapp(propio) : wa);
   });
   const tel = enlaceTelefono();
   document.querySelectorAll("[data-tel]").forEach((nodo) => {

@@ -1,3 +1,10 @@
+const NUMERO_WHATSAPP = "573118162854";
+
+function telefonoVisible(numero) {
+  const local = numero.startsWith("57") && numero.length === 12 ? numero.slice(2) : numero;
+  return local.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3");
+}
+
 export const negocio = {
   nombre: "La Mansión Barber Shop",
   nombreCorto: "La Mansión",
@@ -5,8 +12,8 @@ export const negocio = {
   eslogan: "Barber Shop · Funza",
   enPreparacion: false,
   indexable: false,
-  whatsapp: "573118162854",
-  telefono: "311 816 2854",
+  whatsapp: NUMERO_WHATSAPP,
+  telefono: telefonoVisible(NUMERO_WHATSAPP),
   direccion: "Vía Funza - Siberia, Km 3.8, La Isla, Ceuta, Funza, Cundinamarca, Colombia",
   direccionCorta: "Vía Funza - Siberia, Km 3.8 · La Isla, Ceuta",
   instagram: "lamansionbarbers",
@@ -14,7 +21,7 @@ export const negocio = {
   mapaConsulta: "Vía Funza Siberia Km 3.8, La Isla, Ceuta, Funza, Cundinamarca, Colombia",
   unaSede: true,
   mostrarWhatsappContacto: true,
-  mensajeWhatsApp: "Hola, quiero agendar una cita en La Mansión Barber Shop.",
+  mensajeWhatsApp: "Hola, quiero información sobre La Mansión Barber Shop.",
   mensajeProductos: "Hola, quiero preguntar por los productos de La Mansión Barber Shop.",
   supabase: { url: "https://bkzyaiamlhlbsggsoijk.supabase.co", key: "sb_publishable__BC2lWanJOLLb4gdVcEpKw_4SQO9w6A" },
   sitio: "https://mateoisaza2299-star.github.io/La-mansion-barbers/",
@@ -198,7 +205,7 @@ export function reservasEnLinea() {
 export function enlaceWhatsapp(texto) {
   const numero = String(negocio.whatsapp || "").replace(/\D/g, "");
   if (!numero) return "";
-  const mensaje = texto || negocio.mensajeWhatsApp || negocio.mensajeReserva || `Hola, quiero agendar una cita en ${negocio.nombre}.`;
+  const mensaje = texto || negocio.mensajeWhatsApp || "Hola, quiero información sobre La Mansión Barber Shop.";
   return `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
 }
 
