@@ -19,7 +19,11 @@
     "variantes": [
       {
         "ancho": 480,
-        "peso": 29222
+        "peso": 30656
+      },
+      {
+        "ancho": 671,
+        "peso": 45988
       }
     ],
     "huella": "e122e8d6ca45b93e"
@@ -44,7 +48,11 @@
     "variantes": [
       {
         "ancho": 480,
-        "peso": 23798
+        "peso": 25732
+      },
+      {
+        "ancho": 666,
+        "peso": 39976
       }
     ],
     "huella": "f93913d0bb390c31"
@@ -69,7 +77,11 @@
     "variantes": [
       {
         "ancho": 480,
-        "peso": 17044
+        "peso": 18466
+      },
+      {
+        "ancho": 709,
+        "peso": 31466
       }
     ],
     "huella": "50028fa87f959df9"
@@ -94,7 +106,7 @@
     "variantes": [
       {
         "ancho": 331,
-        "peso": 9172
+        "peso": 9844
       }
     ],
     "huella": "6629ae5eb39b1d0a"
@@ -119,7 +131,11 @@
     "variantes": [
       {
         "ancho": 480,
-        "peso": 22026
+        "peso": 23200
+      },
+      {
+        "ancho": 670,
+        "peso": 35992
       }
     ],
     "huella": "ebf18594fccdd271"
@@ -144,7 +160,7 @@
     "variantes": [
       {
         "ancho": 337,
-        "peso": 16096
+        "peso": 16698
       }
     ],
     "huella": "8429bbfc9acd247d"
@@ -169,7 +185,7 @@
     "variantes": [
       {
         "ancho": 311,
-        "peso": 11406
+        "peso": 12084
       }
     ],
     "huella": "bea926bfe88eb691"
@@ -194,7 +210,7 @@
     "variantes": [
       {
         "ancho": 335,
-        "peso": 11664
+        "peso": 12444
       }
     ],
     "huella": "fc3e1fb5b12a3d56"
@@ -219,7 +235,11 @@
     "variantes": [
       {
         "ancho": 480,
-        "peso": 18808
+        "peso": 20148
+      },
+      {
+        "ancho": 651,
+        "peso": 29594
       }
     ],
     "huella": "0054463c6026eac4"
@@ -244,11 +264,11 @@
     "variantes": [
       {
         "ancho": 480,
-        "peso": 25462
+        "peso": 27020
       },
       {
         "ancho": 800,
-        "peso": 47104
+        "peso": 50410
       }
     ],
     "huella": "99aafe3d09b55ad8"
@@ -272,8 +292,8 @@
     "destacada": true,
     "variantes": [
       {
-        "ancho": 480,
-        "peso": 26006
+        "ancho": 507,
+        "peso": 29970
       }
     ],
     "huella": "5eaf9ae764a96a0b"
@@ -298,7 +318,11 @@
     "variantes": [
       {
         "ancho": 480,
-        "peso": 43690
+        "peso": 46068
+      },
+      {
+        "ancho": 781,
+        "peso": 84982
       }
     ],
     "huella": "119e329024c567d7"
@@ -323,7 +347,11 @@
     "variantes": [
       {
         "ancho": 480,
-        "peso": 28402
+        "peso": 29668
+      },
+      {
+        "ancho": 685,
+        "peso": 45456
       }
     ],
     "huella": "3d08907d09ff8f80"
@@ -348,7 +376,11 @@
     "variantes": [
       {
         "ancho": 480,
-        "peso": 34272
+        "peso": 36252
+      },
+      {
+        "ancho": 691,
+        "peso": 59214
       }
     ],
     "huella": "ee742396e6f1d9d8"

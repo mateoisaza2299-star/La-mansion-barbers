@@ -1,45 +1,18 @@
-const CACHE = "site-shell-v18";
-
-const ADMIN_PAGES = ["admin.html", "admin-login.html"];
-const PUBLIC_PAGES = ["index.html", "nosotros.html", "historia.html", "politica-de-datos.html", "privacidad.html", "tratamiento-datos.html", "404.html", "cancelar/index.html"];
-const ADMIN_JS = ["js/admin.js", "js/admin-login.js", "js/admin-cliente.js", "js/mensajes.js", "js/pwa.js"];
-const PUBLIC_JS = [
-  "js/absoluto.js",
-  "js/arranque.js",
-  "js/pagina.js",
-  "js/carrusel.js",
-  "js/reservas.js",
-  "js/trabajo.js",
-  "js/cancelar.js"
-];
+const CACHE = "site-shell-v21";
 
 const SHELL = [
-  ...ADMIN_PAGES,
-  ...PUBLIC_PAGES,
-  "css/admin.css",
+  "index.html",
   "css/styles.css",
-  ...ADMIN_JS,
-  ...PUBLIC_JS,
-  "js/config.js",
-  "js/servicios.js",
-  "js/supabase.js",
-  "js/admin-cliente.js",
-  "js/reservas.js",
-  "js/errores.js",
-  "js/tiempo.js",
-  "js/dom.js",
-  "js/vendor/supabase.js",
-  "assets/icons/icon-192.png",
-  "assets/icons/icon-512.png",
-  "assets/icons/icon-maskable-512.png",
-  "assets/icons/apple-touch-icon.png"
+  "js/absoluto.js",
+  "js/arranque.js",
+  "js/carga.js",
+  "assets/fonts/cinzel-600.woff2",
+  "assets/fonts/outfit-400.woff2",
+  "assets/logo/logo-256.webp",
+  "assets/img/fotos/interior-sala-blur.webp"
 ];
 
 const SHELL_SET = new Set(SHELL);
-const ADMIN_PAGE_SET = new Set(ADMIN_PAGES);
-const PUBLIC_PAGE_SET = new Set(PUBLIC_PAGES);
-const ADMIN_JS_SET = new Set(ADMIN_JS);
-const PUBLIC_JS_SET = new Set(PUBLIC_JS);
 
 const relativePath = (url) => {
   const scope = new URL(self.registration.scope);
@@ -47,11 +20,15 @@ const relativePath = (url) => {
   let path = url.pathname.slice(scope.pathname.length);
   if (path.startsWith("/")) path = path.slice(1);
   try {
-    return decodeURIComponent(path);
+    path = decodeURIComponent(path);
   } catch (error) {
     return "";
   }
+  if (path === "" || path === "/") return "index.html";
+  return path;
 };
+
+const isAdmin = (path) => /^(admin\.html|admin-login\.html|css\/admin\.css|js\/admin(?:\.js|-login\.js|-cliente\.js))/ .test(path);
 
 const leaveAlone = (url, request) => {
   if (request.method !== "GET") return true;
@@ -63,67 +40,36 @@ const leaveAlone = (url, request) => {
   return false;
 };
 
-const laneOf = (request) => {
-  const path = relativePath(new URL(request.url));
-  if (!SHELL_SET.has(path)) return "";
-  if (request.mode === "navigate" || request.destination === "document") {
-    if (ADMIN_PAGE_SET.has(path)) return "admin";
-    if (PUBLIC_PAGE_SET.has(path)) return "public";
-    return "";
-  }
-  if (!request.referrer) return "";
-  let referrer;
-  try {
-    referrer = new URL(request.referrer);
-  } catch (error) {
-    return "";
-  }
-  const ref = relativePath(referrer);
-  if (ADMIN_PAGE_SET.has(ref) || ADMIN_JS_SET.has(ref)) return "admin";
-  if (PUBLIC_PAGE_SET.has(ref) || PUBLIC_JS_SET.has(ref)) return "public";
-  if (SHELL_SET.has(ref) && ref.startsWith("js/")) return "public";
-  return "";
-};
+const cacheRequest = (path) => new Request(new URL(path, self.registration.scope).href);
 
-const cleanRequest = (path) => new Request(new URL(path, self.registration.scope).href);
-
-const canStore = (request, response) => {
+const canStore = (response) => {
   if (!response || !response.ok || response.type !== "basic" || response.redirected) return false;
-  const url = new URL(request.url);
-  if (leaveAlone(url, request) || !SHELL_SET.has(relativePath(url))) return false;
   const type = (response.headers.get("content-type") || "").toLowerCase();
-  if (type.includes("json")) return false;
-  return type.includes("text/html") || type.includes("text/css") || type.includes("javascript") || type.includes("image/png");
+  if (type.includes("text/html") || type.includes("text/css") || type.includes("javascript") || type.includes("json") || type.includes("image/") || type.includes("font/") || type.includes("application/manifest")) return true;
+  return false;
 };
 
-const offlinePage = (title, message) => new Response(
-  "<!DOCTYPE html><html lang=\"es-CO\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"theme-color\" content=\"#0A0A0A\"><meta name=\"color-scheme\" content=\"dark\"><title>" + title + "</title><link rel=\"stylesheet\" href=\"css/styles.css\"></head><body class=\"offline-page\"><p>" + message + "</p></body></html>",
+const offlinePage = () => new Response(
+  "<!DOCTYPE html><html lang=\"es-CO\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"theme-color\" content=\"#0A0A0A\"><title>Sin conexión</title></head><body style=\"margin:0;background:#0A0A0A;color:#F5F1E8;font-family:system-ui,sans-serif\"><p style=\"padding:2rem\">Sin conexión</p></body></html>",
   { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } }
 );
 
-const offlineAdmin = () => offlinePage("Panel", "Sin conexión. Conéctate para ver tus citas.");
-
-const offlinePublic = () => offlinePage("Sin conexión", "Sin conexión");
-
-const networkFirst = async (request, lane) => {
-  const path = relativePath(new URL(request.url));
+const staleWhileRevalidate = async (request, path) => {
   const cache = await caches.open(CACHE);
-  try {
-    const response = await fetch(request.url, {
-      cache: "no-store",
-      credentials: "same-origin",
-      redirect: "follow"
-    });
-    if (canStore(request, response)) await cache.put(cleanRequest(path), response.clone());
+  const key = cacheRequest(SHELL_SET.has(path) ? path : path);
+  const cached = await cache.match(key) || await cache.match(request);
+  const refresh = fetch(request).then((response) => {
+    if (canStore(response)) cache.put(key, response.clone());
     return response;
-  } catch (error) {
-    const cached = await cache.match(cleanRequest(path));
-    if (cached) return cached;
-    if (request.mode === "navigate" || request.destination === "document") {
-      return lane === "admin" ? offlineAdmin() : offlinePublic();
-    }
-    throw error;
+  }).catch(() => null);
+  if (cached) {
+    refresh.catch(() => {});
+    return cached;
   }
+  const fresh = await refresh;
+  if (fresh) return fresh;
+  if (request.mode === "navigate" || request.destination === "document") return offlinePage();
+  return new Response("", { status: 504, statusText: "Offline" });
 };
 
 self.addEventListener("install", (event) => {
@@ -151,7 +97,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (leaveAlone(url, request)) return;
-  const lane = laneOf(request);
-  if (!lane) return;
-  event.respondWith(networkFirst(request, lane));
+  const path = relativePath(url);
+  if (!path || isAdmin(path)) return;
+  event.respondWith(staleWhileRevalidate(request, path));
 });
