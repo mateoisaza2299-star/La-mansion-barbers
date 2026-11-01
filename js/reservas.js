@@ -36,7 +36,8 @@ const estado = {
   lista: false,
   empujado: false,
   claveServicio: "",
-  nombreServicio: ""
+  nombreServicio: "",
+  autoriza: false
 };
 
 const movil = () => window.matchMedia("(max-width: 767px)").matches;
@@ -994,7 +995,7 @@ function pintarDatos(host) {
   check.type = "checkbox";
   check.name = "autoriza";
   check.required = true;
-  check.checked = false;
+  check.checked = estado.autoriza === true;
   const labelCheck = nodo("label", "reserva-check casilla");
   const politica = nodo("a", null, "Política de tratamiento de datos");
   politica.href = "politica-de-datos.html";
@@ -1012,9 +1013,14 @@ function pintarDatos(host) {
   const enviar = nodo("button", "btn", "Confirmar reserva");
   enviar.type = "submit";
   enviar.dataset.reservaEnviar = "1";
-  enviar.disabled = true;
+  enviar.disabled = !check.checked;
   check.addEventListener("change", () => {
+    estado.autoriza = check.checked;
     enviar.disabled = !check.checked;
+    if (check.checked) {
+      error.hidden = true;
+      error.textContent = "";
+    }
   });
   campos.append(trampaCaja, labelNombre, labelCel, labelNotas, labelCheck, menor, error, enviar);
   formulario.noValidate = true;
@@ -1061,7 +1067,10 @@ async function enviarReserva(evento, formulario, boton, error) {
     error.textContent = "Revisa tu celular: 10 dígitos y empieza por 3.";
     return;
   }
-  if (!datos.get("autoriza")) {
+  const casilla = formulario.querySelector('input[name="autoriza"]');
+  const autoriza = Boolean(casilla && casilla.checked);
+  estado.autoriza = autoriza;
+  if (!autoriza) {
     error.hidden = false;
     error.textContent = "Debes aceptar el tratamiento de datos para reservar.";
     boton.disabled = true;
@@ -1085,14 +1094,13 @@ async function enviarReserva(evento, formulario, boton, error) {
       p_nombre: nombre,
       p_telefono: cel.digitos,
       p_notas: String(datos.get("notas") || "").slice(0, 200),
-      p_autoriza: true,
-      p_trampa: ""
+      p_autoriza: autoriza
     };
     let respuesta = await estado.supabase.rpc("crear_reserva", payload);
     const avisoRpc = String((respuesta.error && (respuesta.error.message || respuesta.error.details)) || "");
-    if (respuesta.error && /p_trampa|p_autoriza|schema cache/i.test(avisoRpc)) {
+    if (respuesta.error && /p_trampa|schema cache/i.test(avisoRpc)) {
       delete payload.p_trampa;
-      delete payload.p_autoriza;
+      payload.p_autoriza = Boolean(casilla && casilla.checked);
       respuesta = await estado.supabase.rpc("crear_reserva", payload);
     }
     const data = respuesta.data;
@@ -1106,7 +1114,7 @@ async function enviarReserva(evento, formulario, boton, error) {
   } catch (fallo) {
     error.hidden = false;
     error.textContent = traducir(fallo);
-    boton.disabled = !formulario.elements.autoriza.checked;
+    boton.disabled = !(casilla && casilla.checked);
     boton.textContent = "Confirmar reserva";
   }
 }
