@@ -54,7 +54,6 @@ const estado = {
   fichas: new Map(),
   recien: new Map(),
   nuevas: 0,
-  serviciosTab: "activos",
   ajustesFoto: "",
   horarioFoto: "",
   horarioGuardando: false,
@@ -1509,72 +1508,109 @@ function pintarBloqueos() {
   });
 }
 
+function formularioServicio() {
+  return document.querySelector("[data-servicio-form]");
+}
+
+function mostrarFormularioServicio(visible) {
+  const form = formularioServicio();
+  if (form) form.hidden = !visible;
+  document.querySelectorAll("[data-servicio-nuevo]").forEach((boton) => {
+    boton.hidden = visible;
+  });
+}
+
+function abrirServicio(servicio) {
+  const form = formularioServicio();
+  if (!form) return;
+  fail("");
+  form.reset();
+  form.elements.id.value = "";
+  if (servicio) {
+    form.elements.id.value = servicio.id;
+    form.elements.categoria.value = servicio.categoria || "";
+    form.elements.nombre.value = servicio.nombre || "";
+    form.elements.descripcion.value = servicio.descripcion || "";
+    form.elements.precio.value = servicio.precio == null ? "" : servicio.precio;
+    form.elements.duracion_min.value = servicio.duracion_min || 30;
+    form.elements.cuenta_fidelidad.checked = Boolean(servicio.cuenta_fidelidad);
+    form.elements.orden.value = servicio.orden || 0;
+    form.elements.activo.checked = servicio.activo !== false;
+  }
+  mostrarFormularioServicio(true);
+  if (form.elements.nombre) form.elements.nombre.focus();
+  form.scrollIntoView({ block: "start", inline: "nearest" });
+}
+
+function cerrarServicio() {
+  const form = formularioServicio();
+  if (!form) return;
+  form.reset();
+  form.elements.id.value = "";
+  mostrarFormularioServicio(false);
+  fail("");
+}
+
+async function cambiarActivo(servicio) {
+  if (!servicio || servicio.guardando) return;
+  const anterior = servicio.activo !== false;
+  servicio.guardando = true;
+  servicio.activo = !anterior;
+  pintarServicios();
+  const { error } = await estado.supabase.from("servicios").update({ activo: servicio.activo }).eq("id", servicio.id);
+  servicio.guardando = false;
+  if (error) {
+    servicio.activo = anterior;
+    pintarServicios();
+    fail("No se pudo actualizar el servicio.");
+    const caja = document.querySelector("[data-pa-error]");
+    if (caja) caja.scrollIntoView({ block: "nearest" });
+    return;
+  }
+  fail("");
+  avisoServicios();
+  pintarServicios();
+}
+
 function pintarServicios() {
   const host = document.querySelector("[data-servicios]");
   if (!host) return;
   host.replaceChildren();
-  const activos = estado.serviciosTab !== "inactivos";
-  const ordenados = estado.servicios.filter((item) => (item.activo !== false) === activos).sort((a, b) => (a.orden || 0) - (b.orden || 0));
+  const ordenados = estado.servicios.slice().sort((a, b) => (a.orden || 0) - (b.orden || 0));
   if (!ordenados.length) {
     const vacio = nodo("div", "vacio");
-    vacio.appendChild(nodo("p", null, activos ? "Aún no hay servicios activos. Completa el formulario y guárdalo." : "No hay servicios inactivos. Los que desactives aparecen aquí para volver a activarlos."));
-    if (activos) {
-      const ir = nodo("button", "btn", "Crear servicio");
-      ir.type = "button";
-      ir.addEventListener("click", () => {
-        const campo = document.querySelector("[data-servicio-form] [name=nombre]");
-        if (campo) campo.focus();
-      });
-      vacio.appendChild(ir);
-    }
+    vacio.appendChild(nodo("p", null, "Aún no hay servicios. Completa el formulario y guárdalo."));
+    const ir = nodo("button", "btn", "Crear servicio");
+    ir.type = "button";
+    ir.dataset.servicioNuevo = "1";
+    ir.hidden = Boolean(formularioServicio() && !formularioServicio().hidden);
+    ir.addEventListener("click", () => abrirServicio(null));
+    vacio.appendChild(ir);
     host.appendChild(vacio);
     return;
   }
-  ordenados.forEach((servicio, indice) => {
-    const fila = nodo("article", "pa-cita");
+  ordenados.forEach((servicio) => {
+    const activo = servicio.activo !== false;
+    const fila = nodo("article", activo ? "pa-cita" : "pa-cita is-off");
     const precio = servicio.precio == null || servicio.precio === "" ? "Sin precio" : formatoPrecio(servicio.precio);
     fila.append(
       nodo("h3", null, servicio.nombre),
-      nodo("p", null, servicio.categoria + " · " + servicio.duracion_min + " min · " + precio),
-      nodo("p", null, servicio.activo ? "Activo" : "Inactivo")
+      nodo("p", "pa-meta", servicio.categoria + " · " + servicio.duracion_min + " min · " + precio),
+      nodo("p", "pa-estado", activo ? "Activo" : "Deshabilitado")
     );
-    const subir = nodo("button", "btn btn-sec", "Subir");
-    subir.type = "button";
-    subir.disabled = indice === 0;
-    const bajar = nodo("button", "btn btn-sec", "Bajar");
-    bajar.type = "button";
-    bajar.disabled = indice === ordenados.length - 1;
-    subir.addEventListener("click", () => moverServicio(ordenados, indice, -1));
-    bajar.addEventListener("click", () => moverServicio(ordenados, indice, 1));
+    const acciones = nodo("div", "cita-acciones");
     const editar = nodo("button", "btn btn-sec", "Editar");
     editar.type = "button";
-    editar.addEventListener("click", () => {
-      const form = document.querySelector("[data-servicio-form]");
-      form.elements.id.value = servicio.id;
-      form.elements.categoria.value = servicio.categoria || "";
-      form.elements.nombre.value = servicio.nombre || "";
-      form.elements.descripcion.value = servicio.descripcion || "";
-      form.elements.precio.value = servicio.precio == null ? "" : servicio.precio;
-      form.elements.duracion_min.value = servicio.duracion_min || 30;
-      form.elements.cuenta_fidelidad.checked = Boolean(servicio.cuenta_fidelidad);
-      form.elements.orden.value = servicio.orden || 0;
-      form.elements.activo.checked = servicio.activo !== false;
-    });
-    fila.append(subir, bajar, editar);
+    editar.disabled = Boolean(servicio.guardando);
+    editar.addEventListener("click", () => abrirServicio(servicio));
+    const alternar = nodo("button", "btn btn-sec", activo ? "Deshabilitar" : "Habilitar");
+    alternar.type = "button";
+    alternar.disabled = Boolean(servicio.guardando);
+    alternar.addEventListener("click", () => cambiarActivo(servicio));
+    acciones.append(editar, alternar);
+    fila.appendChild(acciones);
     host.appendChild(fila);
   });
-}
-
-async function moverServicio(lista, indice, delta) {
-  const actual = lista[indice];
-  const vecino = lista[indice + delta];
-  if (!actual || !vecino) return;
-  const ordenActual = actual.orden;
-  actual.orden = vecino.orden;
-  vecino.orden = ordenActual;
-  await estado.supabase.from("servicios").update({ orden: actual.orden }).eq("id", actual.id);
-  await estado.supabase.from("servicios").update({ orden: vecino.orden }).eq("id", vecino.id);
-  pintarServicios();
 }
 
 async function buscarFidelidad(evento) {
@@ -1850,15 +1886,11 @@ function enlazar() {
       boton.setAttribute("aria-expanded", panel.hidden ? "false" : "true");
     });
   });
-  document.querySelectorAll("[data-servicios-tab]").forEach((boton) => {
-    boton.addEventListener("click", () => {
-      estado.serviciosTab = boton.dataset.serviciosTab;
-      document.querySelectorAll("[data-servicios-tab]").forEach((item) => {
-        item.setAttribute("aria-pressed", item === boton ? "true" : "false");
-      });
-      pintarServicios();
-    });
+  document.querySelectorAll("[data-servicio-nuevo]").forEach((boton) => {
+    boton.addEventListener("click", () => abrirServicio(null));
   });
+  const cancelarServicio = document.querySelector("[data-servicio-cancelar]");
+  if (cancelarServicio) cancelarServicio.addEventListener("click", cerrarServicio);
   const agendaSede = document.querySelector("[data-agenda-sede]");
   if (agendaSede) agendaSede.addEventListener("change", (evento) => {
     estado.agendaSede = evento.target.value;
@@ -2113,7 +2145,9 @@ async function guardarServicio(evento) {
     const actual = estado.servicios.find((item) => item.id === id);
     if (actual) Object.assign(actual, fila);
   } else if (data && data[0]) estado.servicios.push(data[0]);
+  fail("");
   avisoServicios();
+  cerrarServicio();
   pintarServicios();
 }
 

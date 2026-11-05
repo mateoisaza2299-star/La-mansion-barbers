@@ -154,12 +154,9 @@
             <h2>Servicios</h2>
             <p>Lo que el cliente puede reservar y lo que suma un sello.</p>
           </div>
+          <button class="btn" type="button" data-servicio-nuevo>Crear servicio</button>
         </header>
-        <div class="choice" role="group" aria-label="Servicios activos o inactivos">
-          <button type="button" data-servicios-tab="activos" aria-pressed="true">Activos</button>
-          <button type="button" data-servicios-tab="inactivos" aria-pressed="false">Inactivos</button>
-        </div>
-        <form class="pa-form" data-servicio-form>
+        <form class="pa-form" data-servicio-form hidden>
           <input type="hidden" name="id">
           <label class="campo">Categoría <input name="categoria" required maxlength="60"></label>
           <label class="campo">Nombre <input name="nombre" required maxlength="80"></label>
@@ -169,7 +166,10 @@
           <label class="reserva-check casilla"><input name="cuenta_fidelidad" type="checkbox"><svg class="casilla-svg" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5 9 15.5 17 6.5"></path></svg><span>Cuenta para fidelidad</span></label>
           <label class="campo">Orden <input name="orden" type="number" min="0" value="1"></label>
           <label class="reserva-check casilla"><input name="activo" type="checkbox"><svg class="casilla-svg" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5 9 15.5 17 6.5"></path></svg><span>Activo</span></label>
-          <button class="btn" type="submit">Guardar servicio</button>
+          <div class="cita-acciones">
+            <button class="btn" type="submit">Guardar servicio</button>
+            <button class="btn btn-sec" type="button" data-servicio-cancelar>Cancelar</button>
+          </div>
         </form>
         <div data-servicios></div>
       </section>
@@ -425,6 +425,6 @@
       <button class="btn" type="button" data-install-close>Listo</button>
     </div>
   </div>
-  <script type="module" src="js/admin.js?v=15"></script>
+  <script type="module" src="js/admin.js?v=16"></script>
 </body>
 </html>
