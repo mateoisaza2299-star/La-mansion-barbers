@@ -578,33 +578,16 @@ const refrescarNosotros = (fotos) => {
   });
 };
 
-const TEXTO_VIP = "Incluye todos los servicios + mascarilla LED siete colores";
-
 const servicioNodo = (servicio) => {
   const vip = esServicioVip(servicio);
   const article = document.createElement("article");
-  article.className = "servicio-card" + (vip ? " is-vip" : "");
+  article.className = "servicio-item" + (vip ? " is-vip" : "");
   const id = "srv-" + (servicio.id || slug(servicio.nombre || "servicio"));
   const boton = document.createElement("button");
   boton.type = "button";
   boton.className = "servicio-cabeza";
   boton.setAttribute("aria-expanded", "false");
   boton.setAttribute("aria-controls", id);
-  if (servicio.foto) {
-    const img = document.createElement("img");
-    img.src = String(servicio.foto);
-    img.alt = "";
-    img.loading = "lazy";
-    img.decoding = "async";
-    img.width = 480;
-    img.height = 480;
-    boton.appendChild(img);
-  } else {
-    const hueco = document.createElement("span");
-    hueco.className = "servicio-foto-vacia";
-    hueco.setAttribute("aria-hidden", "true");
-    boton.appendChild(hueco);
-  }
   const copia = document.createElement("span");
   copia.className = "servicio-copia";
   if (vip) {
@@ -615,18 +598,27 @@ const servicioNodo = (servicio) => {
   }
   const titulo = document.createElement("strong");
   titulo.textContent = servicio.nombre || "";
-  const meta = document.createElement("span");
-  meta.className = "servicio-meta";
-  const partes = [formatPrecio(servicio.precio), formatDuracion(servicio.duracion_min)].filter(Boolean);
-  meta.textContent = partes.join(" · ");
-  copia.append(titulo, meta);
-  boton.appendChild(copia);
+  const duracion = document.createElement("span");
+  duracion.className = "servicio-duracion";
+  duracion.textContent = formatDuracion(servicio.duracion_min);
+  copia.append(titulo, duracion);
+  const precio = document.createElement("span");
+  precio.className = "servicio-precio";
+  precio.textContent = formatPrecio(servicio.precio);
+  const chevron = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  chevron.setAttribute("class", "icono servicio-chevron");
+  chevron.setAttribute("viewBox", "0 0 24 24");
+  chevron.setAttribute("aria-hidden", "true");
+  const trazo = document.createElementNS(chevron.namespaceURI, "path");
+  trazo.setAttribute("d", "M6 9l6 6 6-6");
+  chevron.appendChild(trazo);
+  boton.append(copia, precio, chevron);
   const panel = document.createElement("div");
   panel.className = "servicio-panel";
   panel.id = id;
   panel.inert = true;
-  const texto = document.createElement("p");
-  texto.textContent = vip ? TEXTO_VIP : (servicio.descripcion || "");
+  const caja = document.createElement("div");
+  caja.className = "servicio-panel-caja";
   const reservar = document.createElement("button");
   reservar.type = "button";
   reservar.className = "btn";
@@ -634,14 +626,20 @@ const servicioNodo = (servicio) => {
   reservar.dataset.reservar = "1";
   reservar.dataset.servicio = servicio.id || "";
   reservar.dataset.servicioNombre = servicio.nombre || "";
-  panel.append(texto, reservar);
+  if (servicio.descripcion) {
+    const texto = document.createElement("p");
+    texto.textContent = servicio.descripcion;
+    caja.appendChild(texto);
+  }
+  caja.appendChild(reservar);
+  panel.appendChild(caja);
   boton.addEventListener("click", () => {
     const abierto = boton.getAttribute("aria-expanded") === "true";
-    document.querySelectorAll(".servicio-card").forEach((card) => {
-      const cabeza = card.querySelector(".servicio-cabeza");
-      const cuerpo = card.querySelector(".servicio-panel");
-      const activo = card === article && !abierto;
-      card.classList.toggle("is-abierta", activo);
+    document.querySelectorAll(".servicio-item").forEach((fila) => {
+      const cabeza = fila.querySelector(".servicio-cabeza");
+      const cuerpo = fila.querySelector(".servicio-panel");
+      const activo = fila === article && !abierto;
+      fila.classList.toggle("is-abierta", activo);
       if (cabeza) cabeza.setAttribute("aria-expanded", activo ? "true" : "false");
       if (cuerpo) cuerpo.inert = !activo;
     });
@@ -668,7 +666,19 @@ const cargarServiciosMenu = async () => {
   }
 };
 
+let serviciosTeclado = false;
+
 const prepararServicios = async () => {
+  if (!serviciosTeclado) {
+    serviciosTeclado = true;
+    document.addEventListener("keydown", (evento) => {
+      if (evento.key !== "Escape") return;
+      const hoja = document.querySelector("[data-reserva-pasos]");
+      if (hoja && !hoja.hidden) return;
+      const cabeza = document.querySelector(".servicio-item.is-abierta .servicio-cabeza");
+      if (cabeza) cabeza.click();
+    });
+  }
   const carta = document.querySelector("[data-carta]");
   const estatica = document.querySelector("[data-carta-estatica]");
   const lista = carta && carta.querySelector("[data-servicios-lista]");
@@ -692,63 +702,12 @@ const prepararServicios = async () => {
   if (extras.length) {
     const titulo = document.createElement("h3");
     titulo.className = "adicional-titulo";
-    titulo.textContent = "Adicional";
+    titulo.textContent = "Adicionales";
     lista.appendChild(titulo);
     extras.forEach((servicio) => lista.appendChild(servicioNodo(servicio)));
   }
   if (estatica) estatica.hidden = true;
   carta.hidden = false;
-};
-
-const prepararGaleria = () => {
-  const host = document.querySelector("[data-galeria]");
-  const visor = document.querySelector("[data-visor]");
-  const foto = visor && visor.querySelector("[data-luz-img]");
-  const cerrar = visor && visor.querySelector("[data-luz-cerrar]");
-  if (!host || !visor || !foto) return;
-  const abrir = (src, alt) => {
-    foto.src = src;
-    foto.alt = alt;
-    visor.hidden = false;
-    document.body.classList.add("luz-abierta");
-    if (cerrar) cerrar.focus();
-  };
-  const ocultar = () => {
-    visor.hidden = true;
-    foto.removeAttribute("src");
-    document.body.classList.remove("luz-abierta");
-  };
-  for (let i = 1; i <= 20; i += 1) {
-    if (i === 15) continue;
-    const ruta = "img/galeria/foto-" + String(i).padStart(2, "0") + ".webp";
-    const boton = document.createElement("button");
-    boton.type = "button";
-    boton.className = "galeria-item";
-    const alt = "Trabajo de La Mansión " + String(i).padStart(2, "0");
-    boton.setAttribute("aria-label", "Ampliar " + alt);
-    const img = document.createElement("img");
-    img.src = ruta;
-    img.alt = alt;
-    img.loading = "lazy";
-    img.decoding = "async";
-    img.width = 800;
-    img.height = 800;
-    boton.appendChild(img);
-    boton.addEventListener("click", () => abrir(ruta, alt));
-    host.appendChild(boton);
-  }
-  if (cerrar) cerrar.addEventListener("click", (evento) => {
-    evento.stopPropagation();
-    ocultar();
-  });
-  visor.addEventListener("click", (evento) => {
-    if (evento.target === visor) ocultar();
-  });
-  document.addEventListener("keydown", (evento) => {
-    if (evento.key !== "Escape" || visor.hidden) return;
-    evento.stopPropagation();
-    ocultar();
-  }, true);
 };
 
 const NOMBRES_DIA = ["", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
@@ -1143,7 +1102,6 @@ const iniciar = async () => {
       mod.prepararTrabajo({ fotos, puede, marcar, crearImagen, reducir: reduce });
     }).catch(() => {});
   }
-  prepararGaleria();
   pintarHorarioPublico();
   prepararServicios().catch(() => {
     const aviso = document.querySelector("[data-carta-aviso]");

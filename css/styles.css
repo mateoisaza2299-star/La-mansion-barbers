@@ -2490,34 +2490,49 @@ select:focus,
   .casilla input:checked + .casilla-svg path { stroke-dashoffset: 0; }
 }
 
+.carta,
+.servicios-lista {
+  width: min(720px, 100%);
+  max-width: 720px;
+  margin-inline: auto;
+}
+
 .servicios-lista {
   display: grid;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
   min-width: 0;
 }
 
-.servicio-card {
+.servicio-item {
   min-width: 0;
   border: 1px solid var(--linea);
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--grafito);
   overflow: hidden;
-  transition: border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
+  transition: border-color 220ms var(--ease), background 220ms var(--ease);
 }
 
-.servicio-card.is-vip {
-  border-color: var(--oro);
-  background: linear-gradient(180deg, rgba(201, 162, 75, 0.18), var(--grafito) 46%);
-  box-shadow: 0 0 0 1px rgba(201, 162, 75, 0.35);
+.servicio-item:hover,
+.servicio-item:focus-within,
+.servicio-item:active,
+.servicio-item.is-abierta {
+  border-color: rgba(201, 162, 75, 0.72);
+}
+
+.servicio-item.is-vip {
+  border-color: rgba(201, 162, 75, 0.85);
+  background: linear-gradient(180deg, rgba(201, 162, 75, 0.16), var(--grafito) 70%);
 }
 
 .servicio-cabeza {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px 12px;
   width: 100%;
-  min-height: 92px;
-  padding: 10px;
+  min-height: 56px;
+  padding: 10px 14px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -2525,26 +2540,13 @@ select:focus,
   cursor: pointer;
 }
 
-.servicio-card.is-vip .servicio-cabeza {
-  grid-template-columns: 120px minmax(0, 1fr);
-  min-height: 120px;
-}
-
-.servicio-cabeza img,
-.servicio-foto-vacia {
-  width: 100%;
-  height: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  border-radius: 10px;
-  background: var(--grafito-2);
-}
+.servicio-item.is-vip .servicio-cabeza { min-height: 72px; }
 
 .servicio-copia {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -2552,10 +2554,30 @@ select:focus,
   font-family: var(--impacto);
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  line-height: 1.2;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
-.servicio-meta { color: var(--oro); }
+.servicio-duracion {
+  color: var(--gris);
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+
+.servicio-precio {
+  color: var(--oro);
+  font-family: var(--impacto);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.servicio-chevron {
+  width: 20px;
+  height: 20px;
+  transition: transform 220ms var(--ease);
+}
+
+.servicio-item.is-abierta .servicio-chevron { transform: rotate(180deg); }
 
 .vip-insignia,
 .adicional-etiq {
@@ -2573,101 +2595,35 @@ select:focus,
 .adicional-etiq { border: 1px solid var(--oro); color: var(--oro); }
 
 .servicio-panel {
-  max-height: 0;
-  overflow: hidden;
+  display: grid;
+  grid-template-rows: 0fr;
   opacity: 0;
-  padding: 0 12px;
-  transition: max-height 0.35s var(--ease), opacity 0.35s var(--ease), padding 0.35s var(--ease);
+  transition: grid-template-rows 220ms var(--ease), opacity 220ms var(--ease);
 }
 
-.servicio-card.is-abierta .servicio-panel {
-  max-height: 360px;
+.servicio-item.is-abierta .servicio-panel {
+  grid-template-rows: 1fr;
   opacity: 1;
-  padding: 0 12px 14px;
 }
+
+.servicio-panel-caja {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.servicio-item.is-abierta .servicio-panel-caja { padding: 0 14px 14px; }
 
 .servicio-panel p { margin: 0 0 0.8rem; color: var(--gris); }
 
 .servicio-panel .btn { min-height: 44px; }
 
 .adicional-titulo {
-  grid-column: 1 / -1;
-  margin: 0.6rem 0 0;
+  margin: 0.85rem 0 0.15rem;
   color: var(--oro);
   font-family: var(--impacto);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-
-.visita-fachada { margin: 0; min-width: 0; }
-
-.visita-fachada img {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  border-radius: var(--r-tarjeta);
-}
-
-.galeria-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.galeria-item {
-  padding: 0;
-  border: 0;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--grafito);
-  cursor: pointer;
-  min-height: 44px;
-}
-
-.galeria-item img {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  transition: transform 0.4s var(--ease);
-}
-
-.galeria-item:hover img,
-.galeria-item:focus-visible img { transform: scale(1.04); }
-
-.luz {
-  position: fixed;
-  inset: 0;
-  z-index: 120;
-  display: grid;
-  place-items: center;
-  padding: 3.4rem 1rem 1rem;
-  background: rgba(10, 10, 10, 0.9);
-}
-
-.luz img {
-  width: auto;
-  max-width: min(960px, 100%);
-  max-height: calc(100svh - 5rem);
-  object-fit: contain;
-  border-radius: 12px;
-}
-
-.luz-cerrar {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--oro);
-  border-radius: 8px;
-  background: var(--negro);
-  color: var(--hueso);
-  font-size: 1.7rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-body.luz-abierta { overflow: hidden; }
 
 .hora-duracion,
 .reserva-elegido { margin: 0.2rem 0 0.6rem; color: var(--gris); }
@@ -2691,11 +2647,11 @@ body.luz-abierta { overflow: hidden; }
 }
 
 @media (min-width: 800px) {
-  .servicios-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .servicio-card.is-vip { grid-column: 1 / -1; }
-  .servicio-card.is-vip .servicio-cabeza { grid-template-columns: 180px minmax(0, 1fr); min-height: 180px; }
-  .galeria-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .visita-fachada { grid-column: 1 / -1; }
+  .carta {
+    display: block;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .servicios-lista { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 430px) {
@@ -2707,4 +2663,10 @@ body.luz-abierta { overflow: hidden; }
   .nav-panel-link,
   .nav-toggle,
   .btn { min-height: 44px; }
+  .servicio-cabeza { min-height: 56px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .servicio-panel,
+  .servicio-chevron { transition: none; }
 }
