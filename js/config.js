@@ -10,7 +10,7 @@ export const negocio = {
   nombre: "La Mansión Barber Shop",
   nombreCorto: "La Mansión",
   ciudad: "Mosquera, Cundinamarca",
-  eslogan: "Mansion Barber Shop / Mosquera",
+  eslogan: "La Mansion Barber Shop / Mosquera",
   enPreparacion: false,
   indexable: false,
   whatsapp: NUMERO_WHATSAPP,
@@ -94,7 +94,7 @@ export const negocio = {
     { pregunta: "¿Cuál es el horario?", respuesta: "" }
   ],
   textos: {
-    heroEtiqueta: "Mansion Barber Shop / Mosquera",
+    heroEtiqueta: "La Mansion Barber Shop / Mosquera",
     heroAntes: "¡Los verdaderos ",
     heroPalabra: "HOMBRES",
     heroDespues: " van a la barbería!",
