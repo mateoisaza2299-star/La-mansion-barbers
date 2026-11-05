@@ -14,8 +14,7 @@ function regla(texto, id) {
 const GRUPOS = [
   { id: "todo", texto: "Todo", vale: () => true },
   { id: "cortes", texto: "Cortes", vale: (foto) => foto.categoria === "corte" },
-  { id: "local", texto: "El local", vale: (foto) => ["ambiente", "interior", "fachada", "equipo"].includes(foto.categoria) },
-  { id: "productos", texto: "Productos", vale: (foto) => foto.categoria === "producto" }
+  { id: "local", texto: "El local", vale: (foto) => ["ambiente", "interior", "fachada", "equipo"].includes(foto.categoria) }
 ];
 
 function nodo(tag, clase, texto) {
@@ -52,7 +51,7 @@ export function prepararTrabajo({ fotos, puede, marcar, crearImagen, reducir }) 
   if (!seccion) return;
   const utiles = (Array.isArray(fotos) ? fotos : []).filter((foto) => (
     foto &&
-    ["corte", "ambiente", "interior", "fachada", "producto", "equipo"].includes(foto.categoria) &&
+    ["corte", "ambiente", "interior", "fachada", "equipo"].includes(foto.categoria) &&
     !String(foto.id || "").startsWith("nosotros-") &&
     puede(foto)
   ));

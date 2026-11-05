@@ -894,6 +894,122 @@ const prepararFaq = () => {
   });
 };
 
+const prepararTira = () => {
+  const tira = document.querySelector("[data-tira]");
+  const pista = document.querySelector("[data-tira-pista]");
+  const puntos = document.querySelector("[data-tira-puntos]");
+  if (!tira || !pista || !puntos) return;
+  const rutas = ["img/galeria/fachada.webp"];
+  for (let i = 1; i <= 20; i += 1) {
+    if (i === 15) continue;
+    rutas.push("img/galeria/foto-" + String(i).padStart(2, "0") + ".webp");
+  }
+  const imagenes = [];
+  const botones = [];
+  let actual = 0;
+  let timer = 0;
+  let sobre = false;
+  const cargar = (indice) => {
+    const img = imagenes[indice];
+    if (!img || img.getAttribute("src")) return;
+    img.src = img.dataset.ruta;
+  };
+  const mostrar = (indice) => {
+    const total = imagenes.length;
+    if (!total) return;
+    actual = (indice + total) % total;
+    imagenes.forEach((img, posicion) => {
+      const activo = posicion === actual;
+      img.classList.toggle("is-on", activo);
+      img.setAttribute("aria-hidden", activo ? "false" : "true");
+    });
+    botones.forEach((boton, posicion) => {
+      boton.setAttribute("aria-current", posicion === actual ? "true" : "false");
+    });
+    cargar(actual);
+    cargar((actual + 1) % total);
+  };
+  const parar = () => {
+    window.clearInterval(timer);
+    timer = 0;
+  };
+  const seguir = () => {
+    parar();
+    if (reduce || document.hidden || sobre || imagenes.length < 2) return;
+    timer = window.setInterval(() => mostrar(actual + 1), 2000);
+  };
+  rutas.forEach((ruta, indice) => {
+    const img = document.createElement("img");
+    img.alt = "Trabajo en La Mansion Barber Shop";
+    img.width = 800;
+    img.height = 1000;
+    img.decoding = "async";
+    img.loading = indice < 2 ? "eager" : "lazy";
+    img.dataset.ruta = ruta;
+    img.setAttribute("aria-hidden", "true");
+    img.addEventListener("error", () => {
+      const pos = imagenes.indexOf(img);
+      if (pos < 0) return;
+      img.remove();
+      imagenes.splice(pos, 1);
+      const boton = botones[pos];
+      if (boton) boton.remove();
+      botones.splice(pos, 1);
+      if (!imagenes.length) {
+        const seccion = tira.closest(".tira-seccion");
+        if (seccion) seccion.hidden = true;
+        parar();
+        return;
+      }
+      mostrar(Math.min(actual, imagenes.length - 1));
+    });
+    pista.appendChild(img);
+    imagenes.push(img);
+    const boton = document.createElement("button");
+    boton.type = "button";
+    boton.className = "tira-punto";
+    boton.setAttribute("aria-label", "Foto " + (indice + 1));
+    boton.addEventListener("click", () => {
+      mostrar(imagenes.indexOf(img));
+      seguir();
+    });
+    puntos.appendChild(boton);
+    botones.push(boton);
+  });
+  mostrar(0);
+  let origen = 0;
+  tira.addEventListener("pointerdown", (evento) => {
+    if (evento.target.closest(".tira-punto")) return;
+    origen = evento.clientX;
+  });
+  tira.addEventListener("pointerup", (evento) => {
+    if (evento.target.closest(".tira-punto")) return;
+    const delta = evento.clientX - origen;
+    if (Math.abs(delta) < 40) return;
+    mostrar(actual + (delta < 0 ? 1 : -1));
+    seguir();
+  });
+  tira.addEventListener("pointerenter", () => {
+    sobre = true;
+    parar();
+  });
+  tira.addEventListener("pointerleave", () => {
+    sobre = false;
+    seguir();
+  });
+  document.addEventListener("visibilitychange", seguir);
+  const baja = document.querySelector("[data-tira-bajar]");
+  if (baja) {
+    baja.addEventListener("click", (evento) => {
+      const destino = document.getElementById("servicios");
+      if (!destino) return;
+      evento.preventDefault();
+      destino.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    });
+  }
+  seguir();
+};
+
 const prepararCarrusel = () => {
   const pista = document.querySelector("[data-nosotros-pista]");
   const puntos = document.querySelector("[data-nosotros-puntos]");
@@ -1078,6 +1194,7 @@ const iniciar = async () => {
   pintarPolitica();
   prepararFaq();
   prepararCarrusel();
+  prepararTira();
   prepararMenu();
   let fotos = [];
   try {
@@ -1098,7 +1215,7 @@ const iniciar = async () => {
   prepararMovimiento();
   engancharReservas();
   if (document.querySelector("[data-trabajo]")) {
-    import("./trabajo.js").then((mod) => {
+    import("./trabajo.js?v=24").then((mod) => {
       mod.prepararTrabajo({ fotos, puede, marcar, crearImagen, reducir: reduce });
     }).catch(() => {});
   }
