@@ -461,7 +461,8 @@ async function flujoPanel(page, ancho) {
   exigir(extraAgenda <= 1, ancho + " desborde agenda " + extraAgenda);
   const puesta = await textoDe(page.locator("[data-puesta]"));
   exigir(puesta.includes("Puesta en marcha"), ancho + " sin puesta en marcha");
-  exigir(puesta.includes("no muestran el valor"), ancho + " sin aviso de precio oculto");
+  exigir(puesta.includes("Probar la reserva"), ancho + " sin probar la reserva");
+  exigir(!/✓|⚠|no muestran el valor/.test(puesta), ancho + " sigue la verificación: " + puesta);
   await navVisible(page, "reservas");
   const ana = page.locator("article.pa-cita", { hasText: "Cliente Ana Uno" });
   await ana.locator("[data-accion='confirmar']").click();
@@ -505,8 +506,9 @@ async function flujoPanel(page, ancho) {
   exigir(martesAbre.slice(0, 5) === "09:00" && martesCierra.slice(0, 5) === "19:00", ancho + " martes inicial " + martesAbre + " " + martesCierra);
   const cinco = await anaHorario.locator("[data-horario-dia='1'][data-horario-campo='abre']").locator("option").evaluateAll((nodos) => nodos.map((nodo) => nodo.value));
   exigir(cinco.includes("05:00") && cinco.includes("23:00"), ancho + " sin las 5:00 a. m. " + cinco.slice(0, 3).join(","));
-  const escala = await anaHorario.locator(".semana-escala").innerText();
-  exigir(escala.includes("5:00 a. m.") && escala.includes("11:30 p. m."), ancho + " el gráfico no empieza a las 5: " + escala);
+  const hastaOpciones = await anaHorario.locator("[data-horario-dia='1'][data-horario-campo='cierra']").locator("option").evaluateAll((nodos) => nodos.map((nodo) => nodo.value));
+  exigir(hastaOpciones.includes("23:30"), ancho + " sin las 11:30 p. m. " + hastaOpciones.slice(-3).join(","));
+  exigir(await page.locator(".semana-escala, .horario-preview").count() === 0, ancho + " sigue el gráfico de horas");
   if (ancho === 1366) await probarFicha(page);
   const bloqueo = sumarDias(hoyISO(), 3 + (ancho === 390 ? 0 : ancho === 768 ? 1 : 2));
   const opcionLocal = await page.locator("[data-bloqueo-barbero] option").first().innerText();
@@ -787,12 +789,13 @@ async function flujoHorario(browser, ancho) {
     await page.waitForSelector("[data-nav]:visible [data-vista='agenda']", { timeout: 15000 });
     await navVisible(page, "equipo");
     await page.waitForSelector("[data-horario-barbero] [data-horario-dia='1'][data-horario-campo='abre']");
-    const tarjetas = page.locator("[data-horario-barbero]");
-    const total = await tarjetas.count();
-    exigir(total >= 2, ancho + " faltan barberos " + total);
-    for (let i = 0; i < total; i += 1) {
-      const abre = await tarjetas.nth(i).locator("[data-horario-dia='1'][data-horario-campo='abre']").inputValue();
-      const cierra = await tarjetas.nth(i).locator("[data-horario-dia='1'][data-horario-campo='cierra']").inputValue();
+    const selector = page.locator("[aria-label='Barbero']");
+    const ids = await selector.locator("option").evaluateAll((nodos) => nodos.map((nodo) => nodo.value));
+    exigir(ids.length >= 2, ancho + " faltan barberos " + ids.length);
+    for (let i = 0; i < ids.length; i += 1) {
+      await selector.selectOption(ids[i]);
+      const abre = await page.locator("[data-horario-dia='1'][data-horario-campo='abre']").inputValue();
+      const cierra = await page.locator("[data-horario-dia='1'][data-horario-campo='cierra']").inputValue();
       exigir(abre.slice(0, 5) === "05:00" && cierra.slice(0, 5) === "18:00", ancho + " aplicar a todos " + i + " " + abre + " " + cierra);
     }
     const extra = await desborde(page);

@@ -6,7 +6,7 @@
     src="https://js.sentry-cdn.com/d0c49d2e685a10fe401990acffb50d4c.min.js"
     crossorigin="anonymous"
   ></script>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.sentry-cdn.com https://browser.sentry-cdn.com; style-src 'self' 'sha256-lMajcjoV9NFFgJ3qSEtQ2wLLz+mQ3Iyl75TVRVTT93Q='; img-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; font-src 'self'; connect-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co https://o4512330423599104.ingest.us.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src https://www.google.com https://maps.google.com">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.sentry-cdn.com https://browser.sentry-cdn.com; style-src 'self' 'sha256-btbdpdGWO9yLdncAvKPlg5IRSSH2Ry9laNcEtdEs9+I='; img-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co; font-src 'self'; connect-src 'self' https://bkzyaiamlhlbsggsoijk.supabase.co https://o4512330423599104.ingest.us.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src https://www.google.com https://maps.google.com">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>La Mansión Barber Shop | Barbería en Mosquera, Cundinamarca</title>
   <meta name="description" content="La Mansión Barber Shop, barbería en Mosquera, Cundinamarca. Cortes, barba y cuidado personal.">
@@ -891,6 +891,13 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
   a.btn:active { transform: none; }
   .casilla-svg path { transition: none; stroke-dashoffset: 0; }
   .casilla input:not(:checked) + .casilla-svg path { stroke-dashoffset: 22; }
+}
+
+@media (max-width: 430px) {
+  html, body.public { overflow-x: clip; }
+  .hero h1 { overflow-wrap: break-word; }
+  .hero .hero-acciones { flex-wrap: wrap; }
+  .hero .hero-acciones .btn { flex: 1 1 12rem; min-width: 0; }
 }
 </style>
   <noscript><link rel="stylesheet" href="css/styles.css"></noscript>

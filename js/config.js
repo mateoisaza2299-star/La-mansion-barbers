@@ -161,7 +161,10 @@ export function enlaceTelefono() {
 }
 
 export function formatoPrecio(valor) {
-  const n = Number(valor) || 0;
+  if (valor == null || valor === "") return "";
+  const n = Number(valor);
+  if (!Number.isFinite(n)) return "";
+  if (n < 1000) return "$" + n + "k";
   return "$" + new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(n);
 }
 

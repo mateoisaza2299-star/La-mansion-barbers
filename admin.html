@@ -122,9 +122,8 @@
         <div class="pa-barra" data-barra="horario">
           <p class="horario-aviso" data-horario-aviso hidden>Cambios sin guardar</p>
           <div class="cita-acciones">
-            <button class="btn" type="button" data-horario-guardar disabled>Guardar horario</button>
+            <button class="btn" type="button" data-horario-guardar disabled>Guardar</button>
             <button class="btn btn-sec" type="button" data-horario-reintentar hidden>Reintentar</button>
-            <button class="btn btn-sec" type="button" data-horario-descartar disabled>Descartar</button>
             <button class="btn btn-sec" type="button" data-horario-todos-abrir data-solo="dueno">Aplicar a todos los barberos</button>
           </div>
         </div>
@@ -171,6 +170,7 @@
             <button class="btn btn-sec" type="button" data-servicio-cancelar>Cancelar</button>
           </div>
         </form>
+        <p class="horario-ok" data-servicio-nota role="status" hidden></p>
         <div data-servicios></div>
       </section>
 
@@ -425,6 +425,6 @@
       <button class="btn" type="button" data-install-close>Listo</button>
     </div>
   </div>
-  <script type="module" src="js/admin.js?v=16"></script>
+  <script type="module" src="js/admin.js?v=17"></script>
 </body>
 </html>

@@ -627,40 +627,64 @@ function categoriaPublica(nombre) {
   return nombre && !["Niños", "Mujer", "Color"].includes(nombre);
 }
 
+function gruposReserva(lista) {
+  const grupos = [];
+  lista.forEach((servicio) => {
+    const nombre = servicio.categoria || "";
+    let grupo = grupos.find((item) => item.nombre === nombre);
+    if (!grupo) {
+      grupo = { nombre, orden: Number(servicio.orden) || 0, items: [] };
+      grupos.push(grupo);
+    }
+    grupo.orden = Math.min(grupo.orden, Number(servicio.orden) || 0);
+    grupo.items.push(servicio);
+  });
+  grupos.sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, "es"));
+  grupos.forEach((grupo) => grupo.items.sort((a, b) => (Number(a.orden) || 0) - (Number(b.orden) || 0)));
+  return grupos;
+}
+
+function tarjetaServicio(servicio) {
+  const boton = nodo("button", "opcion opcion-servicio", "");
+  boton.type = "button";
+  boton.dataset.servicio = servicio.id;
+  boton.appendChild(nodo("strong", null, servicio.nombre));
+  if (servicio.descripcion) boton.appendChild(nodo("span", "opcion-desc", servicio.descripcion));
+  const meta = nodo("span", "opcion-meta");
+  meta.appendChild(nodo("span", null, servicio.duracion_min ? servicio.duracion_min + " min" : ""));
+  const precio = precioDe(servicio);
+  if (precio) meta.appendChild(nodo("span", "opcion-precio", precio));
+  boton.appendChild(meta);
+  boton.addEventListener("click", () => elegirServicio(servicio));
+  return boton;
+}
+
 function pintarServicios(host) {
   const visibles = serviciosActivos().filter((item) => categoriaPublica(item.categoria));
-  const categorias = ["Todos", ...new Set(visibles.map((item) => item.categoria).filter(Boolean))];
+  const grupos = gruposReserva(visibles);
   let activa = "Todos";
   const chips = nodo("div", "chips");
-  chips.setAttribute("role", "group");
+  chips.setAttribute("role", "tablist");
   chips.setAttribute("aria-label", "Categorías");
-  const lista = nodo("div", "opciones");
+  const lista = nodo("div", "opciones opciones-servicios");
   const pintar = () => {
     lista.replaceChildren();
-    visibles.filter((item) => activa === "Todos" || item.categoria === activa).forEach((servicio) => {
-      const boton = nodo("button", "opcion", "");
-      boton.type = "button";
-      boton.dataset.servicio = servicio.id;
-      const meta = [];
-      if (servicio.duracion_min) meta.push(servicio.duracion_min + " min");
-      const precio = precioDe(servicio);
-      if (precio) meta.push(precio);
-      boton.append(nodo("strong", null, servicio.nombre), nodo("span", null, servicio.descripcion || ""));
-      if (meta.length) boton.append(nodo("span", null, meta.join(" · ")));
-      boton.addEventListener("click", () => elegirServicio(servicio));
-      lista.appendChild(boton);
+    grupos.filter((grupo) => activa === "Todos" || grupo.nombre === activa).forEach((grupo) => {
+      if (grupo.items.length >= 2 && grupo.nombre) lista.appendChild(nodo("h3", "opcion-cat", grupo.nombre));
+      grupo.items.forEach((servicio) => lista.appendChild(tarjetaServicio(servicio)));
     });
   };
-  categorias.forEach((categoria) => {
+  ["Todos", ...grupos.map((grupo) => grupo.nombre).filter(Boolean)].forEach((categoria) => {
     const chip = nodo("button", "chip" + (categoria === activa ? " is-on" : ""), categoria);
     chip.type = "button";
-    chip.setAttribute("aria-pressed", categoria === activa ? "true" : "false");
+    chip.setAttribute("role", "tab");
+    chip.setAttribute("aria-selected", categoria === activa ? "true" : "false");
     chip.addEventListener("click", () => {
       activa = categoria;
       [...chips.children].forEach((item) => {
         const on = item.textContent === categoria;
         item.classList.toggle("is-on", on);
-        item.setAttribute("aria-pressed", on ? "true" : "false");
+        item.setAttribute("aria-selected", on ? "true" : "false");
       });
       pintar();
     });
@@ -670,39 +694,34 @@ function pintarServicios(host) {
   pintar();
 }
 
+function tarjetaBarbero(inicial, titulo, detalle, alElegir) {
+  const boton = nodo("button", "opcion opcion-barbero", "");
+  boton.type = "button";
+  boton.appendChild(nodo("span", "opcion-inicial", inicial));
+  const texto = nodo("span", "opcion-texto");
+  texto.append(nodo("strong", null, titulo), nodo("span", null, detalle));
+  boton.appendChild(texto);
+  boton.addEventListener("click", alElegir);
+  return boton;
+}
+
 function pintarBarberos(host) {
-  const lista = nodo("div", "opciones");
-  const primero = nodo("button", "opcion", "");
-  primero.type = "button";
-  primero.dataset.barbero = "primero";
-  primero.append(nodo("strong", null, "El primero disponible"), nodo("span", null, "Te asignamos al primer barbero con esa hora."));
-  primero.addEventListener("click", () => {
+  const lista = nodo("div", "opciones opciones-barberos");
+  const primero = tarjetaBarbero("1", "El primero disponible", "Te asignamos al primer barbero con esa hora.", () => {
     estado.barberoId = "";
     estado.fecha = hoyISO();
     avanzar();
   });
+  primero.dataset.barbero = "primero";
   lista.appendChild(primero);
   barberosDelPaso().forEach((barbero) => {
-    const boton = nodo("button", "opcion", "");
-    boton.type = "button";
-    boton.dataset.barbero = barbero.id;
-    const texto = nodo("span", "opcion-texto");
-    texto.append(nodo("strong", null, barbero.nombre), nodo("span", null, barbero.especialidad || ""));
-    if (barbero.foto) {
-      const foto = document.createElement("img");
-      foto.src = "assets/img/fotos/" + barbero.foto + "-480.webp";
-      foto.width = 96;
-      foto.height = 120;
-      foto.alt = "";
-      boton.append(foto, texto);
-    } else {
-      boton.appendChild(texto);
-    }
-    boton.addEventListener("click", () => {
+    const inicial = String(barbero.nombre || "?").trim().charAt(0).toUpperCase() || "?";
+    const boton = tarjetaBarbero(inicial, barbero.nombre, "Barbero", () => {
       estado.barberoId = barbero.id;
       estado.fecha = hoyISO();
       avanzar();
     });
+    boton.dataset.barbero = barbero.id;
     lista.appendChild(boton);
   });
   if (barberosDelPaso().length === 0) {

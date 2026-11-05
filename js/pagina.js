@@ -817,6 +817,10 @@ const prepararServicios = async (fotos) => {
     const activo = movil.querySelector(".acordeon-item.is-open");
     if (activo) ponerFoto(activo.getAttribute("data-cat"));
   });
+  if (estatica && window.matchMedia("(max-width: 899px)").matches) {
+    const alto = estatica.offsetHeight;
+    if (alto) carta.style.minHeight = alto + "px";
+  }
   if (estatica) estatica.hidden = true;
   carta.hidden = false;
 };
