@@ -169,7 +169,7 @@ const aplicarEsquema = () => {
 const pintarTextos = () => {
   const titulo = tituloPublico();
   const descripcion = descripcionPublica();
-  const etiqueta = "BARBER SHOP · " + String(negocio.zona || "").toLocaleUpperCase("es-CO");
+  const etiqueta = textos.heroEtiqueta || "Mansion Barber Shop / Mosquera";
   const lead = "Cortes, barba y cuidado personal en " + negocio.ciudad + ".";
   if (document.body.dataset.pagina !== "politica") {
     document.title = document.body.dataset.pagina === "historia" ? "Nuestra historia | La Mansión Barber Shop" : titulo;
