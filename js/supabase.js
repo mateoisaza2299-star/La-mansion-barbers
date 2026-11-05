@@ -1,6 +1,6 @@
 import { negocio, reservasEnLinea } from "./config.js";
 
-let cliente = null;
+let promesa = null;
 
 export function supabaseListo() {
   return reservasEnLinea();
@@ -8,16 +8,15 @@ export function supabaseListo() {
 
 export async function obtenerSupabase() {
   if (!reservasEnLinea()) return null;
-  if (!cliente) {
-    const { createClient } = await import("./vendor/supabase.js");
+  if (!promesa) {
     const caja = negocio.supabase;
-    cliente = createClient(String(caja.url).trim(), String(caja.key).trim(), {
+    promesa = import("./vendor/supabase.js").then(({ createClient }) => createClient(String(caja.url).trim(), String(caja.key).trim(), {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
         detectSessionInUrl: false
       }
-    });
+    }));
   }
-  return cliente;
+  return promesa;
 }

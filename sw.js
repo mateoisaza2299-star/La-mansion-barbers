@@ -1,4 +1,4 @@
-const CACHE = "site-shell-v21";
+const CACHE = "site-shell-v22";
 
 const SHELL = [
   "index.html",
@@ -54,6 +54,22 @@ const offlinePage = () => new Response(
   { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } }
 );
 
+const esCodigo = (path) => /(^|\/)[^/]+\.(html|js|css)$/.test(path) || path === "index.html";
+
+const networkFirst = async (request, path) => {
+  const cache = await caches.open(CACHE);
+  try {
+    const fresh = await fetch(request);
+    if (canStore(fresh)) cache.put(cacheRequest(path), fresh.clone());
+    return fresh;
+  } catch (error) {
+    const cached = await cache.match(cacheRequest(path)) || await cache.match(request);
+    if (cached) return cached;
+    if (request.mode === "navigate" || request.destination === "document") return offlinePage();
+    return new Response("", { status: 504, statusText: "Offline" });
+  }
+};
+
 const staleWhileRevalidate = async (request, path) => {
   const cache = await caches.open(CACHE);
   const key = cacheRequest(SHELL_SET.has(path) ? path : path);
@@ -99,5 +115,5 @@ self.addEventListener("fetch", (event) => {
   if (leaveAlone(url, request)) return;
   const path = relativePath(url);
   if (!path || isAdmin(path)) return;
-  event.respondWith(staleWhileRevalidate(request, path));
+  event.respondWith(esCodigo(path) ? networkFirst(request, path) : staleWhileRevalidate(request, path));
 });

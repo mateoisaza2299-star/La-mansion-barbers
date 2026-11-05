@@ -237,7 +237,7 @@ const pintarTarjeta = (row) => {
   }
   if (gratis > 0) {
     tarjetaAviso.hidden = false;
-    tarjetaAviso.textContent = "¡Tienes un corte gratis! Avísale al barbero cuando llegues";
+    tarjetaAviso.textContent = "¡Tienes un corte gratis! Avísale en recepción cuando llegues";
     tarjetaCopy.textContent = "";
     return;
   }

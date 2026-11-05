@@ -941,6 +941,7 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
       <nav class="nav-desk" data-nav aria-label="Principal">
         <a data-nav-link href="#nosotros">Nosotros</a>
         <a data-nav-link href="#servicios">Servicios</a>
+        <a data-nav-link href="#galeria">Galería</a>
         <a data-nav-link href="#local" hidden>El local</a>
         <a data-nav-link href="#visita">Visita</a>
       </nav>
@@ -958,6 +959,7 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
     <button class="nav-cerrar" type="button" data-nav-cerrar>Cerrar</button>
     <a class="nav-panel-link" href="#nosotros">Nosotros</a>
     <a class="nav-panel-link" href="#servicios">Servicios</a>
+    <a class="nav-panel-link" href="#galeria">Galería</a>
     <a class="nav-panel-link" href="#local" hidden>El local</a>
     <a class="nav-panel-link" href="#visita">Visita</a>
     <div class="nav-panel-acciones">
@@ -1038,7 +1040,7 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
         </div>
         <figure class="nosotros-marco reveal" data-revelar>
           <div class="nosotros-marco-foto mate-nosotros-1">
-            <img data-src="assets/img/fotos/nosotros-1-480.webp" data-srcset="assets/img/fotos/nosotros-1-480.webp 480w, assets/img/fotos/nosotros-1-781.webp 781w" sizes="(max-width: 899px) 86vw, 380px" width="781" height="861" alt="Un barbero de La Mansión le corta el cabello a un niño pequeño sentado en las piernas de su papá." loading="lazy" decoding="async">
+            <img data-src="assets/img/fotos/nosotros-1-480.webp" data-srcset="assets/img/fotos/nosotros-1-480.webp 480w, assets/img/fotos/nosotros-1-781.webp 781w" sizes="(max-width: 899px) 86vw, 380px" width="781" height="861" alt="En La Mansión le cortan el cabello a un niño pequeño sentado en las piernas de su papá." loading="lazy" decoding="async">
           </div>
           <figcaption>La primera vez — Los primeros cortes se hacen con calma, con risas y con papá al lado.</figcaption>
         </figure>
@@ -1052,25 +1054,10 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
           <h2 id="servicios-titulo" data-texto="serviciosTitulo">Menú de servicios</h2>
         </header>
         <div class="carta-estatica" data-carta-estatica>
-          <h3>Cortes</h3>
-          <article><h3>Corte clásico</h3><p>Tijera o máquina, con el acabado que pidas.</p></article>
-          <article><h3>Degradado</h3><p>Transición limpia, de corto a largo.</p></article>
-          <article><h3>Corte y barba</h3><p>El corte y el arreglo de barba en la misma visita.</p></article>
-          <h3>Barba</h3>
-          <article><h3>Arreglo de barba</h3><p>Perfil, forma y definición.</p></article>
-          <article><h3>Barba completa</h3><p>Diseño y limpieza de toda la barba.</p></article>
-          <h3>FreeStyle</h3>
-          <article><h3>Diseños</h3><p>Líneas, figuras y freestyle sobre el corte.</p></article>
-          <h3>Cuidado facial</h3>
-          <article><h3>Cuidado facial</h3><p>Limpieza y cuidado de la piel del rostro.</p></article>
+          <p>Cargando el menú…</p>
         </div>
         <div class="carta" data-carta hidden>
-          <div class="carta-lado">
-            <div class="carta-tabs" data-carta-tabs role="tablist" aria-label="Categorías"></div>
-            <div data-carta-paneles></div>
-          </div>
-          <div class="carta-foto" data-carta-foto></div>
-          <div class="carta-movil" data-carta-movil></div>
+          <div class="servicios-lista" data-servicios-lista></div>
         </div>
         <p class="servicios-nota" data-carta-aviso hidden>No pudimos cargar el menú. Intenta de nuevo en un momento.</p>
         <p class="servicios-nota">
@@ -1078,6 +1065,21 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
         </p>
       </div>
     </section>
+
+    <section class="seccion" id="galeria" aria-labelledby="galeria-titulo">
+      <div class="wrap">
+        <header class="reveal" data-revelar>
+          <p class="etiqueta">Trabajos</p>
+          <h2 id="galeria-titulo">Galería</h2>
+        </header>
+        <div class="galeria-grid" data-galeria></div>
+      </div>
+    </section>
+
+    <div class="luz" data-visor hidden>
+      <button class="luz-cerrar" type="button" data-luz-cerrar aria-label="Cerrar">×</button>
+      <img alt="" data-luz-img>
+    </div>
 
     <section class="local" id="local" hidden role="region" aria-roledescription="carrusel" aria-label="Fotos de La Mansión">
       <div class="local-marco" data-local tabindex="0">
@@ -1109,11 +1111,14 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
 
     <section class="seccion visita" id="visita" aria-labelledby="visita-titulo">
       <div class="wrap visita-grid">
+        <figure class="visita-fachada reveal" data-revelar>
+          <img src="img/galeria/fachada.webp" width="1200" height="800" alt="Fachada de La Mansión Barber Shop en el centro comercial El Trébol" loading="lazy" decoding="async">
+        </figure>
         <article class="visita-tarjeta reveal" data-revelar>
           <p class="etiqueta">Visita</p>
           <h2 id="visita-titulo" data-ciudad>Mosquera, Cundinamarca</h2>
           <p class="visita-direccion" data-direccion>CR 3 No. 13-12, C.C. El Trébol, LC 18, Mosquera, Cundinamarca</p>
-          <p class="horario-nota" data-horario>Todos los días · 10:00 a. m. a 8:00 p. m.</p>
+          <p class="horario-nota" data-horario>Horario del local</p>
           <p class="visita-contacto">
             <a data-wa href="https://wa.me/573118162854?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener noreferrer" aria-label="Escribir por WhatsApp">311 816 2854</a>
             <a class="wa-contacto" data-wa-contacto href="https://wa.me/573118162854?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20La%20Mansi%C3%B3n%20Barber%20Shop." target="_blank" rel="noopener noreferrer" aria-label="Escribir por WhatsApp">
@@ -1184,7 +1189,7 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
           <div class="faq-item">
             <h3><button class="faq-q" type="button" id="faq-b-3" aria-expanded="false" aria-controls="faq-p-3" data-faq-q="3">¿Cuál es el horario?</button></h3>
             <div class="faq-panel" id="faq-p-3" role="region" aria-labelledby="faq-b-3">
-              <div class="faq-cuerpo"><p data-faq-a="3">Todos los días, de 10:00 a. m. a 8:00 p. m.</p></div>
+              <div class="faq-cuerpo"><p data-faq-a="3">Horario del local</p></div>
             </div>
           </div>
         </div>
@@ -1200,6 +1205,7 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
       <ul class="footer-nav">
         <li><a href="#nosotros">Nosotros</a></li>
         <li><a href="#servicios">Servicios</a></li>
+        <li><a href="#galeria">Galería</a></li>
         <li hidden><a href="#local">El local</a></li>
         <li><a href="#visita">Visita</a></li>
         <li><a href="politica-de-datos.html">Política de tratamiento de datos</a></li>
@@ -1214,7 +1220,7 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
       </div>
     </div>
     <div class="wrap">
-      <p class="footer-meta"><span data-direccion-corta>CR 3 No. 13-12, C.C. El Trébol, LC 18, Mosquera, Cundinamarca</span> · <span data-horario>Todos los días · 10:00 a. m. a 8:00 p. m.</span> · © 2026 La Mansión Barber Shop</p>
+      <p class="footer-meta"><span data-direccion-corta>CR 3 No. 13-12, C.C. El Trébol, LC 18, Mosquera, Cundinamarca</span> · <span data-horario>Horario del local</span> · © 2026 La Mansión Barber Shop</p>
     </div>
   </footer>
 
@@ -1222,6 +1228,6 @@ html.motion .hero-anima .hero-slide.is-on img { animation: hero-zoom 7s linear f
     <button class="btn" type="button" data-reservar>Reservar</button>
     <a class="btn btn-sec" data-maps href="https://www.google.com/maps/search/?api=1&amp;query=CR%203%20No.%2013-12%2C%20C.C.%20El%20Tr%C3%A9bol%2C%20LC%2018%2C%20Mosquera%2C%20Cundinamarca" target="_blank" rel="noopener">Cómo llegar</a>
   </nav>
-  <script type="module" src="js/carga.js"></script>
+  <script type="module" src="js/carga.js?v=22"></script>
 </body>
 </html>

@@ -15,8 +15,8 @@
   <link rel="icon" href="assets/favicon.ico" sizes="any">
   <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" sizes="180x180">
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/styles.css?v=22">
+  <link rel="stylesheet" href="css/admin.css?v=22">
 </head>
 <body class="admin-body">
   <main class="panel-cerrado" data-panel-cerrado>
@@ -46,6 +46,7 @@
         </div>
       </header>
       <p class="pa-llegada" data-llegada role="status" hidden></p>
+      <p class="horario-ok" data-toast role="status" hidden></p>
       <p class="form-error" data-pa-error role="alert" hidden></p>
       <p class="pa-deshacer" data-deshacer role="status" hidden></p>
       <button class="btn btn-sec pa-ayuda" type="button" data-ayuda>Ayuda</button>
@@ -54,7 +55,7 @@
         <header class="pa-pantalla">
           <div>
             <h2>Agenda</h2>
-            <p>Las citas del día, ordenadas por barbero.</p>
+            <p>Las citas del día, por hora.</p>
           </div>
           <button class="btn" type="button" data-nueva>Nueva cita</button>
         </header>
@@ -65,7 +66,6 @@
             <button type="button" data-agenda-modo="dia" aria-pressed="true">Día</button>
             <button type="button" data-agenda-modo="semana" aria-pressed="false">Semana</button>
           </div>
-          <label class="campo pa-solo-movil">Barbero <select data-agenda-barbero></select></label>
           <button class="btn btn-sec" type="button" data-imprimir>Imprimir agenda del día</button>
         </div>
         <div data-agenda aria-busy="true"></div>
@@ -83,68 +83,32 @@
           <label class="campo">Buscar <input type="search" data-buscar placeholder="Nombre, celular o número" autocomplete="off"></label>
           <label class="campo">Desde <input type="date" data-filtro-desde></label>
           <label class="campo">Hasta <input type="date" data-filtro-hasta></label>
-          <label class="campo">Barbero <select data-filtro-barbero></select></label>
           <label class="campo">Estado <select data-filtro-estado></select></label>
           <label class="campo">Servicio <select data-filtro-servicio></select></label>
         </div>
         <div data-reservas-lista aria-busy="true"></div>
       </section>
 
-      <section data-panel="equipo" hidden aria-label="Barberos">
+      <section data-panel="horario" hidden aria-label="Horario y capacidad">
         <header class="pa-pantalla">
           <div>
-            <h2>Barberos</h2>
-            <p>Marca los días que atiende cada barbero.</p>
+            <h2>Horario y capacidad</h2>
+            <p>Cuántas citas caben a la vez y a qué hora abre el local.</p>
           </div>
         </header>
-        <div data-solo="dueno">
-          <h2>Barberos</h2>
-          <form class="pa-form" data-barbero-form>
-            <input type="hidden" name="id">
-            <input type="hidden" name="sede_id">
-            <label class="campo">Nombre <input name="nombre" required maxlength="80"></label>
-            <label class="campo">Especialidad <input name="especialidad" maxlength="120"></label>
-            <label class="campo">Foto <select name="foto" data-barbero-foto></select></label>
-            <div data-barbero-servicios></div>
-            <label class="reserva-check casilla"><input name="activo" type="checkbox" checked><svg class="casilla-svg" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5 9 15.5 17 6.5"></path></svg><span>Activo</span></label>
-            <div data-barbero-horario>
-              <label class="reserva-check casilla"><input name="horario_sede" type="checkbox" data-horario-sede checked><svg class="casilla-svg" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5 9 15.5 17 6.5"></path></svg><span>Usar el horario del local (todos los días de 10:00 a 20:00)</span></label>
-              <div data-horario-manual hidden></div>
-            </div>
-            <button class="btn" type="submit">Guardar barbero</button>
-          </form>
-          <div data-barberos></div>
-        </div>
-        <div class="horario-hoja">
-        <div data-horario-editor></div>
-        <p class="form-error" data-horario-error role="alert" hidden></p>
-        <p class="horario-ok" data-horario-ok role="status" hidden>Horario guardado</p>
-        <div class="pa-barra" data-barra="horario">
-          <p class="horario-aviso" data-horario-aviso hidden>Cambios sin guardar</p>
-          <div class="cita-acciones">
-            <button class="btn" type="button" data-horario-guardar disabled>Guardar</button>
-            <button class="btn btn-sec" type="button" data-horario-reintentar hidden>Reintentar</button>
-            <button class="btn btn-sec" type="button" data-horario-todos-abrir data-solo="dueno">Aplicar a todos los barberos</button>
+        <article class="pa-cita">
+          <div class="contador" data-capacidad>
+            <span>Cupos disponibles ahora</span>
+            <button type="button" data-cap-menos aria-label="Menos cupos">−</button>
+            <span data-cap-valor>3</span>
+            <button type="button" data-cap-mas aria-label="Más cupos">+</button>
           </div>
+          <p class="ayuda">Máximo de citas simultáneas.</p>
+        </article>
+        <div data-horario-dias></div>
+        <div class="cita-acciones">
+          <button class="btn" type="button" data-horario-local-guardar>Guardar horario</button>
         </div>
-        </div>
-        <h2>Cerrar el local</h2>
-        <p>Elige una fecha y una franja. Si eliges un barbero, ese día queda libre solo para él.</p>
-        <form class="pa-form" data-bloqueo-form>
-          <input type="hidden" name="sede_id" data-bloqueo-sede>
-          <label class="campo">A quién aplica <select name="barbero_id" data-bloqueo-barbero></select></label>
-          <label class="campo">Fecha <input type="date" name="fecha" data-bloqueo-fecha required></label>
-          <label class="reserva-check casilla"><input class="casilla-input" type="checkbox" name="todo_dia" data-bloqueo-dia checked><svg class="casilla-svg" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5 9 15.5 17 6.5"></path></svg><span>Todo el día</span></label>
-          <div class="pa-horas-bloqueo" data-bloqueo-horas hidden>
-            <label class="campo">Desde <select class="pa-select" name="desde"></select></label>
-            <label class="campo">Hasta <select class="pa-select" name="hasta"></select></label>
-          </div>
-          <label class="campo">Motivo <input name="motivo" data-bloqueo-motivo maxlength="180"></label>
-          <p class="form-error" data-bloqueo-error role="alert" hidden></p>
-          <button class="btn" type="submit" data-bloqueo-guardar>Guardar cierre</button>
-        </form>
-        <h2>Próximos cierres</h2>
-        <div data-bloqueos></div>
       </section>
 
       <section data-panel="servicios" hidden aria-label="Servicios">
@@ -153,23 +117,8 @@
             <h2>Servicios</h2>
             <p>Lo que el cliente puede reservar y lo que suma un sello.</p>
           </div>
-          <button class="btn" type="button" data-servicio-nuevo>Crear servicio</button>
+          <button class="btn" type="button" data-servicio-nuevo>Añadir servicio</button>
         </header>
-        <form class="pa-form" data-servicio-form hidden>
-          <input type="hidden" name="id">
-          <label class="campo">Categoría <input name="categoria" required maxlength="60"></label>
-          <label class="campo">Nombre <input name="nombre" required maxlength="80"></label>
-          <label class="campo">Descripción <input name="descripcion" maxlength="180"></label>
-          <label class="campo">Precio <input name="precio" inputmode="numeric" placeholder="Vacío si se consulta"></label>
-          <label class="campo">Duración (min) <input name="duracion_min" type="number" min="5" max="480" required value="30"></label>
-          <label class="reserva-check casilla"><input name="cuenta_fidelidad" type="checkbox"><svg class="casilla-svg" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5 9 15.5 17 6.5"></path></svg><span>Cuenta para fidelidad</span></label>
-          <label class="campo">Orden <input name="orden" type="number" min="0" value="1"></label>
-          <label class="reserva-check casilla"><input name="activo" type="checkbox"><svg class="casilla-svg" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5 9 15.5 17 6.5"></path></svg><span>Activo</span></label>
-          <div class="cita-acciones">
-            <button class="btn" type="submit">Guardar servicio</button>
-            <button class="btn btn-sec" type="button" data-servicio-cancelar>Cancelar</button>
-          </div>
-        </form>
         <p class="horario-ok" data-servicio-nota role="status" hidden></p>
         <div data-servicios></div>
       </section>
@@ -390,11 +339,34 @@
       <ul class="ayuda-lista">
         <li>Para ver las citas de hoy, abre Agenda y deja la fecha de hoy.</li>
         <li>Para confirmar, abre Reservas y pulsa Confirmar en la cita.</li>
-        <li>Para cerrar una hora, en Barberos usa Cerrar el local, elige la fecha y la franja.</li>
-        <li>Para cambiar el horario, en Barberos marca Trabaja o Descanso y pulsa Guardar horario.</li>
-        <li>Para subir un precio, abre Servicios, pulsa Editar y escribe el precio nuevo.</li>
+        <li>Para cambiar el horario o los cupos, abre Horario y capacidad.</li>
+        <li>Para subir un precio, abre Servicios, pulsa Editar y escribe el precio en miles.</li>
       </ul>
       <button class="btn btn-sec" type="button" data-ayuda-cerrar>Cerrar</button>
+    </div>
+  </div>
+
+  <div class="pa-modal" data-servicio-modal hidden>
+    <div class="pa-modal-card" role="dialog" aria-modal="true" aria-labelledby="servicio-modal-titulo">
+      <h2 id="servicio-modal-titulo" data-servicio-titulo>Añadir servicio</h2>
+      <form class="pa-form" data-servicio-form>
+        <input type="hidden" name="id">
+        <label class="campo">Nombre <input name="nombre" required maxlength="80"></label>
+        <label class="campo">Descripción <textarea name="descripcion" maxlength="240" rows="3"></textarea></label>
+        <label class="campo">Precio (en miles) <input name="precio" inputmode="numeric" required></label>
+        <label class="campo">Duración (min) <input name="duracion_min" type="number" min="5" max="480" required value="30"></label>
+        <label class="campo">Foto
+          <select name="foto" data-servicio-foto></select>
+        </label>
+        <p class="servicio-previa" data-servicio-previa hidden></p>
+        <label class="reserva-check casilla"><input name="vip" type="checkbox"><svg class="casilla-svg" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5 9 15.5 17 6.5"></path></svg><span>Marcar VIP</span></label>
+        <p class="form-error" data-servicio-error role="alert" hidden></p>
+        <div class="cita-acciones">
+          <button class="btn" type="submit">Guardar</button>
+          <button class="btn btn-sec" type="button" data-servicio-cancelar>Cancelar</button>
+          <button class="btn btn-peligro" type="button" data-servicio-eliminar hidden>Eliminar servicio</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -404,7 +376,6 @@
       <form data-nueva-form>
         <select name="sede" hidden></select>
         <label class="campo">Servicio <select name="servicio" required></select></label>
-        <label class="campo">Barbero <select name="barbero" required></select></label>
         <label class="campo">Fecha <input type="date" name="fecha" required></label>
         <label class="campo">Hora <select name="hora" required></select></label>
         <label class="campo">Nombre <input name="nombre" required maxlength="80"></label>
@@ -425,6 +396,6 @@
       <button class="btn" type="button" data-install-close>Listo</button>
     </div>
   </div>
-  <script type="module" src="js/admin.js?v=17"></script>
+  <script type="module" src="js/admin.js?v=22"></script>
 </body>
 </html>

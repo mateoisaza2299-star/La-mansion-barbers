@@ -240,7 +240,7 @@ import {
       const hideKey = "mc_cita_hide";
       const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const messages = {
-        pendiente: "Esperando confirmación del barbero",
+        pendiente: "Esperando confirmación",
         confirmada: "Cita confirmada. Te esperamos",
         cancelada: "Tu cita fue cancelada. Puedes cambiarla desde la página."
       };
@@ -1027,7 +1027,6 @@ import {
     const nombre = String(data.get("nombre") || "").trim();
     const telefono = String(data.get("telefono") || "").trim();
     const servicio = String(data.get("servicio") || "").trim();
-    const barbero = negocio.barbero;
     const fecha = String(data.get("fecha") || "").trim();
     const nota = String(data.get("nota") || "").trim();
     const cel = celularColombia(telefono);
@@ -1095,7 +1094,6 @@ import {
         nombre,
         telefono: telefonoLimpio,
         servicio,
-        barbero,
         fecha,
         hora: chosenHour + ":00",
         nota: nota || null,
@@ -1139,7 +1137,6 @@ import {
           estado: "pendiente",
           nombre,
           telefono: telefonoLimpio,
-          barbero,
           nota
         });
       }
@@ -1149,7 +1146,6 @@ import {
     const lines = [
       "Hola, soy " + nombre + ". Acabo de reservar en " + negocio.nombre + ".",
       "Servicio: " + servicio + ".",
-      "Barbero: " + barbero + ".",
       "Fecha: " + fecha + ".",
       "Hora: " + hourLabel(chosenHour) + ".",
       "Teléfono: " + telefonoLimpio + "."

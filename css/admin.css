@@ -264,7 +264,7 @@ html.is-offline:has(.login-main) .offline-screen { display: none; }
 
 [data-panel="servicios"] .servicio-fila {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px 12px;
   min-height: 64px;
@@ -315,10 +315,9 @@ html.is-offline:has(.login-main) .offline-screen { display: none; }
 [data-panel="servicios"] .servicio-fila.is-off .servicio-fila-texto { opacity: 0.62; }
 
 @media (max-width: 700px) {
-  [data-panel="servicios"] .servicio-fila { grid-template-columns: minmax(0, 1fr); }
-  [data-panel="servicios"] .servicio-acciones { width: 100%; justify-content: stretch; }
-  [data-panel="servicios"] .servicio-acciones .pa-estado { flex: 1 1 100%; }
-  [data-panel="servicios"] .servicio-acciones .btn { flex: 1 1 calc(33% - 6px); min-width: 0; }
+  [data-panel="servicios"] .servicio-fila { grid-template-columns: 64px minmax(0, 1fr); }
+  [data-panel="servicios"] .servicio-acciones { grid-column: 1 / -1; width: 100%; justify-content: stretch; }
+  [data-panel="servicios"] .servicio-acciones .btn { flex: 1 1 calc(50% - 6px); min-width: 0; min-height: 44px; }
 }
 
 [data-panel="servicios"] .pa-estado {
@@ -1175,4 +1174,79 @@ html.is-offline:has(.login-main) .offline-screen { display: none; }
 
 @media (min-width: 900px) {
   .horario-hoja .pa-barra { left: auto; right: auto; bottom: 0; }
+}
+
+.admin-body,
+.pa,
+.pa-cuerpo { overflow-x: clip; max-width: 100%; }
+
+.servicio-mini {
+  width: 64px;
+  height: 64px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 10px;
+  background: var(--grafito-2);
+}
+
+.servicio-previa img {
+  width: 120px;
+  height: 120px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+[data-panel="horario"] .horario-dia {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 12px;
+  border: 1px solid var(--linea);
+  border-radius: 16px;
+  background: var(--grafito);
+}
+
+[data-panel="horario"] .horario-dia-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-panel="horario"] .horario-dia-top h3 { margin: 0; }
+
+[data-panel="horario"] .horario-horas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+[data-panel="horario"] .horario-dia .btn,
+.contador button { min-width: 44px; min-height: 44px; }
+
+.agenda-lista { display: grid; gap: 8px; margin-top: 12px; }
+
+.agenda-lista .bloque { width: 100%; min-height: 64px; }
+
+[data-toast].form-error { color: #e07a7a; }
+[data-toast].horario-ok { color: var(--oro-claro); }
+
+@media (max-width: 720px) {
+  .semana { grid-template-columns: minmax(0, 1fr); }
+  .semana-scroll { overflow-x: hidden; }
+  .pa-controles { flex-wrap: wrap; }
+  .pa-controles .campo { flex: 1 1 100%; min-width: 0; }
+  .pa-modal { padding: 0; align-items: stretch; }
+  .pa-modal-card {
+    width: 100%;
+    max-width: none;
+    min-height: 100dvh;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+  }
+  .pa-tabs { max-width: 100%; }
+  .pa-top-acciones { flex-wrap: wrap; }
+  .pa-top-acciones .btn { min-height: 44px; }
 }

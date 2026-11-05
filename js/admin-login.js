@@ -58,13 +58,13 @@ const verificar = async (supabase) => {
   const sesion = await supabase.auth.getSession();
   const user = sesion.data && sesion.data.session && sesion.data.session.user;
   if (!user) return { tipo: "credenciales" };
-  const consulta = await supabase.from("admins").select("id, rol, barbero_id, nombre").eq("id", user.id).maybeSingle();
+  const consulta = await supabase.from("admins").select("id, rol, nombre").eq("id", user.id).maybeSingle();
   if (consulta.error) {
     if (esRed(consulta.error)) return { tipo: "red" };
     return { tipo: "permisos", codigo: consulta.error.code || String(consulta.error.status || "") };
   }
   const fila = filaDe(consulta.data);
-  if (!fila || (fila.rol !== "dueno" && fila.rol !== "barbero")) return { tipo: "sinfila" };
+  if (!fila || fila.rol !== "dueno") return { tipo: "sinfila" };
   return { tipo: "ok", fila };
 };
 

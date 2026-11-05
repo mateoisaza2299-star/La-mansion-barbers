@@ -1,4 +1,4 @@
-import { negocio, enlaceTelefono, enlaceDirecciones, formatoPrecio, reservasEnLinea } from "./config.js";
+import { negocio, enlaceTelefono, enlaceDirecciones, formatPrecio, formatDuracion, esAdicional, ordenarServicios, reservasEnLinea } from "./config.js";
 import { obtenerSupabase } from "./supabase.js";
 import { traducir, celularValido, nombreValido } from "./errores.js";
 import { hoyISO, sumarDias, fechaLegible, fechaCorta, horaLegible, aMinutos, instanteBogota } from "./tiempo.js";
@@ -18,12 +18,10 @@ const ESTADOS = {
 const estado = {
   config: null,
   sedes: [],
-  barberos: [],
   servicios: [],
   paso: 0,
   sedeId: "",
   servicioId: "",
-  barberoId: "",
   fecha: "",
   hora: "",
   ofertas: new Map(),
@@ -87,7 +85,7 @@ function precioDe(servicio) {
   if (!servicio || servicio.precio == null || servicio.precio === "") return "";
   const numero = Number(servicio.precio);
   if (!Number.isFinite(numero)) return "";
-  return formatoPrecio(servicio.precio);
+  return formatPrecio(servicio.precio);
 }
 
 function slug(valor) {
@@ -99,25 +97,11 @@ function sedesActivas() {
 }
 
 function serviciosActivos() {
-  return estado.servicios.filter((item) => item.activo !== false).sort((a, b) => (a.orden || 0) - (b.orden || 0));
+  return ordenarServicios(estado.servicios.filter((item) => item.activo !== false));
 }
 
 function servicioActual() {
   return estado.servicios.find((item) => item.id === estado.servicioId) || null;
-}
-
-function barberoPorId(id) {
-  return estado.barberos.find((item) => item.id === id) || null;
-}
-
-function ofrece(barbero, servicioId) {
-  if (!barbero || barbero.activo === false) return false;
-  if (barbero.servicios == null) return true;
-  return Array.isArray(barbero.servicios) && barbero.servicios.includes(servicioId);
-}
-
-function conHorario(barbero) {
-  return estado.horarios.some((item) => item.barbero_id === barbero.id);
 }
 
 function sedeUnica() {
@@ -132,25 +116,26 @@ function fijarSede() {
   return Boolean(estado.sedeId);
 }
 
-function barberosDelPaso() {
-  return estado.barberos
-    .filter((item) => item.sede_id === estado.sedeId && ofrece(item, estado.servicioId) && conHorario(item))
-    .sort((a, b) => (a.orden || 0) - (b.orden || 0));
-}
-
 function pasos() {
-  return ["servicio", "barbero", "horario", "datos"];
+  return ["servicio", "horario", "datos"];
 }
 
 function nombrePaso(clave) {
-  return { servicio: "Servicio", barbero: "Barbero", horario: "Fecha y hora", datos: "Datos" }[clave] || clave;
+  return { servicio: "Servicio", horario: "Fecha y hora", datos: "Datos" }[clave] || clave;
 }
 
 function agendaLista() {
   if (!estado.config || estado.config.reservas_activas === false) return false;
-  if (!serviciosActivos().length) return false;
-  if (!fijarSede()) return false;
-  return estado.barberos.some((item) => item.activo !== false && item.sede_id === estado.sedeId && conHorario(item));
+  return serviciosActivos().length > 0;
+}
+
+function duracionElegida() {
+  if (estado.modo === "reagendar") {
+    const cita = estado.citas.get(estado.token) || {};
+    return Number(cita.duracion_min) || 30;
+  }
+  const servicio = servicioActual();
+  return Number(servicio && servicio.duracion_min) || 30;
 }
 
 function resolverServicio(clave, nombre) {
@@ -356,7 +341,9 @@ function pintarCita() {
   tarjeta.appendChild(badge);
   tarjeta.appendChild(nodo("p", "cita-numero", "Cita " + (fila.numero || "")));
   const detalle = nodo("p", "cita-detalle");
-  detalle.textContent = [fila.servicio, fila.barbero, fechaLegible(fila.fecha), horaLegible(fila.hora), negocio.direccion].filter(Boolean).join(" · ");
+  const partesCita = [fila.servicio, fechaLegible(fila.fecha), horaLegible(fila.hora), negocio.direccion];
+  if (fila.barbero) partesCita.splice(1, 0, fila.barbero);
+  detalle.textContent = partesCita.filter(Boolean).join(" · ");
   tarjeta.appendChild(detalle);
   const terminal = fila.estado === "completada" || fila.estado === "cancelada" || fila.estado === "no_asistio";
   if (terminal) tarjeta.appendChild(nodo("p", "cita-gracias", "Gracias por venir"));
@@ -417,11 +404,8 @@ async function cancelarCita(token, boton) {
 }
 
 function abrirReagendar(token, fila) {
-  const barbero = estado.barberos.find((item) => item.nombre === fila.barbero);
-  if (!barbero) return;
   estado.modo = "reagendar";
   estado.token = token;
-  estado.barberoId = barbero.id;
   estado.servicioId = "";
   estado.fecha = fila.fecha;
   estado.hora = "";
@@ -568,16 +552,9 @@ function aplicarRelleno(el, porcentaje) {
 
 function elegirServicio(servicio) {
   estado.servicioId = servicio.id;
-  estado.barberoId = "";
   estado.hora = "";
-  estado.fecha = hoyISO();
-  const disponibles = barberosDelPaso();
-  if (disponibles.length === 1) {
-    estado.barberoId = disponibles[0].id;
-    estado.paso = Math.max(0, pasos().indexOf("horario"));
-  } else {
-    estado.paso = Math.max(0, pasos().indexOf("barbero"));
-  }
+  if (!estado.fecha) estado.fecha = hoyISO();
+  estado.paso = Math.max(0, pasos().indexOf("horario"));
   pintarPasos();
   const titulo = pasosCaja() && pasosCaja().querySelector("[data-paso-titulo]");
   if (titulo) titulo.focus();
@@ -590,9 +567,7 @@ function retroceder() {
     cerrarHoja(false);
     return;
   }
-  const clave = pasos()[estado.paso];
-  if (clave === "horario" && barberosDelPaso().length <= 1) estado.paso = pasos().indexOf("servicio");
-  else estado.paso -= 1;
+  estado.paso -= 1;
   if (estado.paso < 0) estado.paso = 0;
   pintarPasos();
 }
@@ -609,7 +584,6 @@ function pintarPasos() {
   const clave = estado.modo === "reagendar" ? "horario" : lista[estado.paso];
   cuerpo.replaceChildren();
   if (clave === "servicio") pintarServicios(cuerpo);
-  if (clave === "barbero") pintarBarberos(cuerpo);
   if (clave === "horario") pintarHorario(cuerpo);
   if (clave === "datos") pintarDatos(cuerpo);
   const titulo = caja.querySelector("[data-paso-titulo]");
@@ -623,35 +597,15 @@ function avanzar() {
   if (titulo) titulo.focus();
 }
 
-function categoriaPublica(nombre) {
-  return nombre && !["Niños", "Mujer", "Color"].includes(nombre);
-}
-
-function gruposReserva(lista) {
-  const grupos = [];
-  lista.forEach((servicio) => {
-    const nombre = servicio.categoria || "";
-    let grupo = grupos.find((item) => item.nombre === nombre);
-    if (!grupo) {
-      grupo = { nombre, orden: Number(servicio.orden) || 0, items: [] };
-      grupos.push(grupo);
-    }
-    grupo.orden = Math.min(grupo.orden, Number(servicio.orden) || 0);
-    grupo.items.push(servicio);
-  });
-  grupos.sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, "es"));
-  grupos.forEach((grupo) => grupo.items.sort((a, b) => (Number(a.orden) || 0) - (Number(b.orden) || 0)));
-  return grupos;
-}
-
 function tarjetaServicio(servicio) {
-  const boton = nodo("button", "opcion opcion-servicio", "");
+  const boton = nodo("button", "opcion opcion-servicio" + (esAdicional(servicio) ? " is-extra" : ""), "");
   boton.type = "button";
   boton.dataset.servicio = servicio.id;
+  if (esAdicional(servicio)) boton.appendChild(nodo("span", "adicional-etiq", "Adicional"));
   boton.appendChild(nodo("strong", null, servicio.nombre));
-  if (servicio.descripcion) boton.appendChild(nodo("span", "opcion-desc", servicio.descripcion));
   const meta = nodo("span", "opcion-meta");
-  meta.appendChild(nodo("span", null, servicio.duracion_min ? servicio.duracion_min + " min" : ""));
+  const duracion = formatDuracion(servicio.duracion_min);
+  if (duracion) meta.appendChild(nodo("span", null, duracion));
   const precio = precioDe(servicio);
   if (precio) meta.appendChild(nodo("span", "opcion-precio", precio));
   boton.appendChild(meta);
@@ -660,113 +614,30 @@ function tarjetaServicio(servicio) {
 }
 
 function pintarServicios(host) {
-  const visibles = serviciosActivos().filter((item) => categoriaPublica(item.categoria));
-  const grupos = gruposReserva(visibles);
-  let activa = "Todos";
-  const chips = nodo("div", "chips");
-  chips.setAttribute("role", "tablist");
-  chips.setAttribute("aria-label", "Categorías");
   const lista = nodo("div", "opciones opciones-servicios");
-  const pintar = () => {
-    lista.replaceChildren();
-    grupos.filter((grupo) => activa === "Todos" || grupo.nombre === activa).forEach((grupo) => {
-      if (grupo.items.length >= 2 && grupo.nombre) lista.appendChild(nodo("h3", "opcion-cat", grupo.nombre));
-      grupo.items.forEach((servicio) => lista.appendChild(tarjetaServicio(servicio)));
-    });
-  };
-  ["Todos", ...grupos.map((grupo) => grupo.nombre).filter(Boolean)].forEach((categoria) => {
-    const chip = nodo("button", "chip" + (categoria === activa ? " is-on" : ""), categoria);
-    chip.type = "button";
-    chip.setAttribute("role", "tab");
-    chip.setAttribute("aria-selected", categoria === activa ? "true" : "false");
-    chip.addEventListener("click", () => {
-      activa = categoria;
-      [...chips.children].forEach((item) => {
-        const on = item.textContent === categoria;
-        item.classList.toggle("is-on", on);
-        item.setAttribute("aria-selected", on ? "true" : "false");
-      });
-      pintar();
-    });
-    chips.appendChild(chip);
-  });
-  host.append(chips, lista);
-  pintar();
-}
-
-function tarjetaBarbero(inicial, titulo, detalle, alElegir) {
-  const boton = nodo("button", "opcion opcion-barbero", "");
-  boton.type = "button";
-  boton.appendChild(nodo("span", "opcion-inicial", inicial));
-  const texto = nodo("span", "opcion-texto");
-  texto.append(nodo("strong", null, titulo), nodo("span", null, detalle));
-  boton.appendChild(texto);
-  boton.addEventListener("click", alElegir);
-  return boton;
-}
-
-function pintarBarberos(host) {
-  const lista = nodo("div", "opciones opciones-barberos");
-  const primero = tarjetaBarbero("1", "El primero disponible", "Te asignamos al primer barbero con esa hora.", () => {
-    estado.barberoId = "";
-    estado.fecha = hoyISO();
-    avanzar();
-  });
-  primero.dataset.barbero = "primero";
-  lista.appendChild(primero);
-  barberosDelPaso().forEach((barbero) => {
-    const inicial = String(barbero.nombre || "?").trim().charAt(0).toUpperCase() || "?";
-    const boton = tarjetaBarbero(inicial, barbero.nombre, "Barbero", () => {
-      estado.barberoId = barbero.id;
-      estado.fecha = hoyISO();
-      avanzar();
-    });
-    boton.dataset.barbero = barbero.id;
-    lista.appendChild(boton);
-  });
-  if (barberosDelPaso().length === 0) {
-    host.appendChild(nodo("p", null, "Ese servicio o barbero ya no está disponible. Elige otro."));
-    return;
+  const activos = serviciosActivos();
+  const principales = activos.filter((item) => !esAdicional(item));
+  const extras = activos.filter((item) => esAdicional(item));
+  principales.forEach((servicio) => lista.appendChild(tarjetaServicio(servicio)));
+  if (extras.length) {
+    lista.appendChild(nodo("h3", "adicional-titulo", "Adicional"));
+    extras.forEach((servicio) => lista.appendChild(tarjetaServicio(servicio)));
   }
+  if (!activos.length) host.appendChild(nodo("p", null, "No hay servicios disponibles."));
   host.appendChild(lista);
 }
 
 async function cargarHoras(fecha) {
-  const servicio = servicioActual();
-  const duracion = estado.modo === "reagendar"
-    ? Number((estado.citas.get(estado.token) || {}).duracion_min) || 30
-    : Number(servicio && servicio.duracion_min) || 30;
-  const mapa = new Map();
-  if (estado.modo === "reagendar" || estado.barberoId) {
-    const idBarbero = estado.barberoId;
-    const { data, error } = await estado.supabase.rpc("horas_disponibles", {
-      p_barbero: idBarbero,
-      p_fecha: fecha,
-      p_duracion: duracion
-    });
-    if (error) throw error;
-    (Array.isArray(data) ? data : []).forEach((fila) => {
-      const slot = String(fila.slot || "").slice(0, 5);
-      if (slot) mapa.set(slot, [idBarbero]);
-    });
-    return mapa;
-  }
-  const candidatos = barberosDelPaso();
-  const respuestas = await Promise.all(candidatos.map((barbero) => estado.supabase.rpc("horas_disponibles", {
-    p_barbero: barbero.id,
+  const duracion = duracionElegida();
+  const { data, error } = await estado.supabase.rpc("horas_disponibles", {
     p_fecha: fecha,
     p_duracion: duracion
-  })));
-  candidatos.forEach((barbero, indice) => {
-    const respuesta = respuestas[indice];
-    if (!respuesta || respuesta.error || !Array.isArray(respuesta.data)) return;
-    respuesta.data.forEach((fila) => {
-      const slot = String(fila.slot || "").slice(0, 5);
-      if (!slot) return;
-      const lista = mapa.get(slot) || [];
-      lista.push(barbero.id);
-      mapa.set(slot, lista);
-    });
+  });
+  if (error) throw error;
+  const mapa = new Map();
+  (Array.isArray(data) ? data : []).forEach((fila) => {
+    const slot = String(fila.slot || "").slice(0, 5);
+    if (slot) mapa.set(slot, true);
   });
   return mapa;
 }
@@ -788,6 +659,21 @@ async function sugerirDia(desde) {
 }
 
 function pintarHorario(host) {
+  const servicio = servicioActual();
+  if (servicio && estado.modo !== "reagendar") {
+    const precio = precioDe(servicio);
+    const detalle = [servicio.nombre, formatDuracion(servicio.duracion_min), precio].filter(Boolean).join(" · ");
+    host.appendChild(nodo("p", "reserva-elegido", detalle));
+    const cambiar = nodo("button", "btn btn-sec", "Cambiar servicio");
+    cambiar.type = "button";
+    cambiar.addEventListener("click", () => {
+      estado.paso = 0;
+      estado.hora = "";
+      pintarPasos();
+    });
+    host.appendChild(cambiar);
+  }
+  host.appendChild(nodo("p", "hora-duracion", "Duración: " + (formatDuracion(duracionElegida()) || duracionElegida() + " min")));
   const maximo = Math.max(1, Number(estado.config && estado.config.dias_max) || 14);
   const hoy = hoyISO();
   if (!estado.fecha) estado.fecha = hoy;
@@ -851,7 +737,7 @@ function pintarHoras(host, mapa) {
   if (!slots.length) {
     const vacio = nodo("div");
     vacio.dataset.sinHoras = "1";
-    vacio.appendChild(nodo("p", null, "Sin horarios este día"));
+    vacio.appendChild(nodo("p", null, "Sin horarios disponibles este día"));
     host.appendChild(vacio);
     sugerirDia(estado.fecha).then((fecha) => {
       if (!fecha || !vacio.isConnected) return;
@@ -940,12 +826,10 @@ async function guardarReagendo(boton) {
 
 function resumenCita() {
   const servicio = servicioActual();
-  const oferta = estado.ofertas.get(estado.hora) || [];
-  const barbero = estado.barberoId ? barberoPorId(estado.barberoId) : barberoPorId(oferta[0]);
   const caja = nodo("aside", "reserva-resumen");
   caja.appendChild(nodo("p", "etiqueta", "Tu cita"));
   caja.appendChild(nodo("p", null, servicio ? servicio.nombre : ""));
-  caja.appendChild(nodo("p", null, barbero ? barbero.nombre : "El primero disponible"));
+  caja.appendChild(nodo("p", null, formatDuracion(duracionElegida())));
   caja.appendChild(nodo("p", null, fechaLegible(estado.fecha) + " · " + horaLegible(estado.hora)));
   const precio = precioDe(servicio);
   if (precio) caja.appendChild(nodo("p", null, precio));
@@ -954,8 +838,6 @@ function resumenCita() {
 
 function pintarDatos(host) {
   const formulario = nodo("form", "reserva-datos");
-  const ofertaInicial = estado.ofertas.get(estado.hora) || [];
-  formulario.dataset.barbero = estado.barberoId || ofertaInicial[0] || "";
   formulario.dataset.servicio = estado.servicioId;
   formulario.dataset.fecha = estado.fecha;
   formulario.dataset.hora = estado.hora;
@@ -1022,7 +904,7 @@ function pintarDatos(host) {
   politica.rel = "noopener";
   politica.addEventListener("click", (evento) => evento.stopPropagation());
   const textoCheck = document.createElement("span");
-  textoCheck.append(document.createTextNode("Autorizo el tratamiento de mis datos personales según la "), politica);
+  textoCheck.append(document.createTextNode("Autorizo el tratamiento de mis datos personales (Ley 1581) según la "), politica);
   labelCheck.append(check, marcaCasilla(), textoCheck);
   const menor = nodo("p", "reserva-menor", "Si reservas para un menor, declaras ser su padre, madre o representante.");
   const error = nodo("p", "form-error");
@@ -1054,24 +936,7 @@ async function enviarReserva(evento, formulario, boton, error) {
   const datos = new FormData(formulario);
   const trampa = String(datos.get("website") || "").trim();
   if (trampa) {
-    const ofertaTrampa = estado.ofertas.get(estado.hora) || [];
-    const barberoTrampa = estado.barberoId || ofertaTrampa[0];
-    const nombreTrampa = nombreValido(datos.get("nombre"));
-    const celTrampa = celularValido(datos.get("celular"));
-    if (barberoTrampa && nombreTrampa && celTrampa.ok && estado.supabase) {
-      estado.supabase.rpc("crear_reserva", {
-        p_barbero: barberoTrampa,
-        p_servicio: estado.servicioId,
-        p_fecha: estado.fecha,
-        p_hora: estado.hora,
-        p_nombre: nombreTrampa,
-        p_telefono: celTrampa.digitos,
-        p_notas: "",
-        p_autoriza: true,
-        p_trampa: trampa
-      }).then(() => {}).catch(() => {});
-    }
-    pintarConfirmacion({ token: "", numero: "" }, nombreTrampa || "");
+    pintarConfirmacion({ token: "", numero: "" }, nombreValido(datos.get("nombre")) || "");
     return;
   }
   const nombre = nombreValido(datos.get("nombre"));
@@ -1095,9 +960,7 @@ async function enviarReserva(evento, formulario, boton, error) {
     boton.disabled = true;
     return;
   }
-  const oferta = estado.ofertas.get(estado.hora) || [];
-  const barbero = estado.barberoId || oferta[0];
-  if (!barbero) {
+  if (!estado.hora || !estado.ofertas.has(estado.hora)) {
     error.hidden = false;
     error.textContent = "Esa hora acaba de ocuparse. Elige otra.";
     return;
@@ -1106,22 +969,15 @@ async function enviarReserva(evento, formulario, boton, error) {
   boton.textContent = "Reservando…";
   try {
     const payload = {
-      p_barbero: barbero,
       p_servicio: estado.servicioId,
       p_fecha: estado.fecha,
       p_hora: estado.hora,
       p_nombre: nombre,
       p_telefono: cel.digitos,
       p_notas: String(datos.get("notas") || "").slice(0, 200),
-      p_autoriza: autoriza
+      p_autoriza: autoriza === true
     };
-    let respuesta = await estado.supabase.rpc("crear_reserva", payload);
-    const avisoRpc = String((respuesta.error && (respuesta.error.message || respuesta.error.details)) || "");
-    if (respuesta.error && /p_trampa|schema cache/i.test(avisoRpc)) {
-      delete payload.p_trampa;
-      payload.p_autoriza = Boolean(casilla && casilla.checked);
-      respuesta = await estado.supabase.rpc("crear_reserva", payload);
-    }
+    const respuesta = await estado.supabase.rpc("crear_reserva", payload);
     const data = respuesta.data;
     const falloRpc = respuesta.error;
     if (falloRpc) throw falloRpc;
@@ -1144,11 +1000,10 @@ function pintarConfirmacion(creada, nombre) {
   const cuerpo = caja.querySelector("[data-paso]");
   const titulo = caja.querySelector("[data-paso-titulo]");
   if (titulo) titulo.textContent = "Listo";
-  const fila = estado.citas.get(String(creada.token).toLowerCase()) || {
+  const fila = estado.citas.get(String(creada.token || "").toLowerCase()) || {
     numero: creada.numero,
     nombre,
     servicio: (servicioActual() || {}).nombre,
-    barbero: (barberoPorId(estado.barberoId) || barberoPorId((estado.ofertas.get(estado.hora) || [])[0]) || {}).nombre,
     fecha: estado.fecha,
     hora: estado.hora,
     duracion_min: (servicioActual() || {}).duracion_min,
@@ -1170,7 +1025,10 @@ function pintarConfirmacion(creada, nombre) {
   listo.appendChild(svg);
   const numero = nodo("p", "cita-numero", "Cita " + (creada.numero || fila.numero || ""));
   numero.dataset.reservaNumero = "1";
-  listo.append(numero, nodo("p", null, fila.servicio || ""), nodo("p", null, fila.barbero || ""), nodo("p", null, fechaLegible(fila.fecha) + " · " + horaLegible(fila.hora)), nodo("p", null, negocio.direccion));
+  const lineas = [numero, nodo("p", null, fila.servicio || "")];
+  if (fila.barbero) lineas.push(nodo("p", null, fila.barbero));
+  lineas.push(nodo("p", null, fechaLegible(fila.fecha) + " · " + horaLegible(fila.hora)), nodo("p", null, negocio.direccion));
+  listo.append(...lineas);
   const acciones = nodo("div", "cita-acciones");
   const calendario = nodo("button", "btn btn-sec", "Agregar al calendario");
   calendario.type = "button";
@@ -1234,10 +1092,8 @@ async function abrirPublico(clave, nombre) {
     abrirHoja();
     return;
   }
-  fijarSede();
   estado.paso = 0;
   estado.servicioId = "";
-  estado.barberoId = "";
   estado.hora = "";
   abrirHoja();
   if (estado.claveServicio || estado.nombreServicio) aplicarPrecarga();
@@ -1326,19 +1182,13 @@ function montarInterfaz() {
 
 async function cargarCatalogo() {
   const supabase = estado.supabase;
-  const [config, sedes, barberos, servicios, horarios] = await Promise.all([
+  const [config, servicios] = await Promise.all([
     supabase.from("config").select("*").eq("id", 1).limit(1),
-    supabase.from("sedes").select("*").eq("activa", true).order("orden"),
-    supabase.from("barberos").select("*").eq("activo", true).order("orden"),
-    supabase.from("servicios").select("*").order("orden"),
-    supabase.from("horarios").select("*")
+    supabase.from("servicios").select("*").order("orden")
   ]);
-  if (config.error || sedes.error || barberos.error || servicios.error || horarios.error) throw new Error("carga");
+  if (config.error || servicios.error) throw new Error("carga");
   estado.config = (config.data && config.data[0]) || null;
-  estado.sedes = sedes.data || [];
-  estado.barberos = barberos.data || [];
   estado.servicios = servicios.data || [];
-  estado.horarios = horarios.data || [];
 }
 
 function leerPrecarga() {

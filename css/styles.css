@@ -75,6 +75,7 @@ body {
   font-size: 16px;
   line-height: 1.7;
   text-rendering: optimizeLegibility;
+  overflow-x: clip;
 }
 
 body.public { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
@@ -2487,4 +2488,223 @@ select:focus,
   button:active,
   a.btn:active { transform: none; }
   .casilla input:checked + .casilla-svg path { stroke-dashoffset: 0; }
+}
+
+.servicios-lista {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.servicio-card {
+  min-width: 0;
+  border: 1px solid var(--linea);
+  border-radius: 16px;
+  background: var(--grafito);
+  overflow: hidden;
+  transition: border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
+}
+
+.servicio-card.is-vip {
+  border-color: var(--oro);
+  background: linear-gradient(180deg, rgba(201, 162, 75, 0.18), var(--grafito) 46%);
+  box-shadow: 0 0 0 1px rgba(201, 162, 75, 0.35);
+}
+
+.servicio-cabeza {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 12px;
+  width: 100%;
+  min-height: 92px;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.servicio-card.is-vip .servicio-cabeza {
+  grid-template-columns: 120px minmax(0, 1fr);
+  min-height: 120px;
+}
+
+.servicio-cabeza img,
+.servicio-foto-vacia {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 10px;
+  background: var(--grafito-2);
+}
+
+.servicio-copia {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.servicio-copia strong {
+  font-family: var(--impacto);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.servicio-meta { color: var(--oro); }
+
+.vip-insignia,
+.adicional-etiq {
+  align-self: flex-start;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  font-family: var(--impacto);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.vip-insignia { background: var(--degradado-oro); color: var(--negro); }
+
+.adicional-etiq { border: 1px solid var(--oro); color: var(--oro); }
+
+.servicio-panel {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  padding: 0 12px;
+  transition: max-height 0.35s var(--ease), opacity 0.35s var(--ease), padding 0.35s var(--ease);
+}
+
+.servicio-card.is-abierta .servicio-panel {
+  max-height: 360px;
+  opacity: 1;
+  padding: 0 12px 14px;
+}
+
+.servicio-panel p { margin: 0 0 0.8rem; color: var(--gris); }
+
+.servicio-panel .btn { min-height: 44px; }
+
+.adicional-titulo {
+  grid-column: 1 / -1;
+  margin: 0.6rem 0 0;
+  color: var(--oro);
+  font-family: var(--impacto);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.visita-fachada { margin: 0; min-width: 0; }
+
+.visita-fachada img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--r-tarjeta);
+}
+
+.galeria-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.galeria-item {
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--grafito);
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.galeria-item img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  transition: transform 0.4s var(--ease);
+}
+
+.galeria-item:hover img,
+.galeria-item:focus-visible img { transform: scale(1.04); }
+
+.luz {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 3.4rem 1rem 1rem;
+  background: rgba(10, 10, 10, 0.9);
+}
+
+.luz img {
+  width: auto;
+  max-width: min(960px, 100%);
+  max-height: calc(100svh - 5rem);
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.luz-cerrar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--oro);
+  border-radius: 8px;
+  background: var(--negro);
+  color: var(--hueso);
+  font-size: 1.7rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+body.luz-abierta { overflow: hidden; }
+
+.hora-duracion,
+.reserva-elegido { margin: 0.2rem 0 0.6rem; color: var(--gris); }
+
+.hora-fila {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  align-items: stretch;
+}
+
+.hora-btn {
+  width: 100%;
+  min-height: 44px;
+  text-align: center;
+  padding-inline: 0.25rem;
+}
+
+@media (min-width: 400px) {
+  .hora-fila { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (min-width: 800px) {
+  .servicios-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .servicio-card.is-vip { grid-column: 1 / -1; }
+  .servicio-card.is-vip .servicio-cabeza { grid-template-columns: 180px minmax(0, 1fr); min-height: 180px; }
+  .galeria-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .visita-fachada { grid-column: 1 / -1; }
+}
+
+@media (max-width: 430px) {
+  .reserva-pasos.abierta {
+    inset: 0;
+    border-radius: 0;
+    width: auto;
+  }
+  .nav-panel-link,
+  .nav-toggle,
+  .btn { min-height: 44px; }
 }

@@ -1,3 +1,4 @@
+import { horaLegible } from "./tiempo.js";
 import {
   negocio,
   enlaceWhatsapp,
@@ -6,7 +7,11 @@ import {
   enlaceDirecciones,
   enlaceEmbed,
   urlInstagram,
-  formatoPrecio,
+  formatPrecio,
+  formatDuracion,
+  esServicioVip,
+  esAdicional,
+  ordenarServicios,
   reservasEnLinea,
   tituloPublico,
   descripcionPublica,
@@ -573,29 +578,75 @@ const refrescarNosotros = (fotos) => {
   });
 };
 
+const TEXTO_VIP = "Incluye todos los servicios + mascarilla LED siete colores";
+
 const servicioNodo = (servicio) => {
+  const vip = esServicioVip(servicio);
   const article = document.createElement("article");
-  article.className = "servicio";
-  const titulo = document.createElement("h3");
-  titulo.textContent = servicio.nombre;
+  article.className = "servicio-card" + (vip ? " is-vip" : "");
+  const id = "srv-" + (servicio.id || slug(servicio.nombre || "servicio"));
+  const boton = document.createElement("button");
+  boton.type = "button";
+  boton.className = "servicio-cabeza";
+  boton.setAttribute("aria-expanded", "false");
+  boton.setAttribute("aria-controls", id);
+  if (servicio.foto) {
+    const img = document.createElement("img");
+    img.src = String(servicio.foto);
+    img.alt = "";
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.width = 480;
+    img.height = 480;
+    boton.appendChild(img);
+  } else {
+    const hueco = document.createElement("span");
+    hueco.className = "servicio-foto-vacia";
+    hueco.setAttribute("aria-hidden", "true");
+    boton.appendChild(hueco);
+  }
+  const copia = document.createElement("span");
+  copia.className = "servicio-copia";
+  if (vip) {
+    const insignia = document.createElement("span");
+    insignia.className = "vip-insignia";
+    insignia.textContent = "VIP";
+    copia.appendChild(insignia);
+  }
+  const titulo = document.createElement("strong");
+  titulo.textContent = servicio.nombre || "";
+  const meta = document.createElement("span");
+  meta.className = "servicio-meta";
+  const partes = [formatPrecio(servicio.precio), formatDuracion(servicio.duracion_min)].filter(Boolean);
+  meta.textContent = partes.join(" · ");
+  copia.append(titulo, meta);
+  boton.appendChild(copia);
+  const panel = document.createElement("div");
+  panel.className = "servicio-panel";
+  panel.id = id;
+  panel.inert = true;
   const texto = document.createElement("p");
-  texto.textContent = servicio.descripcion;
+  texto.textContent = vip ? TEXTO_VIP : (servicio.descripcion || "");
   const reservar = document.createElement("button");
   reservar.type = "button";
-  reservar.className = "btn btn-sec";
+  reservar.className = "btn";
   reservar.textContent = "Reservar";
   reservar.dataset.reservar = "1";
   reservar.dataset.servicio = servicio.id || "";
   reservar.dataset.servicioNombre = servicio.nombre || "";
-  const precioNumero = Number(servicio.precio);
-  if (servicio.precio != null && servicio.precio !== "" && Number.isFinite(precioNumero)) {
-    const precio = document.createElement("p");
-    precio.className = "servicio-precio";
-    precio.textContent = formatoPrecio(servicio.precio);
-    article.append(titulo, texto, precio, reservar);
-  } else {
-    article.append(titulo, texto, reservar);
-  }
+  panel.append(texto, reservar);
+  boton.addEventListener("click", () => {
+    const abierto = boton.getAttribute("aria-expanded") === "true";
+    document.querySelectorAll(".servicio-card").forEach((card) => {
+      const cabeza = card.querySelector(".servicio-cabeza");
+      const cuerpo = card.querySelector(".servicio-panel");
+      const activo = card === article && !abierto;
+      card.classList.toggle("is-abierta", activo);
+      if (cabeza) cabeza.setAttribute("aria-expanded", activo ? "true" : "false");
+      if (cuerpo) cuerpo.inert = !activo;
+    });
+  });
+  article.append(boton, panel);
   return article;
 };
 
@@ -611,218 +662,145 @@ const cargarServiciosMenu = async () => {
     if (!supabase) return null;
     const { data, error } = await supabase.from("servicios").select("*").eq("activo", true).order("orden");
     if (error || !Array.isArray(data)) return null;
-    return data.filter((item) => item && item.activo !== false && categoriaPublica(item.categoria));
+    return data.filter((item) => item && item.activo !== false);
   } catch (error) {
     return null;
   }
 };
 
-const prepararServicios = async (fotos) => {
+const prepararServicios = async () => {
   const carta = document.querySelector("[data-carta]");
   const estatica = document.querySelector("[data-carta-estatica]");
-  if (!carta) return;
+  const lista = carta && carta.querySelector("[data-servicios-lista]");
+  if (!carta || !lista) return;
   const remoto = await cargarServiciosMenu();
-  const catalogo = (Array.isArray(remoto) ? remoto : (negocio.servicios || [])).filter((item) => categoriaPublica(item.categoria));
+  const catalogo = ordenarServicios(Array.isArray(remoto) ? remoto : (negocio.servicios || []));
   if (!catalogo.length) {
     if (estatica) estatica.hidden = true;
     carta.hidden = true;
-    let aviso = document.querySelector("[data-carta-aviso]");
-    if (!aviso && carta.parentElement) {
-      aviso = document.createElement("p");
-      aviso.className = "servicios-nota";
-      aviso.setAttribute("data-carta-aviso", "");
-      carta.parentElement.appendChild(aviso);
-    }
+    const aviso = document.querySelector("[data-carta-aviso]");
     if (aviso) {
       aviso.hidden = false;
       aviso.textContent = "No pudimos cargar el menú. Intenta de nuevo en un momento.";
     }
     return;
   }
-  const orden = ["Cortes", "Barba", "FreeStyle", "Freestyle", "FreeStyle y diseños", "Cuidado facial"];
-  const presentes = [];
-  orden.forEach((nombre) => {
-    if (catalogo.some((item) => item.categoria === nombre)) presentes.push(nombre);
-  });
-  catalogo.forEach((item) => {
-    if (item.categoria && !presentes.includes(item.categoria)) presentes.push(item.categoria);
-  });
-  const banco = fotos.filter((foto) => ["corte", "equipo", "producto", "interior", "nosotros"].includes(foto.categoria) && ladoDe(foto) >= 480);
-  const tabs = carta.querySelector("[data-carta-tabs]");
-  const paneles = carta.querySelector("[data-carta-paneles]");
-  const movil = carta.querySelector("[data-carta-movil]");
-  const hueco = carta.querySelector("[data-carta-foto]");
-  const enServicio = new Set();
-  const asignadas = new Map();
-  let previa = "";
-  const candidatas = (nombre) => banco.filter((foto) => {
-    if (idsCarta.has(foto.id) || menorEnPrimerPlano(foto)) return false;
-    if (nombre === "Barba") return foto.categoria === "corte" || foto.categoria === "equipo";
-    if (nombre === "Cuidado facial") return ["producto", "interior", "corte"].includes(foto.categoria);
-    return foto.categoria === "corte";
-  }).filter((foto) => foto.id !== previa);
-  presentes.forEach((nombre) => {
-    const idFijo = idFijoDe(nombre);
-    const fija = idFijo ? fotos.find((foto) => foto.id === idFijo) : null;
-    if (fija && esId(fija.id)) {
-      if (!enServicio.has(fija.id) && puede(fija)) marcar(fija, enServicios);
-      enServicio.add(fija.id);
-      asignadas.set(nombre, fija);
-      previa = fija.id;
-      return;
-    }
-    const pool = candidatas(nombre).filter((foto) => puede(foto) || enServicio.has(foto.id));
-    const lista = (pool.length ? pool : candidatas(nombre).filter((foto) => enServicio.has(foto.id)))
-      .slice()
-      .sort((a, b) => Number(enHero.has(a.id)) - Number(enHero.has(b.id)) || Number(a.categoria !== "corte") - Number(b.categoria !== "corte") || a.id.localeCompare(b.id));
-    const foto = lista[0];
-    if (!foto) return;
-    if (!enServicio.has(foto.id)) {
-      if (!marcar(foto, enServicios)) return;
-      enServicio.add(foto.id);
-    }
-    asignadas.set(nombre, foto);
-    previa = foto.id;
-  });
-  if (hueco && !asignadas.size) hueco.hidden = true;
-  const nombresDe = (nombre) => catalogo
-    .filter((item) => item.categoria === nombre)
-    .map((item) => item.nombre)
-    .filter(Boolean);
-  const ponerRespaldo = (destino, nombre) => {
-    destino.classList.add("sin-foto");
-    const leyenda = document.createElement("p");
-    leyenda.className = "carta-foto-nombre";
-    const nombres = nombresDe(nombre);
-    leyenda.textContent = nombres.length ? nombres.join(" · ") : nombre;
-    destino.replaceChildren(leyenda);
-  };
-  const ponerFoto = (nombre) => {
-    const foto = asignadas.get(nombre);
-    const estrecha = window.matchMedia("(max-width: 899px)").matches;
-    const destino = estrecha ? carta.querySelector(".acordeon-item.is-open .acordeon-foto") : hueco;
-    if (!destino) return;
-    carta.querySelectorAll(".acordeon-foto, [data-carta-foto]").forEach((caja) => {
-      if (caja === destino) return;
-      caja.classList.remove("sin-foto");
-      caja.replaceChildren();
-    });
-    const ancho = foto ? anchoDe(foto, 800) : 0;
-    const src = foto && ancho ? urlCarta(foto, ancho) : "";
-    if (!src) {
-      ponerRespaldo(destino, nombre);
-      return;
-    }
-    const img = document.createElement("img");
-    img.decoding = "async";
-    img.loading = "lazy";
-    img.alt = foto.alt || nombresDe(nombre).join(", ");
-    img.width = foto.ancho;
-    img.height = foto.alto;
-    img.className = "mate-" + foto.id + " carta-foto-pendiente";
-    img.sizes = estrecha ? "100vw" : "(min-width: 900px) 40vw, 100vw";
-    const srcset = srcsetCarta(foto);
-    if (srcset) img.srcset = srcset;
-    const lista = () => {
-      if (img.naturalWidth > 0) {
-        img.classList.remove("carta-foto-pendiente");
-        return;
-      }
-      if (destino.contains(img)) ponerRespaldo(destino, nombre);
-    };
-    img.addEventListener("load", lista);
-    img.addEventListener("error", () => {
-      if (destino.contains(img)) ponerRespaldo(destino, nombre);
-    });
-    destino.classList.remove("sin-foto");
-    destino.replaceChildren(img);
-    img.src = src;
-    if (img.complete) lista();
-  };
-  const seleccionar = (nombre) => {
-    tabs.querySelectorAll("[role='tab']").forEach((tab) => {
-      const activo = tab.getAttribute("data-cat") === nombre;
-      tab.setAttribute("aria-selected", activo ? "true" : "false");
-      tab.tabIndex = activo ? 0 : -1;
-    });
-    paneles.querySelectorAll("[role='tabpanel']").forEach((panel) => {
-      panel.hidden = panel.getAttribute("data-cat") !== nombre;
-    });
-    movil.querySelectorAll(".acordeon-item").forEach((item) => {
-      const activo = item.getAttribute("data-cat") === nombre;
-      item.classList.toggle("is-open", activo);
-      const boton = item.querySelector("button");
-      if (boton) boton.setAttribute("aria-expanded", activo ? "true" : "false");
-    });
-    ponerFoto(nombre);
-  };
-  presentes.forEach((nombre, indice) => {
-    const id = slug(nombre) || "cat-" + indice;
-    const servicios = catalogo.filter((item) => item.categoria === nombre);
-    const tab = document.createElement("button");
-    tab.type = "button";
-    tab.className = "carta-tab";
-    tab.setAttribute("role", "tab");
-    tab.id = "tab-" + id;
-    tab.setAttribute("aria-controls", "panel-" + id);
-    tab.setAttribute("data-cat", nombre);
-    tab.textContent = nombre;
-    tab.addEventListener("click", () => seleccionar(nombre));
-    tabs.appendChild(tab);
-    const panel = document.createElement("div");
-    panel.setAttribute("role", "tabpanel");
-    panel.id = "panel-" + id;
-    panel.setAttribute("aria-labelledby", tab.id);
-    panel.setAttribute("data-cat", nombre);
-    servicios.forEach((servicio) => panel.appendChild(servicioNodo(servicio)));
-    paneles.appendChild(panel);
-    const item = document.createElement("div");
-    item.className = "acordeon-item";
-    item.setAttribute("data-cat", nombre);
-    const boton = document.createElement("button");
-    boton.type = "button";
-    boton.className = "acordeon-q";
-    boton.setAttribute("aria-expanded", "false");
-    boton.textContent = nombre;
-    const cuerpo = document.createElement("div");
-    cuerpo.className = "acordeon-panel";
-    const interior = document.createElement("div");
-    interior.className = "acordeon-inner";
-    const marco = document.createElement("div");
-    marco.className = "acordeon-foto";
-    const lista = document.createElement("div");
-    servicios.forEach((servicio) => lista.appendChild(servicioNodo(servicio)));
-    interior.append(marco, lista);
-    cuerpo.appendChild(interior);
-    item.append(boton, cuerpo);
-    boton.addEventListener("click", () => seleccionar(nombre));
-    movil.appendChild(item);
-  });
-  tabs.addEventListener("keydown", (event) => {
-    const botones = [...tabs.querySelectorAll("[role='tab']")];
-    const indice = botones.indexOf(document.activeElement);
-    if (indice < 0) return;
-    let siguiente = -1;
-    if (event.key === "ArrowDown" || event.key === "ArrowRight") siguiente = (indice + 1) % botones.length;
-    if (event.key === "ArrowUp" || event.key === "ArrowLeft") siguiente = (indice - 1 + botones.length) % botones.length;
-    if (event.key === "Home") siguiente = 0;
-    if (event.key === "End") siguiente = botones.length - 1;
-    if (siguiente < 0) return;
-    event.preventDefault();
-    botones[siguiente].focus();
-    seleccionar(botones[siguiente].getAttribute("data-cat"));
-  });
-  if (presentes.length) seleccionar(presentes[0]);
-  window.addEventListener("resize", () => {
-    const activo = movil.querySelector(".acordeon-item.is-open");
-    if (activo) ponerFoto(activo.getAttribute("data-cat"));
-  });
-  if (estatica && window.matchMedia("(max-width: 899px)").matches) {
-    const alto = estatica.offsetHeight;
-    if (alto) carta.style.minHeight = alto + "px";
+  const principales = catalogo.filter((item) => !esAdicional(item));
+  const extras = catalogo.filter((item) => esAdicional(item));
+  lista.replaceChildren();
+  principales.forEach((servicio) => lista.appendChild(servicioNodo(servicio)));
+  if (extras.length) {
+    const titulo = document.createElement("h3");
+    titulo.className = "adicional-titulo";
+    titulo.textContent = "Adicional";
+    lista.appendChild(titulo);
+    extras.forEach((servicio) => lista.appendChild(servicioNodo(servicio)));
   }
   if (estatica) estatica.hidden = true;
   carta.hidden = false;
+};
+
+const prepararGaleria = () => {
+  const host = document.querySelector("[data-galeria]");
+  const visor = document.querySelector("[data-visor]");
+  const foto = visor && visor.querySelector("[data-luz-img]");
+  const cerrar = visor && visor.querySelector("[data-luz-cerrar]");
+  if (!host || !visor || !foto) return;
+  const abrir = (src, alt) => {
+    foto.src = src;
+    foto.alt = alt;
+    visor.hidden = false;
+    document.body.classList.add("luz-abierta");
+    if (cerrar) cerrar.focus();
+  };
+  const ocultar = () => {
+    visor.hidden = true;
+    foto.removeAttribute("src");
+    document.body.classList.remove("luz-abierta");
+  };
+  for (let i = 1; i <= 20; i += 1) {
+    if (i === 15) continue;
+    const ruta = "img/galeria/foto-" + String(i).padStart(2, "0") + ".webp";
+    const boton = document.createElement("button");
+    boton.type = "button";
+    boton.className = "galeria-item";
+    const alt = "Trabajo de La Mansión " + String(i).padStart(2, "0");
+    boton.setAttribute("aria-label", "Ampliar " + alt);
+    const img = document.createElement("img");
+    img.src = ruta;
+    img.alt = alt;
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.width = 800;
+    img.height = 800;
+    boton.appendChild(img);
+    boton.addEventListener("click", () => abrir(ruta, alt));
+    host.appendChild(boton);
+  }
+  if (cerrar) cerrar.addEventListener("click", (evento) => {
+    evento.stopPropagation();
+    ocultar();
+  });
+  visor.addEventListener("click", (evento) => {
+    if (evento.target === visor) ocultar();
+  });
+  document.addEventListener("keydown", (evento) => {
+    if (evento.key !== "Escape" || visor.hidden) return;
+    evento.stopPropagation();
+    ocultar();
+  }, true);
+};
+
+const NOMBRES_DIA = ["", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+
+const resumirHorario = (filas) => {
+  const activas = (filas || []).filter((fila) => fila && fila.activo !== false && fila.abre && fila.cierra)
+    .slice()
+    .sort((a, b) => Number(a.dia) - Number(b.dia));
+  const grupos = [];
+  activas.forEach((fila) => {
+    const clave = String(fila.abre).slice(0, 5) + "-" + String(fila.cierra).slice(0, 5);
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && ultimo.clave === clave && Number(fila.dia) === ultimo.hasta + 1) ultimo.hasta = Number(fila.dia);
+    else grupos.push({ clave, desde: Number(fila.dia), hasta: Number(fila.dia), abre: fila.abre, cierra: fila.cierra });
+  });
+  return grupos.map((grupo) => {
+    const nombre = grupo.desde === grupo.hasta
+      ? NOMBRES_DIA[grupo.desde]
+      : NOMBRES_DIA[grupo.desde] + " a " + NOMBRES_DIA[grupo.hasta];
+    const etiqueta = nombre.charAt(0).toUpperCase() + nombre.slice(1);
+    return etiqueta + " · " + horaLegible(grupo.abre) + " a " + horaLegible(grupo.cierra);
+  }).join(". ");
+};
+
+const pintarHorarioPublico = async () => {
+  if (!reservasEnLinea()) return;
+  try {
+    const modulo = await import("./supabase.js");
+    const supabase = await modulo.obtenerSupabase();
+    if (!supabase) return;
+    const { data, error } = await supabase.from("horario_local").select("dia,abre,cierra,activo").order("dia");
+    if (error || !Array.isArray(data) || !data.length) return;
+    const texto = resumirHorario(data);
+    if (texto) {
+      document.querySelectorAll("[data-horario]").forEach((nodo) => { nodo.textContent = texto; });
+      const faq = document.querySelector("[data-faq-a='3']");
+      if (faq) faq.textContent = texto;
+    }
+    const script = document.getElementById("schema-negocio");
+    if (!script) return;
+    let json = null;
+    try { json = JSON.parse(script.textContent); } catch (fallo) { json = null; }
+    if (!json) return;
+    const nombres = { 1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday", 7: "Sunday" };
+    json.openingHoursSpecification = data.filter((fila) => fila.activo !== false && nombres[Number(fila.dia)]).map((fila) => ({
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: nombres[Number(fila.dia)],
+      opens: String(fila.abre).slice(0, 5),
+      closes: String(fila.cierra).slice(0, 5)
+    }));
+    script.textContent = JSON.stringify(json);
+  } catch (error) {}
 };
 
 const fraseLocal = (categoria) => {
@@ -1165,14 +1143,14 @@ const iniciar = async () => {
       mod.prepararTrabajo({ fotos, puede, marcar, crearImagen, reducir: reduce });
     }).catch(() => {});
   }
-  observarCuando(document.getElementById("servicios"), () => {
-    prepararServicios(fotos).catch(() => {
-      const aviso = document.querySelector("[data-carta-aviso]");
-      if (!aviso) return;
-      aviso.hidden = false;
-      aviso.textContent = "No pudimos cargar el menú. Intenta de nuevo en un momento.";
-    }).then(() => prepararLocal(fotos)).catch(() => {});
-  }, "80px");
+  prepararGaleria();
+  pintarHorarioPublico();
+  prepararServicios().catch(() => {
+    const aviso = document.querySelector("[data-carta-aviso]");
+    if (!aviso) return;
+    aviso.hidden = false;
+    aviso.textContent = "No pudimos cargar el menú. Intenta de nuevo en un momento.";
+  }).then(() => prepararLocal(fotos)).catch(() => {});
   const registrarSW = () => {
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
   };

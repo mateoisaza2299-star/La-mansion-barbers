@@ -1,4 +1,4 @@
-import { reservasEnLinea, formatoPrecio } from "./config.js";
+import { reservasEnLinea, formatPrecio, formatDuracion, esServicioVip, ordenarServicios } from "./config.js";
 import { obtenerAdmin } from "./admin-cliente.js";
 import { traducir, celularValido, nombreValido } from "./errores.js";
 import { hoyISO, sumarDias, fechaLegible, horaLegible, aMinutos, aHora, lunesDe, diaSemanaISO } from "./tiempo.js";
@@ -15,10 +15,9 @@ const SEMANA = [
   { dia: 7, nombre: "Domingo" }
 ];
 const NAV = [
-  { id: "agenda", texto: "Agenda", roles: ["dueno", "barbero"] },
-  { id: "reservas", texto: "Reservas", roles: ["dueno", "barbero"] },
-  { id: "equipo", texto: "Barberos", roles: ["dueno"] },
-  { id: "horarios", texto: "Horarios", roles: ["barbero"] },
+  { id: "agenda", texto: "Agenda", roles: ["dueno"] },
+  { id: "reservas", texto: "Reservas", roles: ["dueno"] },
+  { id: "horario", texto: "Horario y capacidad", roles: ["dueno"] },
   { id: "servicios", texto: "Servicios", roles: ["dueno"] },
   { id: "fidelidad", texto: "Fidelidad", roles: ["dueno"] },
   { id: "resumen", texto: "Resumen", roles: ["dueno"] },
@@ -32,23 +31,17 @@ const CANCELAR = [0, 30, 60, 120, 180, 360, 720, 1440];
 const estado = {
   supabase: null,
   rol: "",
-  barberoId: "",
   correo: "",
   config: null,
   sedes: [],
-  barberos: [],
   servicios: [],
-  horarios: [],
-  bloqueos: [],
+  horarioLocal: [],
+  colVip: "",
   reservas: [],
-  fotos: [],
   nav: "agenda",
   agendaFecha: "",
   agendaSede: "",
   agendaModo: "dia",
-  agendaBarbero: "",
-  horarioBarbero: "",
-  horarioModelo: null,
   periodo: "hoy",
   conocidas: null,
   fichas: new Map(),
@@ -88,11 +81,6 @@ function fail(mensaje) {
 
 function dueno() {
   return estado.rol === "dueno";
-}
-
-function nombreBarbero(id) {
-  const barbero = estado.barberos.find((item) => item.id === id);
-  return barbero ? barbero.nombre : "";
 }
 
 function nombreServicio(id) {
@@ -191,11 +179,11 @@ function llenarSelect(select, opciones, valor) {
 }
 
 function vistaDe(nav) {
-  return nav === "horarios" ? "equipo" : nav;
+  return nav;
 }
 
 function hayCambios() {
-  return Boolean(document.querySelector("[data-ajustes-aviso]:not([hidden])") || document.querySelector("[data-horario-aviso]:not([hidden])"));
+  return Boolean(document.querySelector("[data-ajustes-aviso]:not([hidden])"));
 }
 
 async function abrir(nav) {
@@ -203,10 +191,6 @@ async function abrir(nav) {
     const ok = await preguntar("Tienes cambios sin guardar. ¿Salir de esta pantalla?", "Salir", "Quedarme");
     if (!ok) return;
     if (document.querySelector("[data-ajustes-aviso]:not([hidden])")) pintarAjustes();
-    if (document.querySelector("[data-horario-aviso]:not([hidden])")) {
-      cargarModelo();
-      pintarEditor();
-    }
   }
   estado.nav = nav;
   const vista = vistaDe(nav);
@@ -224,7 +208,7 @@ async function abrir(nav) {
   }
   if (vista === "agenda") pintarAgenda();
   if (vista === "reservas") pintarReservas();
-  if (vista === "equipo") pintarEquipo();
+  if (vista === "horario") pintarHorarioLocal();
   if (vista === "servicios") pintarServicios();
   if (vista === "resumen") cargarResumen();
   if (vista === "ajustes") pintarAjustes();
@@ -273,29 +257,24 @@ function avisoServicios() {
 
 async function cargarBase() {
   const supabase = estado.supabase;
-  const [config, sedes, barberos, servicios, horarios, bloqueos] = await Promise.all([
+  const [config, sedes, servicios, horarioLocal] = await Promise.all([
     supabase.from("config").select("*").eq("id", 1).limit(1),
     supabase.from("sedes").select("*").order("orden"),
-    supabase.from("barberos").select("*").order("orden"),
     supabase.from("servicios").select("*").order("orden"),
-    supabase.from("horarios").select("*"),
-    supabase.from("bloqueos").select("*").order("fecha")
+    supabase.from("horario_local").select("*").order("dia")
   ]);
-  if (config.error || sedes.error || barberos.error || servicios.error || horarios.error || bloqueos.error) {
-    throw config.error || sedes.error || barberos.error || servicios.error || horarios.error || bloqueos.error;
+  if (config.error || sedes.error || servicios.error || horarioLocal.error) {
+    throw config.error || sedes.error || servicios.error || horarioLocal.error;
   }
   estado.config = (config.data && config.data[0]) || null;
   estado.sedes = sedes.data || [];
-  estado.barberos = barberos.data || [];
   estado.servicios = servicios.data || [];
-  estado.horarios = horarios.data || [];
-  estado.bloqueos = bloqueos.data || [];
-  try {
-    const respuesta = await fetch("assets/img/fotos/fotos.json", { credentials: "same-origin" });
-    const fotos = respuesta.ok ? await respuesta.json() : [];
-    estado.fotos = Array.isArray(fotos) ? fotos.filter((foto) => foto.categoria === "equipo") : [];
-  } catch (error) {
-    estado.fotos = [];
+  estado.horarioLocal = horarioLocal.data || [];
+  const sonda = await supabase.from("servicios").select("destacado").limit(1);
+  estado.colVip = sonda.error ? "" : "destacado";
+  if (!estado.colVip) {
+    const otra = await supabase.from("servicios").select("es_vip").limit(1);
+    if (!otra.error) estado.colVip = "es_vip";
   }
 }
 
@@ -339,49 +318,46 @@ function avisarNuevas(nuevas) {
   }, 8000);
 }
 
-function barberosDeSede(sedeId) {
-  return estado.barberos.filter((item) => !sedeId || item.sede_id === sedeId);
+function reservasEn(fecha) {
+  return estado.reservas
+    .filter((item) => item.fecha === fecha)
+    .sort((a, b) => String(a.hora || "").localeCompare(String(b.hora || "")));
+}
+
+function precioDeReserva(reserva) {
+  if (reserva && reserva.precio != null && reserva.precio !== "") return formatPrecio(reserva.precio);
+  const servicio = estado.servicios.find((item) => item.id === reserva.servicio_id);
+  return servicio ? formatPrecio(servicio.precio) : "";
+}
+
+function tarjetaCita(reserva) {
+  const boton = nodo("button", "bloque estado-" + reserva.estado, "");
+  boton.type = "button";
+  const precio = precioDeReserva(reserva);
+  boton.append(
+    nodo("strong", null, horaLegible(reserva.hora) + " · " + reserva.nombre),
+    nodo("span", null, nombreServicio(reserva.servicio_id) + (precio ? " · " + precio : ""))
+  );
+  boton.addEventListener("click", () => abrirCita(reserva));
+  return boton;
 }
 
 function pintarAgenda() {
   const host = document.querySelector("[data-agenda]");
   if (!host) return;
-  const sedeSelect = document.querySelector("[data-agenda-sede]");
   const fechaInput = document.querySelector("[data-agenda-fecha]");
-  const barberoSelect = document.querySelector("[data-agenda-barbero]");
   if (!estado.agendaFecha) estado.agendaFecha = hoyISO();
-  if (!estado.agendaSede) estado.agendaSede = (sedeActual() || {}).id || "";
-  if (sedeSelect) llenarSelect(sedeSelect, estado.sedes.map((item) => ({ valor: item.id, texto: item.nombre })), estado.agendaSede);
   pintarPuesta();
   if (fechaInput && fechaInput.value !== estado.agendaFecha) fechaInput.value = estado.agendaFecha;
-  const deSede = barberosDeSede(estado.agendaSede).filter((item) => dueno() || item.id === estado.barberoId);
-  if (!estado.agendaBarbero || !deSede.some((item) => item.id === estado.agendaBarbero)) {
-    estado.agendaBarbero = (deSede[0] || {}).id || "";
-  }
-  llenarSelect(barberoSelect, deSede.map((item) => ({ valor: item.id, texto: item.nombre })), estado.agendaBarbero);
   host.removeAttribute("aria-busy");
   host.replaceChildren();
-  const titulo = nodo("h2", "solo-impresion", "Agenda del " + fechaLegible(estado.agendaFecha));
-  host.appendChild(titulo);
+  host.appendChild(nodo("h2", "solo-impresion", "Agenda del " + fechaLegible(estado.agendaFecha)));
   if (estado.agendaModo === "semana") pintarSemana(host);
-  else pintarDia(host, deSede);
+  else pintarDia(host);
 }
 
-function reservasEn(fecha, sedeId) {
-  const ids = new Set(barberosDeSede(sedeId).map((item) => item.id));
-  return estado.reservas.filter((item) => item.fecha === fecha && ids.has(item.barbero_id) && (dueno() || item.barbero_id === estado.barberoId));
-}
-
-function pintarDia(host, deSede) {
-  const columnas = window.matchMedia("(max-width: 899px)").matches
-    ? deSede.filter((item) => item.id === estado.agendaBarbero)
-    : deSede;
-  if (!columnas.length) {
-    const vacio = nodo("p", "vacio", "Aún no hay barberos. Agrégalos en Barberos para ver la agenda.");
-    host.appendChild(vacio);
-    return;
-  }
-  const citas = reservasEn(estado.agendaFecha, estado.agendaSede);
+function pintarDia(host) {
+  const citas = reservasEn(estado.agendaFecha);
   if (!citas.length) {
     const vacio = nodo("div", "vacio");
     vacio.appendChild(nodo("p", null, "No hay citas este día."));
@@ -393,34 +369,11 @@ function pintarDia(host, deSede) {
     });
     vacio.appendChild(crear);
     host.appendChild(vacio);
+    return;
   }
-  const rejilla = nodo("div", "agenda-rejilla");
-  const eje = nodo("div", "agenda-eje");
-  for (let hora = 8; hora < 20; hora += 1) eje.appendChild(nodo("span", null, String(hora) + ":00"));
-  const cols = nodo("div", "agenda-cols");
-  limpiarHoja();
-  let indice = 0;
-  columnas.forEach((barbero) => {
-    const col = nodo("div", "agenda-col");
-    col.appendChild(nodo("h3", null, barbero.nombre));
-    const lienzo = nodo("div", "agenda-horas");
-    citas.filter((item) => item.barbero_id === barbero.id).forEach((reserva) => {
-      const bloque = nodo("button", "bloque estado-" + reserva.estado + " blq-" + indice, "");
-      bloque.type = "button";
-      bloque.dataset.id = reserva.id;
-      const fila = Math.max(1, Math.floor((aMinutos(reserva.hora) - 8 * 60) / 30) + 1);
-      const span = Math.max(1, Math.ceil((Number(reserva.duracion_min) || 30) / 30));
-      regla(".blq-" + indice + "{grid-row:" + fila + " / span " + span + "}");
-      bloque.append(nodo("strong", null, horaLegible(reserva.hora)), nodo("span", null, reserva.nombre), nodo("span", null, nombreServicio(reserva.servicio_id)));
-      bloque.addEventListener("click", () => abrirCita(reserva));
-      lienzo.appendChild(bloque);
-      indice += 1;
-    });
-    col.appendChild(lienzo);
-    cols.appendChild(col);
-  });
-  rejilla.append(eje, cols);
-  host.appendChild(rejilla);
+  const lista = nodo("div", "agenda-lista");
+  citas.forEach((reserva) => lista.appendChild(tarjetaCita(reserva)));
+  host.appendChild(lista);
 }
 
 function pintarSemana(host) {
@@ -464,7 +417,7 @@ function abrirCita(reserva) {
   cuerpo.append(
     nodo("p", null, reserva.nombre),
     nodo("p", null, digitos(reserva.telefono)),
-    nodo("p", null, nombreServicio(reserva.servicio_id) + " · " + nombreBarbero(reserva.barbero_id)),
+    nodo("p", null, [nombreServicio(reserva.servicio_id), precioDeReserva(reserva)].filter(Boolean).join(" · ")),
     nodo("p", null, fechaLegible(reserva.fecha) + " · " + horaLegible(reserva.hora)),
     nodo("p", "cita-estado estado-" + reserva.estado, etiquetaEstado(reserva.estado)),
     nodo("p", null, reserva.notas || "")
@@ -580,13 +533,11 @@ function reservasFiltradas() {
   const numeros = texto.replace(/\D/g, "");
   const desde = (document.querySelector("[data-filtro-desde]") || {}).value || "";
   const hasta = (document.querySelector("[data-filtro-hasta]") || {}).value || "";
-  const barbero = (document.querySelector("[data-filtro-barbero]") || {}).value || "";
   const situacion = (document.querySelector("[data-filtro-estado]") || {}).value || "";
   const servicio = (document.querySelector("[data-filtro-servicio]") || {}).value || "";
   return estado.reservas.filter((item) => {
     if (desde && item.fecha < desde) return false;
     if (hasta && item.fecha > hasta) return false;
-    if (barbero && item.barbero_id !== barbero) return false;
     if (situacion && item.estado !== situacion) return false;
     if (servicio && item.servicio_id !== servicio) return false;
     if (!texto) return true;
@@ -600,12 +551,8 @@ function reservasFiltradas() {
 function pintarReservas() {
   const host = document.querySelector("[data-reservas-lista]");
   if (!host || document.querySelector("[data-panel=reservas]").hidden) return;
-  const barbero = document.querySelector("[data-filtro-barbero]");
   const servicio = document.querySelector("[data-filtro-servicio]");
   const situacion = document.querySelector("[data-filtro-estado]");
-  if (barbero && !barbero.options.length) {
-    llenarSelect(barbero, [{ valor: "", texto: "Todos" }, ...estado.barberos.map((item) => ({ valor: item.id, texto: item.nombre }))]);
-  }
   if (servicio && !servicio.options.length) {
     llenarSelect(servicio, [{ valor: "", texto: "Todos" }, ...estado.servicios.map((item) => ({ valor: item.id, texto: item.nombre }))]);
   }
@@ -641,7 +588,7 @@ function pintarReservas() {
       titulo,
       nodo("p", null, reserva.numero + " · " + digitos(reserva.telefono)),
       nodo("p", null, fechaLegible(reserva.fecha) + " · " + horaLegible(reserva.hora)),
-      nodo("p", null, nombreServicio(reserva.servicio_id) + " · " + nombreBarbero(reserva.barbero_id)),
+      nodo("p", null, [nombreServicio(reserva.servicio_id), precioDeReserva(reserva), formatDuracion(reserva.duracion_min)].filter(Boolean).join(" · ")),
       nodo("p", "cita-estado", etiquetaEstado(reserva.estado))
     );
     card.appendChild(accionesDe(reserva));
@@ -653,10 +600,10 @@ async function exportarCsv() {
   const ok = await preguntar("Esta exportación contiene datos personales. ¿Descargarla?", "Descargar", "Cancelar");
   if (!ok) return;
   const filas = reservasFiltradas();
-  const encabezado = ["numero", "fecha", "hora", "nombre", "celular", "servicio", "barbero", "estado"];
+  const encabezado = ["numero", "fecha", "hora", "nombre", "celular", "servicio", "precio", "estado"];
   const lineas = [encabezado.join(",")];
   filas.forEach((reserva) => {
-    const valores = [reserva.numero, reserva.fecha, reserva.hora, reserva.nombre, digitos(reserva.telefono), nombreServicio(reserva.servicio_id), nombreBarbero(reserva.barbero_id), reserva.estado];
+    const valores = [reserva.numero, reserva.fecha, reserva.hora, reserva.nombre, digitos(reserva.telefono), nombreServicio(reserva.servicio_id), precioDeReserva(reserva), reserva.estado];
     lineas.push(valores.map((valor) => /[",\n]/.test(String(valor || "")) ? '"' + String(valor).replace(/"/g, '""') + '"' : String(valor || "")).join(","));
   });
   const blob = new Blob([lineas.join("\n")], { type: "text/csv" });
@@ -668,394 +615,6 @@ async function exportarCsv() {
   enlace.click();
   enlace.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function pintarEquipo() {
-  if (dueno()) {
-    pintarBarberos();
-    prepararFormulariosDueno();
-  }
-  const lista = barberosOrdenados(dueno() ? estado.barberos : estado.barberos.filter((item) => item.id === estado.barberoId));
-  if (!estado.horarioBarbero || !lista.some((item) => item.id === estado.horarioBarbero)) estado.horarioBarbero = (lista[0] || {}).id || "";
-  prepararHorasBloqueo();
-  cargarModelo();
-  pintarEditor();
-  pintarBloqueos();
-  const sede = document.querySelector("[data-bloqueo-sede]");
-  const barbero = document.querySelector("[data-bloqueo-barbero]");
-  if (sede) sede.value = (sedeActual() || {}).id || "";
-  const opciones = [];
-  if (dueno()) opciones.push({ valor: "", texto: "Cerrar el local" });
-  (dueno() ? estado.barberos : lista).forEach((item) => opciones.push({ valor: item.id, texto: "Día libre de " + item.nombre }));
-  llenarSelect(barbero, opciones, dueno() ? "" : estado.barberoId);
-  if (barbero && !dueno()) barbero.disabled = true;
-}
-
-function barberosOrdenados(lista) {
-  const copia = (lista || estado.barberos).slice();
-  copia.sort((a, b) => (Number(a.orden) || 0) - (Number(b.orden) || 0) || String(a.nombre || "").localeCompare(String(b.nombre || ""), "es"));
-  return copia;
-}
-
-function categoriaDeBarbero(nombre) {
-  return nombre && !["Niños", "Mujer", "Color"].includes(nombre);
-}
-
-function pintarBarberos() {
-  const host = document.querySelector("[data-barberos]");
-  if (!host) return;
-  host.replaceChildren();
-  const lista = barberosOrdenados();
-  if (!lista.length) host.appendChild(nodo("p", "vacio", "Aún no hay barberos."));
-  lista.forEach((barbero) => {
-    const fila = nodo("article", "pa-cita");
-    fila.append(nodo("h3", null, barbero.nombre), nodo("p", null, barbero.especialidad || ""));
-    if (!estado.horarios.some((item) => item.barbero_id === barbero.id)) {
-      fila.appendChild(nodo("p", null, "Sin horarios: no aparecerá disponible para reservar"));
-    }
-    const editar = nodo("button", "btn btn-sec", "Editar");
-    editar.type = "button";
-    editar.addEventListener("click", () => llenarBarbero(barbero));
-    fila.appendChild(editar);
-    host.appendChild(fila);
-  });
-}
-
-function serviciosActivos() {
-  return estado.servicios
-    .filter((item) => item.activo !== false && categoriaDeBarbero(item.categoria))
-    .sort((a, b) => (Number(a.orden) || 0) - (Number(b.orden) || 0) || String(a.nombre || "").localeCompare(String(b.nombre || ""), "es"));
-}
-
-function serviciosChecks(seleccion, todos) {
-  const host = document.querySelector("[data-barbero-servicios]");
-  if (!host) return;
-  host.replaceChildren();
-  const activos = serviciosActivos();
-  const elegidos = new Set(todos ? activos.map((item) => item.id) : (Array.isArray(seleccion) ? seleccion : []));
-  const grid = nodo("div", "servicios-grid");
-  const aviso = nodo("p", "form-error", "Elige al menos un servicio para que este barbero pueda recibir reservas.");
-  aviso.dataset.serviciosAviso = "1";
-  aviso.hidden = true;
-  const general = nodo("label", "servicio-op todos casilla");
-  const caja = document.createElement("input");
-  caja.type = "checkbox";
-  caja.dataset.serviciosTodos = "1";
-  const cuenta = nodo("span", "servicio-cuenta", "");
-  cuenta.dataset.serviciosCuenta = "1";
-  general.append(caja, marcaCasilla(), nodo("span", "servicio-nombre", "Todos los servicios"), cuenta);
-  grid.appendChild(general);
-  let categoria = "";
-  activos.forEach((servicio) => {
-    if (servicio.categoria !== categoria) {
-      categoria = servicio.categoria;
-      grid.appendChild(nodo("p", "servicio-cat", categoria));
-    }
-    const label = nodo("label", "servicio-op casilla");
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.value = servicio.id;
-    input.dataset.servicioId = servicio.id;
-    input.checked = elegidos.has(servicio.id);
-    label.append(input, marcaCasilla(), nodo("span", "servicio-nombre", servicio.nombre));
-    input.addEventListener("change", sincronizarServicios);
-    grid.appendChild(label);
-  });
-  caja.addEventListener("change", () => {
-    const marcar = caja.checked;
-    grid.querySelectorAll("[data-servicio-id]").forEach((input) => { input.checked = marcar; });
-    sincronizarServicios();
-  });
-  host.append(grid, aviso);
-  sincronizarServicios();
-}
-
-function sincronizarServicios() {
-  const host = document.querySelector("[data-barbero-servicios]");
-  if (!host) return;
-  const cajas = [...host.querySelectorAll("[data-servicio-id]")];
-  const marcadas = cajas.filter((caja) => caja.checked).length;
-  const todos = host.querySelector("[data-servicios-todos]");
-  const tarjeta = todos ? todos.closest(".servicio-op") : null;
-  if (todos) {
-    todos.indeterminate = marcadas > 0 && marcadas < cajas.length;
-    todos.checked = cajas.length > 0 && marcadas === cajas.length;
-  }
-  if (tarjeta) {
-    tarjeta.classList.toggle("is-on", Boolean(todos && todos.checked));
-    tarjeta.classList.toggle("is-parcial", Boolean(todos && todos.indeterminate));
-  }
-  cajas.forEach((caja) => {
-    const op = caja.closest(".servicio-op");
-    if (op) op.classList.toggle("is-on", caja.checked);
-  });
-  const cuenta = host.querySelector("[data-servicios-cuenta]");
-  if (cuenta) cuenta.textContent = marcadas + " de " + cajas.length + " servicios";
-  const aviso = host.querySelector("[data-servicios-aviso]");
-  if (aviso) aviso.hidden = marcadas > 0;
-  const enviar = document.querySelector("[data-barbero-form] [type=submit]");
-  if (enviar) enviar.disabled = marcadas === 0;
-}
-
-function llenarBarbero(barbero) {
-  const form = document.querySelector("[data-barbero-form]");
-  form.elements.id.value = barbero.id;
-  form.elements.nombre.value = barbero.nombre || "";
-  form.elements.especialidad.value = barbero.especialidad || "";
-  if (form.elements.sede_id) form.elements.sede_id.value = barbero.sede_id || (sedeActual() || {}).id || "";
-  form.elements.foto.value = barbero.foto || "";
-  form.elements.activo.checked = barbero.activo !== false;
-  serviciosChecks(barbero.servicios, barbero.servicios == null);
-  const horario = document.querySelector("[data-barbero-horario]");
-  if (horario) horario.hidden = true;
-}
-
-function prepararFormulariosDueno() {
-  const sede = document.querySelector("[data-barbero-form] [name=sede_id]");
-  if (sede && sede.tagName === "SELECT") llenarSelect(sede, estado.sedes.map((item) => ({ valor: item.id, texto: item.nombre })));
-  else if (sede) sede.value = (sedeActual() || {}).id || "";
-  const foto = document.querySelector("[data-barbero-foto]");
-  llenarSelect(foto, [{ valor: "", texto: "Sin foto" }, ...estado.fotos.map((item) => ({ valor: item.id, texto: item.alt || item.id }))]);
-  if (!document.querySelector("[data-servicios-todos]")) serviciosChecks(null, true);
-  prepararHorarioNuevo();
-}
-
-function hhmm(valor) {
-  const texto = String(valor == null ? "" : valor).trim();
-  const encontrado = texto.match(/^(\d{1,2}):(\d{2})/);
-  if (!encontrado) return "";
-  const hora = Number(encontrado[1]);
-  const minuto = Number(encontrado[2]);
-  if (hora > 23 || minuto > 59) return "";
-  return String(hora).padStart(2, "0") + ":" + String(minuto).padStart(2, "0");
-}
-
-function diaPanel(valor) {
-  const dia = Number(valor);
-  if (dia === 0) return 7;
-  return dia;
-}
-
-const FRANJA = { inicio: 5 * 60, fin: 23 * 60 + 30, paso: 30 };
-
-function horasDeFranja(desdeMin, hastaMin, extra) {
-  const valores = [];
-  for (let minuto = desdeMin; minuto <= hastaMin; minuto += FRANJA.paso) valores.push(aHora(minuto));
-  const extraCorta = hhmm(extra);
-  if (extraCorta && aMinutos(extraCorta) >= desdeMin && aMinutos(extraCorta) <= hastaMin && !valores.includes(extraCorta)) valores.push(extraCorta);
-  valores.sort();
-  return valores;
-}
-
-function opcionesHora(extra) {
-  return horasDeFranja(FRANJA.inicio, FRANJA.fin, extra).map((valor) => ({ valor, texto: horaLegible(valor) }));
-}
-
-function opcionesDesde(extra) {
-  return horasDeFranja(FRANJA.inicio, FRANJA.fin - FRANJA.paso, extra).map((valor) => ({ valor, texto: horaLegible(valor) }));
-}
-
-function opcionesHasta(desde, extra) {
-  const base = aMinutos(desde);
-  const valores = horasDeFranja(base + FRANJA.paso, FRANJA.fin, extra).filter((valor) => aMinutos(valor) > base);
-  return valores.map((valor) => ({ valor, texto: horaLegible(valor) }));
-}
-
-function selectHora(valor, opciones) {
-  const select = document.createElement("select");
-  select.className = "pa-select";
-  llenarSelect(select, opciones || opcionesHora(valor), hhmm(valor) || "10:00");
-  return select;
-}
-
-function cajaSelect(select) {
-  const caja = nodo("span", "con-flecha");
-  caja.appendChild(select);
-  return caja;
-}
-
-function normalizarRango(abre, cierra) {
-  const desde = hhmm(abre) || "10:00";
-  let hasta = hhmm(cierra);
-  if (!hasta || aMinutos(hasta) <= aMinutos(desde)) {
-    const siguiente = aMinutos(desde) + FRANJA.paso;
-    hasta = siguiente <= FRANJA.fin ? aHora(siguiente) : hasta || desde;
-  }
-  return { abre: desde, cierra: hasta };
-}
-
-function plantillaSede() {
-  return SEMANA.map((item) => ({ dia: item.dia, nombre: item.nombre, activo: true, abre: "10:00", cierra: "20:00" }));
-}
-
-function prepararHorasBloqueo() {
-  const desde = document.querySelector("[data-bloqueo-form] [name=desde]");
-  const hasta = document.querySelector("[data-bloqueo-form] [name=hasta]");
-  if (!desde || desde.options.length) return;
-  llenarSelect(desde, opcionesHora(), "10:00");
-  llenarSelect(hasta, opcionesHora(), "12:00");
-}
-
-function prepararHorarioNuevo() {
-  const host = document.querySelector("[data-horario-manual]");
-  const caja = document.querySelector("[data-horario-sede]");
-  if (!host || !caja || host.childElementCount) return;
-  plantillaSede().forEach((item) => {
-    const fila = nodo("div", "horario-rango horario-manual-dia");
-    const etiqueta = nodo("label", "casilla");
-    const marca = document.createElement("input");
-    marca.type = "checkbox";
-    marca.checked = true;
-    marca.dataset.manualDia = String(item.dia);
-    etiqueta.append(marca, marcaCasilla());
-    const abre = selectHora("10:00");
-    abre.dataset.manualAbre = String(item.dia);
-    const cierra = selectHora("20:00");
-    cierra.dataset.manualCierra = String(item.dia);
-    fila.append(etiqueta, nodo("span", null, item.nombre), cajaSelect(abre), cajaSelect(cierra));
-    host.appendChild(fila);
-  });
-  caja.addEventListener("change", () => {
-    host.hidden = caja.checked;
-  });
-}
-
-function leerHorarioManual() {
-  const filas = [];
-  document.querySelectorAll("[data-manual-dia]").forEach((marca) => {
-    if (!marca.checked) return;
-    const dia = Number(marca.dataset.manualDia);
-    const abre = document.querySelector('[data-manual-abre="' + dia + '"]');
-    const cierra = document.querySelector('[data-manual-cierra="' + dia + '"]');
-    if (!abre || !cierra || !abre.value || !cierra.value || aMinutos(abre.value) >= aMinutos(cierra.value)) return;
-    filas.push({ dia, abre: hhmm(abre.value), cierra: hhmm(cierra.value) });
-  });
-  return filas;
-}
-
-function fotoHorario() {
-  return JSON.stringify(estado.horarioModelo || {});
-}
-
-function marcarHorario() {
-  const aviso = document.querySelector("[data-horario-aviso]");
-  const guardar = document.querySelector("[data-horario-guardar]");
-  const descartar = document.querySelector("[data-horario-descartar]");
-  const error = document.querySelector("[data-horario-error]");
-  const ok = document.querySelector("[data-horario-ok]");
-  const reintentar = document.querySelector("[data-horario-reintentar]");
-  const todos = document.querySelector("[data-horario-todos-abrir]");
-  const sucio = fotoHorario() !== estado.horarioFoto;
-  const mensaje = validarModelo();
-  if (aviso) aviso.hidden = !sucio;
-  if (guardar && !estado.horarioGuardando) {
-    guardar.disabled = !sucio || Boolean(mensaje);
-    guardar.textContent = "Guardar";
-  }
-  if (descartar) descartar.disabled = Boolean(estado.horarioGuardando) || !sucio;
-  if (todos && dueno()) todos.disabled = Boolean(estado.horarioGuardando) || Boolean(mensaje);
-  if (estado.horarioFallo) {
-    if (reintentar) reintentar.hidden = false;
-    if (ok) ok.hidden = true;
-  } else {
-    if (reintentar) reintentar.hidden = true;
-    if (error) {
-      error.hidden = !mensaje;
-      error.textContent = mensaje || "";
-    }
-    if (ok && (sucio || mensaje)) ok.hidden = true;
-  }
-}
-
-function inicioDe(item) {
-  if (item && item.inicio != null && String(item.inicio).trim() !== "") return item.inicio;
-  return item ? item.abre : "";
-}
-
-function finDe(item) {
-  if (item && item.fin != null && String(item.fin).trim() !== "") return item.fin;
-  return item ? item.cierra : "";
-}
-
-function horaSql(valor) {
-  const corta = hhmm(valor);
-  return corta ? corta + ":00" : "";
-}
-
-function barberosDelHorario() {
-  return barberosOrdenados(dueno() ? estado.barberos : estado.barberos.filter((item) => item.id === estado.barberoId));
-}
-
-function validarModelo() {
-  const modelo = estado.horarioModelo || {};
-  const ids = Object.keys(modelo);
-  for (let i = 0; i < ids.length; i += 1) {
-    const dias = modelo[ids[i]] || {};
-    for (let n = 0; n < SEMANA.length; n += 1) {
-      const item = SEMANA[n];
-      const rango = dias[item.dia];
-      if (!rango) continue;
-      if (aMinutos(rango.cierra) <= aMinutos(rango.abre)) return item.nombre + ": Hasta tiene que ser después de Desde.";
-    }
-  }
-  return "";
-}
-
-function filasDe(barberoId) {
-  const filas = [];
-  const dias = (estado.horarioModelo || {})[barberoId] || {};
-  SEMANA.forEach((item) => {
-    const rango = dias[item.dia];
-    if (!rango) return;
-    const inicio = horaSql(rango.abre);
-    const fin = horaSql(rango.cierra);
-    if (!inicio || !fin) return;
-    filas.push({ barbero_id: barberoId, dia: item.dia, inicio, fin, activo: true });
-  });
-  return filas;
-}
-
-function reportarHorario(error) {
-  const texto = error && error.message ? error.message : "Error al guardar el horario";
-  console.error("No se pudo guardar el horario:", texto);
-}
-
-async function reemplazarHorario(barberoId, filas) {
-  const actuales = estado.horarios.filter((item) => item.barbero_id === barberoId);
-  const usados = new Set();
-  for (let i = 0; i < filas.length; i += 1) {
-    const fila = filas[i];
-    const previo = actuales.find((item) => item.id && !usados.has(item.id) && diaPanel(item.dia) === Number(fila.dia));
-    if (previo) {
-      usados.add(previo.id);
-      const cambio = await estado.supabase.from("horarios").update({
-        dia: fila.dia,
-        inicio: fila.inicio,
-        fin: fila.fin,
-        activo: true
-      }).eq("id", previo.id).select();
-      if (cambio.error) {
-        reportarHorario(cambio.error);
-        return { ok: false, parcial: false, error: cambio.error };
-      }
-    } else {
-      const alta = await estado.supabase.from("horarios").insert(fila).select();
-      if (alta.error) {
-        reportarHorario(alta.error);
-        return { ok: false, parcial: false, error: alta.error };
-      }
-      if (alta.data && alta.data[0] && alta.data[0].id) usados.add(alta.data[0].id);
-    }
-  }
-  const sobrantes = actuales.map((item) => item.id).filter((id) => id && !usados.has(id));
-  if (sobrantes.length) {
-    const borrado = await estado.supabase.from("horarios").delete().in("id", sobrantes);
-    if (borrado.error) {
-      reportarHorario(borrado.error);
-      return { ok: false, parcial: true, anteriores: sobrantes, error: borrado.error };
-    }
-  }
-  return { ok: true };
 }
 
 function fijarSegmento(grupo, activo) {
@@ -1089,398 +648,172 @@ function cablearSegmento(grupo, alCambiar) {
   });
 }
 
-function crearSegmento(etiqueta, si, no, activo, alCambiar) {
-  const grupo = nodo("div", "segmento");
-  grupo.setAttribute("role", "radiogroup");
-  grupo.setAttribute("aria-label", etiqueta);
-  const indicador = nodo("span", "segmento-indicador", "");
-  indicador.setAttribute("aria-hidden", "true");
-  const a = nodo("button", null, si);
-  a.type = "button";
-  a.setAttribute("role", "radio");
-  a.dataset.valor = "1";
-  const b = nodo("button", null, no);
-  b.type = "button";
-  b.setAttribute("role", "radio");
-  b.dataset.valor = "0";
-  grupo.append(indicador, a, b);
-  fijarSegmento(grupo, activo);
-  cablearSegmento(grupo, alCambiar);
-  return grupo;
+function hhmmCorto(valor) {
+  const coincidencia = /^(\d{1,2}):(\d{2})/.exec(String(valor || ""));
+  if (!coincidencia) return "";
+  return String(coincidencia[1]).padStart(2, "0") + ":" + coincidencia[2];
 }
 
-function aplicarHoja() {
-  limpiarHoja();
-  (estado.reglasSemana || []).forEach(regla);
-  if (estado.reglaTab) regla(estado.reglaTab);
+function minutosDeHora(valor) {
+  const coincidencia = /^(\d{1,2}):(\d{2})/.exec(String(valor || ""));
+  if (!coincidencia) return null;
+  return Number(coincidencia[1]) * 60 + Number(coincidencia[2]);
 }
 
-function avisarFalloHorario(texto) {
-  estado.horarioFallo = true;
-  const caja = document.querySelector("[data-horario-error]");
-  const reintentar = document.querySelector("[data-horario-reintentar]");
-  const ok = document.querySelector("[data-horario-ok]");
-  if (caja) {
-    caja.hidden = false;
-    caja.textContent = texto;
+function toast(texto, bien) {
+  const caja = document.querySelector("[data-toast]");
+  if (!caja) return;
+  caja.hidden = !texto;
+  caja.textContent = texto || "";
+  caja.classList.toggle("form-error", bien === false);
+  caja.classList.toggle("horario-ok", bien !== false);
+  window.clearTimeout(toast.timer);
+  if (!texto) return;
+  toast.timer = window.setTimeout(() => { caja.hidden = true; }, 4200);
+}
+
+function fotosGaleria() {
+  const lista = ["img/galeria/fachada.webp"];
+  for (let i = 1; i <= 20; i += 1) {
+    if (i === 15) continue;
+    lista.push("img/galeria/foto-" + String(i).padStart(2, "0") + ".webp");
   }
-  if (reintentar) reintentar.hidden = false;
-  if (ok) ok.hidden = true;
+  return lista;
 }
 
-function horarioCoincide(deseado) {
-  const lista = barberosDelHorario();
-  for (let i = 0; i < lista.length; i += 1) {
-    const barbero = lista[i];
-    const dias = deseado[barbero.id] || {};
-    for (let n = 0; n < SEMANA.length; n += 1) {
-      const item = SEMANA[n];
-      const rango = dias[item.dia] || null;
-      const filas = estado.horarios.filter((fila) => fila.barbero_id === barbero.id && diaPanel(fila.dia) === item.dia && fila.activo !== false);
-      if (!rango) {
-        if (filas.length) return false;
-        continue;
-      }
-      if (filas.length !== 1) return false;
-      if (hhmm(inicioDe(filas[0])) !== hhmm(rango.abre) || hhmm(finDe(filas[0])) !== hhmm(rango.cierra)) return false;
-    }
+function pintarHorarioLocal() {
+  const valor = document.querySelector("[data-cap-valor]");
+  if (valor) {
+    const n = Math.min(50, Math.max(1, Number(estado.config && estado.config.capacidad) || 1));
+    valor.textContent = String(n);
   }
-  return true;
-}
-
-function avisarHorario(texto) {
-  const ok = document.querySelector("[data-horario-ok]");
-  const hoja = document.querySelector(".horario-hoja");
-  if (ok) {
-    ok.hidden = false;
-    ok.textContent = texto;
-  }
-  if (!hoja) return;
-  hoja.classList.remove("is-guardado");
-  void hoja.offsetWidth;
-  hoja.classList.add("is-guardado");
-  window.setTimeout(() => hoja.classList.remove("is-guardado"), 600);
-}
-
-async function aplicarHorarioTodos() {
-  const caja = document.querySelector("[data-horario-error]");
-  const mensaje = validarModelo();
-  if (mensaje) {
-    if (caja) {
-      caja.hidden = false;
-      caja.textContent = mensaje;
-    }
-    return;
-  }
-  const lista = barberosDelHorario();
-  if (lista.length < 2) return;
-  const origen = lista[0];
-  const ok = await preguntar("¿Aplicar el horario de " + origen.nombre + " a todos los barberos? Se reemplazan sus horas.", "Aplicar", "Cancelar");
-  if (!ok) return;
-  const plantilla = JSON.parse(JSON.stringify(estado.horarioModelo[origen.id] || {}));
-  lista.forEach((barbero) => {
-    estado.horarioModelo[barbero.id] = JSON.parse(JSON.stringify(plantilla));
-  });
-  estado.horarioFallo = false;
-  pintarEditor();
-  await guardarHorarios();
-}
-
-async function guardarHorarioBarbero(barberoId, filas) {
-  const lista = (filas || []).map((item) => ({
-    barbero_id: barberoId,
-    dia: item.dia,
-    inicio: horaSql(item.inicio || item.abre),
-    fin: horaSql(item.fin || item.cierra),
-    activo: item.activo !== false
-  })).filter((item) => item.inicio && item.fin);
-  const resultado = await reemplazarHorario(barberoId, lista);
-  if (!resultado.ok) return false;
-  const recarga = await estado.supabase.from("horarios").select("*");
-  if (recarga.error) {
-    reportarHorario(recarga.error);
-    return false;
-  }
-  estado.horarios = recarga.data || [];
-  return true;
-}
-
-function rangoDelDia(filas) {
-  const vivas = (filas || []).filter((item) => item.activo !== false);
-  if (!vivas.length) return null;
-  vivas.sort((a, b) => hhmm(inicioDe(a)).localeCompare(hhmm(inicioDe(b))));
-  return normalizarRango(inicioDe(vivas[0]), finDe(vivas[vivas.length - 1]));
-}
-
-function cargarModelo() {
-  const modelo = {};
-  barberosDelHorario().forEach((barbero) => {
-    const dias = {};
-    const porDia = {};
-    SEMANA.forEach((item) => { dias[item.dia] = null; });
-    estado.horarios.filter((item) => item.barbero_id === barbero.id).forEach((item) => {
-      const dia = diaPanel(item.dia);
-      if (!Object.prototype.hasOwnProperty.call(dias, dia)) return;
-      if (!porDia[dia]) porDia[dia] = [];
-      porDia[dia].push(item);
-    });
-    SEMANA.forEach((item) => { dias[item.dia] = rangoDelDia(porDia[item.dia]); });
-    modelo[barbero.id] = dias;
-  });
-  estado.horarioModelo = modelo;
-  estado.horarioTomarFoto = true;
-  estado.horarioFallo = false;
-}
-
-function ponerHasta(select, desde, valor) {
-  const deseado = hhmm(valor);
-  const minimo = aMinutos(desde) + FRANJA.paso;
-  const elegido = deseado && aMinutos(deseado) > aMinutos(desde) ? deseado : (minimo <= FRANJA.fin ? aHora(minimo) : "");
-  llenarSelect(select, opcionesHasta(desde, elegido), elegido);
-  return select.value;
-}
-
-function tocarHorario() {
-  estado.horarioFallo = false;
-  marcarHorario();
-}
-
-function copiarDia(barbero, dia) {
-  const origen = (estado.horarioModelo[barbero.id] || {})[dia];
-  if (!estado.horarioModelo[barbero.id]) estado.horarioModelo[barbero.id] = {};
-  SEMANA.forEach((item) => {
-    estado.horarioModelo[barbero.id][item.dia] = origen ? { abre: origen.abre, cierra: origen.cierra } : null;
-  });
-  estado.horarioTomarFoto = false;
-  estado.horarioFallo = false;
-  pintarEditor();
-}
-
-function filaDia(barbero, item) {
-  const bloque = nodo("div", "horario-dia");
-  bloque.dataset.horarioFila = String(item.dia);
-  const rango = (estado.horarioModelo[barbero.id] || {})[item.dia];
-  const trabaja = Boolean(rango);
-  if (!trabaja) bloque.classList.add("is-off");
-  bloque.appendChild(nodo("p", "horario-nombre", item.nombre));
-  const control = crearSegmento("Horario del " + item.nombre, "Trabaja", "Libre", trabaja, (encendido) => {
-    if (!estado.horarioModelo[barbero.id]) estado.horarioModelo[barbero.id] = {};
-    if (encendido) {
-      if (!estado.horarioModelo[barbero.id][item.dia]) estado.horarioModelo[barbero.id][item.dia] = { abre: "10:00", cierra: "20:00" };
-    } else {
-      estado.horarioModelo[barbero.id][item.dia] = null;
-    }
-    estado.horarioTomarFoto = false;
-    estado.horarioFallo = false;
-    pintarEditor();
-  });
-  bloque.appendChild(control);
-  const linea = nodo("div", "turno");
-  linea.hidden = !trabaja;
-  const actual = rango || { abre: "10:00", cierra: "20:00" };
-  const desde = selectHora(actual.abre, opcionesDesde(actual.abre));
-  desde.dataset.horarioDia = String(item.dia);
-  desde.dataset.horarioCampo = "abre";
-  desde.setAttribute("aria-label", "Desde el " + item.nombre);
-  const hasta = document.createElement("select");
-  hasta.className = "pa-select";
-  hasta.dataset.horarioDia = String(item.dia);
-  hasta.dataset.horarioCampo = "cierra";
-  hasta.setAttribute("aria-label", "Hasta el " + item.nombre);
-  const cierre = ponerHasta(hasta, desde.value, actual.cierra);
-  if (trabaja) {
-    estado.horarioModelo[barbero.id][item.dia].abre = desde.value;
-    estado.horarioModelo[barbero.id][item.dia].cierra = cierre;
-  }
-  const campoDesde = nodo("label", "turno-campo");
-  campoDesde.append(nodo("span", null, "Desde"), cajaSelect(desde));
-  const campoHasta = nodo("label", "turno-campo");
-  campoHasta.append(nodo("span", null, "Hasta"), cajaSelect(hasta));
-  desde.addEventListener("change", () => {
-    const dia = estado.horarioModelo[barbero.id][item.dia];
-    if (!dia) return;
-    dia.abre = desde.value;
-    dia.cierra = ponerHasta(hasta, desde.value, hasta.value);
-    tocarHorario();
-  });
-  hasta.addEventListener("change", () => {
-    const dia = estado.horarioModelo[barbero.id][item.dia];
-    if (!dia) return;
-    dia.cierra = hasta.value;
-    tocarHorario();
-  });
-  linea.append(campoDesde, campoHasta);
-  bloque.appendChild(linea);
-  const copiar = nodo("button", "btn btn-sec horario-copiar", "Copiar a todos los días");
-  copiar.type = "button";
-  copiar.addEventListener("click", () => copiarDia(barbero, item.dia));
-  bloque.appendChild(copiar);
-  return bloque;
-}
-
-function pintarEditor() {
-  const host = document.querySelector("[data-horario-editor]");
-  if (!host || !estado.horarioModelo) return;
-  host.replaceChildren();
-  const lista = barberosDelHorario();
-  if (!estado.horarioBarbero || !lista.some((item) => item.id === estado.horarioBarbero)) estado.horarioBarbero = (lista[0] || {}).id || "";
-  const selector = document.createElement("select");
-  selector.className = "pa-select";
-  selector.setAttribute("aria-label", "Barbero");
-  llenarSelect(selector, lista.map((item) => ({ valor: item.id, texto: item.nombre })), estado.horarioBarbero);
-  selector.addEventListener("change", () => {
-    estado.horarioBarbero = selector.value;
-    estado.horarioTomarFoto = false;
-    pintarEditor();
-  });
-  const campo = nodo("label", "campo");
-  campo.append(nodo("span", null, "Barbero"), selector);
-  host.appendChild(campo);
-  const barbero = lista.find((item) => item.id === estado.horarioBarbero);
-  if (barbero && estado.horarioModelo[barbero.id]) {
-    const card = nodo("article", "horario-card");
-    card.dataset.horarioBarbero = barbero.id;
-    SEMANA.forEach((item) => card.appendChild(filaDia(barbero, item)));
-    host.appendChild(card);
-  }
-  if (estado.horarioTomarFoto) {
-    estado.horarioFoto = fotoHorario();
-    estado.horarioTomarFoto = false;
-  }
-  marcarHorario();
-}
-
-async function guardarHorarios() {
-  if (estado.horarioGuardando) return;
-  const mensaje = validarModelo();
-  const caja = document.querySelector("[data-horario-error]");
-  const guardar = document.querySelector("[data-horario-guardar]");
-  if (mensaje) {
-    estado.horarioFallo = false;
-    if (caja) {
-      caja.hidden = false;
-      caja.textContent = mensaje;
-    }
-    if (guardar) guardar.disabled = true;
-    return;
-  }
-  const lista = barberosDelHorario();
-  if (!lista.length) return;
-  estado.horarioGuardando = true;
-  estado.horarioFallo = false;
-  if (guardar) {
-    guardar.disabled = true;
-    guardar.textContent = "Guardando…";
-  }
-  const reintentar = document.querySelector("[data-horario-reintentar]");
-  if (reintentar) reintentar.hidden = true;
-  if (caja) caja.hidden = true;
-  const deseado = JSON.parse(JSON.stringify(estado.horarioModelo));
-  try {
-    for (let i = 0; i < lista.length; i += 1) {
-      const barbero = lista[i];
-      const resultado = await reemplazarHorario(barbero.id, filasDe(barbero.id));
-      if (!resultado.ok) {
-        const lectura = await estado.supabase.from("horarios").select("*");
-        if (!lectura.error) estado.horarios = lectura.data || [];
-        avisarFalloHorario(resultado.parcial
-          ? "Se guardó el horario, pero no se pudieron quitar las horas anteriores."
-          : "No se pudo guardar el horario.");
-        return;
-      }
-    }
-    const recarga = await estado.supabase.from("horarios").select("*");
-    if (recarga.error) {
-      reportarHorario(recarga.error);
-      avisarFalloHorario("No se pudo guardar el horario.");
-      return;
-    }
-    estado.horarios = recarga.data || [];
-    if (!horarioCoincide(deseado)) {
-      console.error("No se pudo guardar el horario:", "Los datos releídos no coinciden.");
-      estado.horarioModelo = deseado;
-      estado.horarioTomarFoto = false;
-      avisarFalloHorario("No se pudo guardar el horario.");
-      return;
-    }
-    cargarModelo();
-    pintarEditor();
-    if (dueno()) pintarBarberos();
-    avisarHorario("Horario guardado");
-    fail("");
-  } finally {
-    estado.horarioGuardando = false;
-    if (guardar) guardar.textContent = "Guardar";
-    marcarHorario();
-  }
-}
-function avisarDeshacer(texto, accion) {
-  const aviso = document.querySelector("[data-deshacer]");
-  if (!aviso) return;
-  aviso.replaceChildren();
-  aviso.hidden = false;
-  aviso.appendChild(document.createTextNode(texto + " "));
-  const boton = nodo("button", "btn btn-sec", "Deshacer");
-  boton.type = "button";
-  aviso.appendChild(boton);
-  let vivo = true;
-  const timer = window.setTimeout(() => {
-    vivo = false;
-    aviso.hidden = true;
-  }, 6000);
-  boton.addEventListener("click", async () => {
-    if (!vivo) return;
-    vivo = false;
-    window.clearTimeout(timer);
-    aviso.hidden = true;
-    await accion();
-  });
-}
-
-function pintarBloqueos() {
-  const host = document.querySelector("[data-bloqueos]");
+  const host = document.querySelector("[data-horario-dias]");
   if (!host) return;
   host.replaceChildren();
-  const lista = estado.bloqueos.filter((item) => dueno() || item.barbero_id === estado.barberoId || !item.barbero_id);
-  if (!lista.length) {
-    host.appendChild(nodo("p", "vacio", "Todavía no hay cierres. Puedes cerrar el local o dar un día libre."));
+  SEMANA.forEach((item) => {
+    const fila = (estado.horarioLocal || []).find((dia) => Number(dia.dia) === item.dia) || {
+      dia: item.dia,
+      abre: "",
+      cierra: "",
+      descanso_inicio: "",
+      descanso_fin: "",
+      activo: false
+    };
+    const card = nodo("article", "horario-dia" + (fila.activo === false ? " is-off" : ""));
+    card.dataset.dia = String(item.dia);
+    const cabeza = nodo("div", "horario-dia-top");
+    cabeza.appendChild(nodo("h3", null, item.nombre));
+    const abierto = document.createElement("input");
+    abierto.type = "checkbox";
+    abierto.checked = fila.activo !== false;
+    abierto.setAttribute("aria-label", item.nombre + " abierto");
+    const label = nodo("label", "reserva-check casilla");
+    label.append(abierto, marcaCasilla(), nodo("span", null, "Abierto"));
+    cabeza.appendChild(label);
+    const horas = nodo("div", "horario-horas");
+    const campo = (nombre, etiqueta, valorHora) => {
+      const input = document.createElement("input");
+      input.type = "time";
+      input.name = nombre;
+      input.step = "60";
+      input.value = hhmmCorto(valorHora);
+      const lab = nodo("label", "campo");
+      lab.append(nodo("span", null, etiqueta), input);
+      return lab;
+    };
+    horas.append(
+      campo("abre", "Apertura", fila.abre),
+      campo("cierra", "Cierre", fila.cierra),
+      campo("descanso_inicio", "Descanso desde", fila.descanso_inicio),
+      campo("descanso_fin", "Descanso hasta", fila.descanso_fin)
+    );
+    const quitar = nodo("button", "btn btn-sec", "Quitar descanso");
+    quitar.type = "button";
+    quitar.addEventListener("click", () => {
+      card.querySelector("[name=descanso_inicio]").value = "";
+      card.querySelector("[name=descanso_fin]").value = "";
+    });
+    abierto.addEventListener("change", () => card.classList.toggle("is-off", !abierto.checked));
+    card.append(cabeza, horas, quitar);
+    host.appendChild(card);
+  });
+}
+
+function leerDiaLocal(card) {
+  const toma = (nombre) => {
+    const input = card.querySelector("[name=" + nombre + "]");
+    return input && input.value ? input.value : "";
+  };
+  return {
+    dia: Number(card.dataset.dia),
+    activo: Boolean(card.querySelector("input[type=checkbox]") && card.querySelector("input[type=checkbox]").checked),
+    abre: toma("abre"),
+    cierra: toma("cierra"),
+    descanso_inicio: toma("descanso_inicio"),
+    descanso_fin: toma("descanso_fin")
+  };
+}
+
+function validarDiaLocal(fila, nombre) {
+  const abre = minutosDeHora(fila.abre);
+  const cierra = minutosDeHora(fila.cierra);
+  if (fila.activo && (abre == null || cierra == null)) return nombre + ": completa apertura y cierre.";
+  if (abre != null && cierra != null && cierra <= abre) return nombre + ": el cierre tiene que ser después de la apertura.";
+  const tieneInicio = Boolean(fila.descanso_inicio);
+  const tieneFin = Boolean(fila.descanso_fin);
+  if (tieneInicio !== tieneFin) return nombre + ": el descanso necesita inicio y fin, o ninguno.";
+  if (!tieneInicio) return "";
+  const ini = minutosDeHora(fila.descanso_inicio);
+  const fin = minutosDeHora(fila.descanso_fin);
+  if (ini == null || fin == null || fin <= ini) return nombre + ": el descanso termina después de empezar.";
+  if (abre != null && cierra != null && (ini < abre || fin > cierra)) return nombre + ": el descanso tiene que quedar dentro del horario.";
+  return "";
+}
+
+async function guardarCapacidad(delta) {
+  const caja = document.querySelector("[data-cap-valor]");
+  const actual = Math.min(50, Math.max(1, Number(caja && caja.textContent) || Number(estado.config && estado.config.capacidad) || 1));
+  const siguiente = Math.min(50, Math.max(1, actual + delta));
+  if (caja) caja.textContent = String(siguiente);
+  const { error } = await estado.supabase.from("config").update({ capacidad: siguiente }).eq("id", 1);
+  if (error) {
+    if (caja) caja.textContent = String(actual);
+    toast("No se pudo guardar la capacidad.", false);
     return;
   }
-  lista.forEach((bloqueo) => {
-    const fila = nodo("article", "pa-cita");
-    const quien = bloqueo.barbero_id ? "Día libre de " + nombreBarbero(bloqueo.barbero_id) : "Cerrar el local";
-    const franja = bloqueo.todo_dia ? "Todo el día" : horaLegible(bloqueo.desde || "") + " – " + horaLegible(bloqueo.hasta || "");
-    fila.append(nodo("h3", null, fechaLegible(bloqueo.fecha)), nodo("p", null, quien + " · " + franja), nodo("p", null, bloqueo.motivo || ""));
-    if (dueno() || bloqueo.barbero_id === estado.barberoId) {
-      const borrar = nodo("button", "btn btn-peligro", "Quitar");
-      borrar.type = "button";
-      borrar.addEventListener("click", async () => {
-        const ok = await preguntar("¿Quitar este cierre?", "Quitar", "Cancelar");
-        if (!ok) return;
-        const { error } = await estado.supabase.from("bloqueos").delete().eq("id", bloqueo.id);
-        if (error) return fail("No se pudo quitar el cierre.");
-        estado.bloqueos = estado.bloqueos.filter((item) => item.id !== bloqueo.id);
-        pintarBloqueos();
-        avisarDeshacer("Cierre quitado.", async () => {
-          const copia = {
-            sede_id: bloqueo.sede_id,
-            barbero_id: bloqueo.barbero_id,
-            fecha: bloqueo.fecha,
-            todo_dia: bloqueo.todo_dia,
-            desde: bloqueo.desde,
-            hasta: bloqueo.hasta,
-            motivo: bloqueo.motivo
-          };
-          const alta = await estado.supabase.from("bloqueos").insert(copia).select();
-          if (alta.error || !alta.data || !alta.data[0]) return fail("No se pudo deshacer.");
-          estado.bloqueos.push(alta.data[0]);
-          pintarBloqueos();
-        });
-      });
-      fila.appendChild(borrar);
+  if (estado.config) estado.config.capacidad = siguiente;
+  toast("Capacidad guardada.", true);
+}
+
+async function guardarHorarioLocal() {
+  const cards = [...document.querySelectorAll("[data-horario-dias] [data-dia]")];
+  const filas = cards.map(leerDiaLocal);
+  for (const fila of filas) {
+    const nombre = (SEMANA.find((item) => item.dia === fila.dia) || {}).nombre || "Día";
+    const aviso = validarDiaLocal(fila, nombre);
+    if (aviso) {
+      toast(aviso, false);
+      return;
     }
-    host.appendChild(fila);
-  });
+  }
+  for (const fila of filas) {
+    const payload = {
+      abre: fila.abre || null,
+      cierra: fila.cierra || null,
+      descanso_inicio: fila.descanso_inicio || null,
+      descanso_fin: fila.descanso_fin || null,
+      activo: fila.activo
+    };
+    const { error } = await estado.supabase.from("horario_local").update(payload).eq("dia", fila.dia);
+    if (error) {
+      toast("No se pudo guardar el horario.", false);
+      return;
+    }
+    const actual = (estado.horarioLocal || []).find((item) => Number(item.dia) === fila.dia);
+    if (actual) Object.assign(actual, payload);
+    else estado.horarioLocal.push({ dia: fila.dia, ...payload });
+  }
+  toast("Horario guardado.", true);
 }
 
 function formularioServicio() {
@@ -1488,11 +821,34 @@ function formularioServicio() {
 }
 
 function mostrarFormularioServicio(visible) {
-  const form = formularioServicio();
-  if (form) form.hidden = !visible;
-  document.querySelectorAll("[data-servicio-nuevo]").forEach((boton) => {
-    boton.hidden = visible;
-  });
+  const modal = document.querySelector("[data-servicio-modal]");
+  if (modal) modal.hidden = !visible;
+}
+
+function llenarFotosServicio(valor) {
+  const select = document.querySelector("[data-servicio-foto]");
+  const opciones = [{ valor: "", texto: "Sin foto" }].concat(fotosGaleria().map((ruta) => ({ valor: ruta, texto: ruta.replace("img/galeria/", "") })));
+  if (valor && !opciones.some((item) => item.valor === valor)) opciones.push({ valor: valor, texto: valor });
+  llenarSelect(select, opciones, valor || "");
+  pintarPreviaServicio();
+}
+
+function pintarPreviaServicio() {
+  const caja = document.querySelector("[data-servicio-previa]");
+  const select = document.querySelector("[data-servicio-foto]");
+  if (!caja || !select) return;
+  const ruta = select.value;
+  caja.replaceChildren();
+  if (!ruta) {
+    caja.hidden = true;
+    return;
+  }
+  const img = document.createElement("img");
+  img.src = ruta;
+  img.alt = "";
+  img.decoding = "async";
+  caja.hidden = false;
+  caja.appendChild(img);
 }
 
 function abrirServicio(servicio) {
@@ -1500,21 +856,19 @@ function abrirServicio(servicio) {
   if (!form) return;
   fail("");
   form.reset();
-  form.elements.id.value = "";
-  if (servicio) {
-    form.elements.id.value = servicio.id;
-    form.elements.categoria.value = servicio.categoria || "";
-    form.elements.nombre.value = servicio.nombre || "";
-    form.elements.descripcion.value = servicio.descripcion || "";
-    form.elements.precio.value = servicio.precio == null ? "" : servicio.precio;
-    form.elements.duracion_min.value = servicio.duracion_min || 30;
-    form.elements.cuenta_fidelidad.checked = Boolean(servicio.cuenta_fidelidad);
-    form.elements.orden.value = servicio.orden || 0;
-    form.elements.activo.checked = servicio.activo !== false;
-  }
+  form.elements.id.value = servicio ? servicio.id : "";
+  form.elements.nombre.value = servicio ? servicio.nombre || "" : "";
+  form.elements.descripcion.value = servicio ? servicio.descripcion || "" : "";
+  form.elements.precio.value = servicio && servicio.precio != null ? servicio.precio : "";
+  form.elements.duracion_min.value = servicio ? servicio.duracion_min || 30 : 30;
+  if (form.elements.vip) form.elements.vip.checked = esServicioVip(servicio);
+  llenarFotosServicio(servicio ? servicio.foto || "" : "");
+  const titulo = document.querySelector("[data-servicio-titulo]");
+  if (titulo) titulo.textContent = servicio ? "Editar servicio" : "Añadir servicio";
+  const borrar = document.querySelector("[data-servicio-eliminar]");
+  if (borrar) borrar.hidden = !servicio;
   mostrarFormularioServicio(true);
   if (form.elements.nombre) form.elements.nombre.focus();
-  form.scrollIntoView({ block: "start", inline: "nearest" });
 }
 
 function cerrarServicio() {
@@ -1576,11 +930,6 @@ function gruposServicio() {
 
 async function eliminarServicio(servicio) {
   if (!servicio || servicio.guardando) return;
-  const hermanos = estado.servicios.filter((item) => item.categoria === servicio.categoria);
-  if (hermanos.length <= 1) {
-    fail("Es la única opción de esta categoría. Deshabilítala o añade otra antes de eliminarla.");
-    return;
-  }
   const ok = await preguntar("¿Eliminar " + servicio.nombre + "? Esta acción no se puede deshacer", "Eliminar", "Cancelar");
   if (!ok) return;
   const copia = estado.servicios.slice();
@@ -1608,13 +957,24 @@ async function eliminarServicio(servicio) {
 function filaServicio(servicio) {
   const activo = servicio.activo !== false;
   const fila = nodo("article", activo ? "servicio-fila" : "servicio-fila is-off");
+  if (servicio.foto) {
+    const img = document.createElement("img");
+    img.className = "servicio-mini";
+    img.src = servicio.foto;
+    img.alt = "";
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.width = 64;
+    img.height = 64;
+    fila.appendChild(img);
+  } else {
+    fila.appendChild(nodo("span", "servicio-mini servicio-foto-vacia", ""));
+  }
   const cuerpo = nodo("div", "servicio-fila-texto");
-  const partes = [servicio.categoria, (servicio.duracion_min || 0) + " min"];
-  const precio = formatoPrecio(servicio.precio);
-  if (precio) partes.push(precio);
+  const partes = [formatPrecio(servicio.precio), formatDuracion(servicio.duracion_min)].filter(Boolean);
+  if (esServicioVip(servicio)) partes.unshift("VIP");
   cuerpo.append(nodo("p", "servicio-nombre", servicio.nombre), nodo("p", "pa-meta", partes.join(" · ")));
   const acciones = nodo("div", "servicio-acciones");
-  acciones.appendChild(nodo("p", "pa-estado", activo ? "Activo" : "Deshabilitado"));
   const editar = nodo("button", "btn btn-sec", "Editar");
   editar.type = "button";
   editar.disabled = Boolean(servicio.guardando);
@@ -1623,11 +983,7 @@ function filaServicio(servicio) {
   alternar.type = "button";
   alternar.disabled = Boolean(servicio.guardando);
   alternar.addEventListener("click", () => cambiarActivo(servicio));
-  const borrar = nodo("button", "btn btn-peligro", "Eliminar");
-  borrar.type = "button";
-  borrar.disabled = Boolean(servicio.guardando);
-  borrar.addEventListener("click", () => eliminarServicio(servicio));
-  acciones.append(editar, alternar, borrar);
+  acciones.append(editar, alternar);
   fila.append(cuerpo, acciones);
   return fila;
 }
@@ -1636,25 +992,12 @@ function pintarServicios() {
   const host = document.querySelector("[data-servicios]");
   if (!host) return;
   host.replaceChildren();
-  const grupos = gruposServicio();
-  if (!grupos.length) {
-    const vacio = nodo("div", "vacio");
-    vacio.appendChild(nodo("p", null, "Aún no hay servicios. Completa el formulario y guárdalo."));
-    const ir = nodo("button", "btn", "Crear servicio");
-    ir.type = "button";
-    ir.dataset.servicioNuevo = "1";
-    ir.hidden = Boolean(formularioServicio() && !formularioServicio().hidden);
-    ir.addEventListener("click", () => abrirServicio(null));
-    vacio.appendChild(ir);
-    host.appendChild(vacio);
+  const lista = ordenarServicios(estado.servicios);
+  if (!lista.length) {
+    host.appendChild(nodo("p", "vacio", "Aún no hay servicios."));
     return;
   }
-  grupos.forEach((grupo) => {
-    const bloque = nodo("section", "servicio-grupo");
-    if (grupo.nombre) bloque.appendChild(nodo("h3", null, grupo.nombre));
-    grupo.items.forEach((servicio) => bloque.appendChild(filaServicio(servicio)));
-    host.appendChild(bloque);
-  });
+  lista.forEach((servicio) => host.appendChild(filaServicio(servicio)));
 }
 
 async function buscarFidelidad(evento) {
@@ -1712,7 +1055,7 @@ async function cargarResumen() {
     ["Completadas", resumen.completadas],
     ["Canceladas", resumen.canceladas],
     ["No asistió", resumen.no_asistio],
-    ["Ingresos estimados", formatoPrecio(resumen.ingresos || 0)],
+    ["Ingresos estimados", formatPrecio(resumen.ingresos || 0)],
     ["Visitas", resumen.visitas],
     ["Clics en WhatsApp", resumen.clics_whatsapp]
   ].forEach(([etiqueta, valor]) => {
@@ -1723,7 +1066,6 @@ async function cargarResumen() {
   graficos.append(
     grafico("Reservas por día", resumen.por_dia || [], "fecha"),
     grafico("Reservas por hora", resumen.por_hora || [], "hora"),
-    grafico("Reservas por barbero", resumen.por_barbero || [], "nombre"),
     grafico("Reservas por servicio", resumen.por_servicio || [], "nombre")
   );
 }
@@ -1876,32 +1218,18 @@ function pintarAjustes() {
 function prepararNueva() {
   const form = document.querySelector("[data-nueva-form]");
   if (!form) return;
-  const sedes = dueno() ? estado.sedes : estado.sedes.filter((item) => estado.barberos.some((barbero) => barbero.id === estado.barberoId && barbero.sede_id === item.id));
-  llenarSelect(form.elements.sede, sedes.map((item) => ({ valor: item.id, texto: item.nombre })));
+  llenarSelect(form.elements.sede, estado.sedes.map((item) => ({ valor: item.id, texto: item.nombre })));
   const servicios = estado.servicios.filter((item) => item.activo !== false);
   llenarSelect(form.elements.servicio, servicios.map((item) => ({ valor: item.id, texto: item.nombre })));
   form.elements.fecha.value = hoyISO();
-  refrescarNueva(true);
+  refrescarNueva();
 }
 
-function barberosNueva() {
-  const form = document.querySelector("[data-nueva-form]");
-  const sede = form.elements.sede.value;
-  const servicio = form.elements.servicio.value;
-  return estado.barberos.filter((item) => item.activo !== false && item.sede_id === sede && (dueno() || item.id === estado.barberoId) && (item.servicios == null || (Array.isArray(item.servicios) && item.servicios.includes(servicio))));
-}
-
-async function refrescarNueva(rellenarBarberos) {
+async function refrescarNueva() {
   const form = document.querySelector("[data-nueva-form]");
   if (!form) return;
-  if (rellenarBarberos) {
-    const actual = form.elements.barbero.value;
-    const lista = barberosNueva();
-    llenarSelect(form.elements.barbero, lista.map((item) => ({ valor: item.id, texto: item.nombre })), lista.some((item) => item.id === actual) ? actual : (lista[0] || {}).id);
-  }
   const servicio = estado.servicios.find((item) => item.id === form.elements.servicio.value);
   const { data } = await estado.supabase.rpc("horas_disponibles", {
-    p_barbero: form.elements.barbero.value,
     p_fecha: form.elements.fecha.value,
     p_duracion: servicio ? servicio.duracion_min : 30
   });
@@ -1944,10 +1272,6 @@ function enlazar() {
     estado.agendaFecha = evento.target.value;
     pintarAgenda();
   });
-  document.querySelector("[data-agenda-barbero]").addEventListener("change", (evento) => {
-    estado.agendaBarbero = evento.target.value;
-    pintarAgenda();
-  });
   document.querySelectorAll("[data-agenda-modo]").forEach((boton) => {
     boton.addEventListener("click", () => {
       estado.agendaModo = boton.dataset.agendaModo;
@@ -1976,12 +1300,11 @@ function enlazar() {
     document.querySelector("[data-cita-modal]").hidden = true;
   });
   const nueva = document.querySelector("[data-nueva-form]");
-  if (nueva.elements.sede) nueva.elements.sede.addEventListener("change", () => refrescarNueva(true));
-  nueva.elements.servicio.addEventListener("change", () => refrescarNueva(true));
-  nueva.elements.barbero.addEventListener("change", () => refrescarNueva(false));
-  nueva.elements.fecha.addEventListener("change", () => refrescarNueva(false));
+  if (nueva.elements.sede) nueva.elements.sede.addEventListener("change", () => refrescarNueva());
+  nueva.elements.servicio.addEventListener("change", () => refrescarNueva());
+  nueva.elements.fecha.addEventListener("change", () => refrescarNueva());
   nueva.addEventListener("submit", crearCita);
-  ["[data-buscar]", "[data-filtro-desde]", "[data-filtro-hasta]", "[data-filtro-barbero]", "[data-filtro-estado]", "[data-filtro-servicio]"].forEach((selector) => {
+  ["[data-buscar]", "[data-filtro-desde]", "[data-filtro-hasta]", "[data-filtro-estado]", "[data-filtro-servicio]"].forEach((selector) => {
     const el = document.querySelector(selector);
     if (el) el.addEventListener("input", pintarReservas);
     if (el) el.addEventListener("change", pintarReservas);
@@ -1989,25 +1312,22 @@ function enlazar() {
   document.querySelector("[data-csv]").addEventListener("click", exportarCsv);
   const localForm = document.querySelector("[data-local-form]");
   if (localForm) localForm.addEventListener("submit", guardarLocal);
-  document.querySelector("[data-barbero-form]").addEventListener("submit", guardarBarbero);
-  document.querySelector("[data-servicio-form]").addEventListener("submit", guardarServicio);
-  document.querySelector("[data-horario-guardar]").addEventListener("click", guardarHorarios);
-  const descartarHorario = document.querySelector("[data-horario-descartar]");
-  if (descartarHorario) descartarHorario.addEventListener("click", async () => {
-    if (fotoHorario() === estado.horarioFoto) return;
-    const ok = await preguntar("¿Descartar los cambios del horario?", "Descartar", "Cancelar");
-    if (!ok) return;
-    cargarModelo();
-    pintarEditor();
+  const formServicio = document.querySelector("[data-servicio-form]");
+  if (formServicio) formServicio.addEventListener("submit", guardarServicio);
+  const guardarHorario = document.querySelector("[data-horario-local-guardar]");
+  if (guardarHorario) guardarHorario.addEventListener("click", guardarHorarioLocal);
+  const menosCupos = document.querySelector("[data-cap-menos]");
+  const masCupos = document.querySelector("[data-cap-mas]");
+  if (menosCupos) menosCupos.addEventListener("click", () => guardarCapacidad(-1));
+  if (masCupos) masCupos.addEventListener("click", () => guardarCapacidad(1));
+  const eliminarServicioBtn = document.querySelector("[data-servicio-eliminar]");
+  if (eliminarServicioBtn) eliminarServicioBtn.addEventListener("click", () => {
+    const id = (formServicio && formServicio.elements.id.value) || "";
+    const servicio = estado.servicios.find((item) => item.id === id);
+    if (servicio) eliminarServicio(servicio);
   });
-  const reintentarHorario = document.querySelector("[data-horario-reintentar]");
-  if (reintentarHorario) reintentarHorario.addEventListener("click", guardarHorarios);
-  const abrirTodos = document.querySelector("[data-horario-todos-abrir]");
-  if (abrirTodos) abrirTodos.addEventListener("click", aplicarHorarioTodos);
-  document.querySelector("[data-bloqueo-dia]").addEventListener("change", (evento) => {
-    document.querySelector("[data-bloqueo-horas]").hidden = evento.target.checked;
-  });
-  document.querySelector("[data-bloqueo-form]").addEventListener("submit", guardarBloqueo);
+  const fotoServicio = document.querySelector("[data-servicio-foto]");
+  if (fotoServicio) fotoServicio.addEventListener("change", pintarPreviaServicio);
   document.querySelector("[data-fid-form]").addEventListener("submit", buscarFidelidad);
   document.querySelectorAll("[data-periodo]").forEach((boton) => {
     boton.addEventListener("click", () => {
@@ -2106,125 +1426,49 @@ async function guardarLocal(evento) {
   pintarPuesta();
 }
 
-async function guardarBarbero(evento) {
-  evento.preventDefault();
-  const form = evento.target;
-  const todos = form.querySelector("[data-servicios-todos]");
-  const marcados = [...form.querySelectorAll("[data-servicio-id]:checked")].map((input) => input.value);
-  if (!marcados.length) {
-    const aviso = form.querySelector("[data-servicios-aviso]");
-    if (aviso) aviso.hidden = false;
-    return;
-  }
-  const servicios = todos && todos.checked && !todos.indeterminate ? null : marcados;
-  const fila = {
-    nombre: form.elements.nombre.value.trim(),
-    especialidad: form.elements.especialidad.value.trim(),
-    sede_id: (form.elements.sede_id && form.elements.sede_id.value) || (sedeActual() || {}).id || "",
-    foto: form.elements.foto.value,
-    servicios,
-    activo: form.elements.activo.checked
-  };
-  if (!form.elements.id.value) {
-    fila.orden = estado.barberos.reduce((maximo, item) => Math.max(maximo, Number(item.orden) || 0), 0) + 1;
-  }
-  if (!nombreValido(fila.nombre)) return fail("Escribe el nombre del barbero.");
-  const id = form.elements.id.value;
-  const consulta = id
-    ? estado.supabase.from("barberos").update(fila).eq("id", id).select()
-    : estado.supabase.from("barberos").insert(fila).select();
-  const { data, error } = await consulta;
-  if (error) return fail("No se pudo guardar el barbero.");
-  if (id) {
-    const actual = estado.barberos.find((item) => item.id === id);
-    if (actual) Object.assign(actual, fila);
-  } else if (data && data[0]) {
-    estado.barberos.push(data[0]);
-    const usarSede = form.elements.horario_sede && form.elements.horario_sede.checked;
-    const plantilla = usarSede ? plantillaSede().filter((item) => item.activo) : leerHorarioManual();
-    const filas = plantilla.map((item) => ({ barbero_id: data[0].id, dia: item.dia, abre: item.abre, cierra: item.cierra }));
-    const guardado = await guardarHorarioBarbero(data[0].id, filas);
-    if (!guardado) fail(data[0].nombre + " quedó sin horario.");
-  }
-  form.reset();
-  form.elements.id.value = "";
-  if (form.elements.horario_sede) form.elements.horario_sede.checked = true;
-  if (form.elements.activo) form.elements.activo.checked = true;
-  const manual = document.querySelector("[data-horario-manual]");
-  if (manual) manual.hidden = true;
-  const bloqueHorario = document.querySelector("[data-barbero-horario]");
-  if (bloqueHorario) bloqueHorario.hidden = false;
-  serviciosChecks(null, true);
-  pintarEquipo();
-}
-
 async function guardarServicio(evento) {
   evento.preventDefault();
   const form = evento.target;
   const precioTexto = String(form.elements.precio.value || "").trim();
+  const id = form.elements.id.value;
+  const actual = id ? estado.servicios.find((item) => item.id === id) : null;
   const fila = {
-    categoria: form.elements.categoria.value.trim(),
     nombre: form.elements.nombre.value.trim(),
     descripcion: form.elements.descripcion.value.trim(),
-    precio: precioTexto === "" ? null : Number(precioTexto),
+    precio: Number(precioTexto),
     duracion_min: Number(form.elements.duracion_min.value),
-    cuenta_fidelidad: form.elements.cuenta_fidelidad.checked,
-    orden: Number(form.elements.orden.value) || 0,
-    activo: form.elements.activo.checked
+    foto: form.elements.foto.value || null,
+    categoria: actual ? actual.categoria : "Cortes",
+    cuenta_fidelidad: actual ? actual.cuenta_fidelidad !== false : true,
+    orden: actual ? Number(actual.orden) || 0 : estado.servicios.reduce((maximo, item) => Math.max(maximo, Number(item.orden) || 0), 0) + 1,
+    activo: actual ? actual.activo !== false : true
   };
-  if (!fila.nombre || !fila.categoria || !fila.duracion_min) return fail("Completa categoría, nombre y duración.");
-  if (precioTexto !== "" && !Number.isFinite(fila.precio)) return fail("El precio no es válido.");
-  const id = form.elements.id.value;
+  if (estado.colVip) fila[estado.colVip] = Boolean(form.elements.vip && form.elements.vip.checked);
+  const errorModal = document.querySelector("[data-servicio-error]");
+  const avisar = (mensaje) => {
+    if (errorModal) {
+      errorModal.hidden = !mensaje;
+      errorModal.textContent = mensaje || "";
+    }
+    return fail(mensaje);
+  };
+  if (!fila.nombre || !fila.duracion_min) return avisar("Completa nombre y duración.");
+  if (!Number.isFinite(fila.precio) || fila.precio < 0) return avisar("El precio no es válido.");
   const consulta = id
     ? estado.supabase.from("servicios").update(fila).eq("id", id).select()
     : estado.supabase.from("servicios").insert(fila).select();
   const { data, error } = await consulta;
-  if (error) return fail("No se pudo guardar el servicio.");
+  if (error) return avisar("No se pudo guardar el servicio.");
+  const avisoVip = !estado.colVip && form.elements.vip && form.elements.vip.checked && !esServicioVip(fila);
+  toast(avisoVip ? "Servicio guardado. El destacado usa el nombre SERVICIO VIP." : "Servicio guardado.", true);
   if (id) {
     const actual = estado.servicios.find((item) => item.id === id);
     if (actual) Object.assign(actual, fila);
   } else if (data && data[0]) estado.servicios.push(data[0]);
-  fail("");
+  avisar("");
   avisoServicios();
   cerrarServicio();
   pintarServicios();
-}
-
-async function guardarBloqueo(evento) {
-  evento.preventDefault();
-  const form = evento.target;
-  const error = document.querySelector("[data-bloqueo-error]");
-  error.hidden = true;
-  const todo = form.elements.todo_dia.checked;
-  const fila = {
-    sede_id: (form.elements.sede_id && form.elements.sede_id.value) || (sedeActual() || {}).id || "",
-    barbero_id: form.elements.barbero_id.value || null,
-    fecha: form.elements.fecha.value,
-    todo_dia: todo,
-    desde: todo ? null : form.elements.desde.value,
-    hasta: todo ? null : form.elements.hasta.value,
-    motivo: form.elements.motivo.value.trim()
-  };
-  if (!dueno()) fila.barbero_id = estado.barberoId;
-  if (!fila.fecha) {
-    error.hidden = false;
-    error.textContent = "Elige la fecha.";
-    return;
-  }
-  if (!todo && (!fila.desde || !fila.hasta || fila.desde >= fila.hasta)) {
-    error.hidden = false;
-    error.textContent = "Revisa el rango de horas.";
-    return;
-  }
-  const { data, error: errorAlta } = await estado.supabase.from("bloqueos").insert(fila).select();
-  if (errorAlta) {
-    error.hidden = false;
-    error.textContent = "No se pudo guardar el cierre.";
-    return;
-  }
-  if (data && data[0]) estado.bloqueos.push(data[0]);
-  form.elements.motivo.value = "";
-  pintarBloqueos();
 }
 
 async function crearCita(evento) {
@@ -2250,23 +1494,15 @@ async function crearCita(evento) {
     return;
   }
   const payload = {
-    p_barbero: form.elements.barbero.value,
     p_servicio: form.elements.servicio.value,
     p_fecha: form.elements.fecha.value,
     p_hora: form.elements.hora.value,
     p_nombre: nombre,
     p_telefono: cel.digitos,
     p_notas: "Autorización verbal",
-    p_autoriza: true,
-    p_trampa: ""
+    p_autoriza: true
   };
-  let respuesta = await estado.supabase.rpc("crear_reserva", payload);
-  const avisoRpc = String((respuesta.error && (respuesta.error.message || respuesta.error.details)) || "");
-  if (respuesta.error && /p_trampa|p_autoriza|schema cache/i.test(avisoRpc)) {
-    delete payload.p_trampa;
-    delete payload.p_autoriza;
-    respuesta = await estado.supabase.rpc("crear_reserva", payload);
-  }
+  const respuesta = await estado.supabase.rpc("crear_reserva", payload);
   const fallo = respuesta.error;
   if (fallo) {
     error.hidden = false;
@@ -2385,20 +1621,19 @@ async function boot() {
     return;
   }
   const user = sesion.data.session.user;
-  const admins = await supabase.from("admins").select("id, rol, barbero_id, nombre").eq("id", user.id).maybeSingle();
+  const admins = await supabase.from("admins").select("id, rol, nombre").eq("id", user.id).maybeSingle();
   if (admins.error) {
     const codigo = admins.error.code || admins.error.status || "";
     window.location.replace("admin-login.html?error=permisos&codigo=" + encodeURIComponent(String(codigo)));
     return;
   }
   const fila = Array.isArray(admins.data) ? admins.data[0] : admins.data;
-  if (!fila || (fila.rol !== "dueno" && fila.rol !== "barbero")) {
+  if (!fila || fila.rol !== "dueno") {
     await supabase.auth.signOut();
     window.location.replace("admin-login.html");
     return;
   }
   estado.rol = fila.rol;
-  estado.barberoId = fila.barbero_id || "";
   estado.correo = sesion.data.session.user.email || "";
   const nombre = document.querySelector("[data-nombre]");
   if (nombre) nombre.textContent = fila.nombre || "";

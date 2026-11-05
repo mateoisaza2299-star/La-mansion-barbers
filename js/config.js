@@ -18,7 +18,7 @@ export const negocio = {
   direccion: DIRECCION,
   direccionCorta: DIRECCION,
   instagram: "lamansionbarbers",
-  horario: { texto: "Todos los días · 10:00 a. m. a 8:00 p. m.", dias: [1, 2, 3, 4, 5, 6, 7], abre: "10:00", cierra: "20:00" },
+  horario: { texto: "", dias: [], abre: "", cierra: "" },
   mapaConsulta: DIRECCION,
   unaSede: true,
   mostrarWhatsappContacto: true,
@@ -26,7 +26,6 @@ export const negocio = {
   mensajeProductos: "Hola, quiero preguntar por los productos de La Mansión Barber Shop.",
   supabase: { url: "https://bkzyaiamlhlbsggsoijk.supabase.co", key: "sb_publishable__BC2lWanJOLLb4gdVcEpKw_4SQO9w6A" },
   sitio: "https://mateoisaza2299-star.github.io/La-mansion-barbers/",
-  barbero: "",
   email: "",
   mapsUrl: "",
   mapaEmbed: "",
@@ -52,17 +51,17 @@ export const negocio = {
       {
         titulo: "La primera vez",
         texto: "Los primeros cortes se hacen con calma, con risas y con papá al lado.",
-        alt: "Un barbero de La Mansión le corta el cabello a un niño pequeño sentado en las piernas de su papá."
+        alt: "En La Mansión le cortan el cabello a un niño pequeño sentado en las piernas de su papá."
       },
       {
         titulo: "El detalle que se nota",
         texto: "Degradado limpio, brocha, tijera y pulso firme. Cada corte lleva nuestra firma.",
-        alt: "Un barbero de La Mansión peina con una brocha el cabello de un joven después de un corte degradado."
+        alt: "En La Mansión peinan con una brocha el cabello de un joven después de un corte degradado."
       },
       {
         titulo: "Un oficio que se comparte",
         texto: "Aprendemos mirando, preguntando y practicando. Los que saben enseñan y los que llegan crecen.",
-        alt: "Un barbero de La Mansión corta con tijeras el cabello de un señor mayor mientras otro hombre observa."
+        alt: "En La Mansión cortan con tijeras el cabello de un señor mayor mientras otro hombre observa."
       }
     ],
     valoresTitulo: "Lo que nos mueve",
@@ -92,7 +91,7 @@ export const negocio = {
     { pregunta: "¿Cómo agendo mi cita?", respuesta: "Desde esta página, en un minuto." },
     { pregunta: "¿Atienden niños?", respuesta: "Sí. Los cortes de niños se hacen con calma." },
     { pregunta: "¿Dónde están?", respuesta: "" },
-    { pregunta: "¿Cuál es el horario?", respuesta: "Todos los días, de 10:00 a. m. a 8:00 p. m." }
+    { pregunta: "¿Cuál es el horario?", respuesta: "" }
   ],
   textos: {
     heroEtiqueta: "BARBER SHOP · MOSQUERA",
@@ -160,12 +159,43 @@ export function enlaceTelefono() {
   return "tel:+" + tel;
 }
 
-export function formatoPrecio(valor) {
+export function formatPrecio(valor) {
   if (valor == null || valor === "") return "";
   const n = Number(valor);
   if (!Number.isFinite(n)) return "";
   if (n < 1000) return "$" + n + "k";
   return "$" + new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(n);
+}
+
+export function formatoPrecio(valor) {
+  return formatPrecio(valor);
+}
+
+export function formatDuracion(minutos) {
+  const n = Math.round(Number(minutos));
+  if (!Number.isFinite(n) || n <= 0) return "";
+  const horas = Math.floor(n / 60);
+  const resto = n % 60;
+  if (horas && resto) return horas + " h " + resto + " min";
+  if (horas) return horas + " h";
+  return resto + " min";
+}
+
+export function esServicioVip(servicio) {
+  if (!servicio) return false;
+  if (servicio.destacado === true || servicio.vip === true || servicio.es_vip === true) return true;
+  return String(servicio.nombre || "").trim().toLowerCase() === "servicio vip";
+}
+
+export function esAdicional(servicio) {
+  const nombre = String(servicio && servicio.nombre || "").trim().toLowerCase();
+  const categoria = String(servicio && servicio.categoria || "").trim().toLowerCase();
+  return nombre === "depilada de nariz" || categoria === "adicionales" || categoria === "adicional";
+}
+
+export function ordenarServicios(lista) {
+  const rango = (item) => (esServicioVip(item) ? 0 : esAdicional(item) ? 2 : 1);
+  return (lista || []).slice().sort((a, b) => rango(a) - rango(b) || (Number(a.orden) || 0) - (Number(b.orden) || 0) || String(a.nombre || "").localeCompare(String(b.nombre || ""), "es"));
 }
 
 export function rangoPrecio() {
