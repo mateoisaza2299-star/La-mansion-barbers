@@ -24,7 +24,7 @@ const despertar = () => {
     link.setAttribute("data-css", "");
     document.head.appendChild(link);
   }
-  import("./pagina.js?v=25").then(() => window.__cuandoPagina.then(promoverImagenes)).catch(promoverImagenes);
+  import("./pagina.js?v=27").then(() => window.__cuandoPagina.then(promoverImagenes)).catch(promoverImagenes);
   return window.__cuandoPagina;
 };
 

@@ -1,5 +1,5 @@
 const NUMERO_WHATSAPP = "573118162854";
-const DIRECCION = "CR 3 No. 13-12, C.C. El Trébol, LC 18, Mosquera, Cundinamarca";
+const DIRECCION = "Carrera 3ra # 13-12, Local 18, Centro Comercial El Trébol, Mosquera";
 
 function telefonoVisible(numero) {
   const local = numero.startsWith("57") && numero.length === 12 ? numero.slice(2) : numero;
@@ -19,7 +19,7 @@ export const negocio = {
   direccionCorta: DIRECCION,
   instagram: "lamansionbarbers",
   horario: { texto: "", dias: [], abre: "", cierra: "" },
-  mapaConsulta: DIRECCION,
+  mapaConsulta: "La Mansion Barber Shop, Carrera 3ra # 13-12 Local 18, Centro Comercial El Trébol, Mosquera",
   unaSede: true,
   mostrarWhatsappContacto: true,
   mensajeWhatsApp: "Hola, quiero información sobre La Mansión Barber Shop.",
@@ -27,7 +27,7 @@ export const negocio = {
   supabase: { url: "https://bkzyaiamlhlbsggsoijk.supabase.co", key: "sb_publishable__BC2lWanJOLLb4gdVcEpKw_4SQO9w6A" },
   sitio: "https://mateoisaza2299-star.github.io/La-mansion-barbers/",
   email: "",
-  mapsUrl: "",
+  mapsUrl: "https://maps.app.goo.gl/iLy8KnMTvqikH2bQ6",
   mapaEmbed: "",
   zona: "Mosquera",
   horasAntesDeCerrar: 1,

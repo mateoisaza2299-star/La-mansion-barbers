@@ -1,4 +1,4 @@
-import { negocio, urlSitio } from "./config.js";
+import { negocio, urlSitio } from "./config.js?v=27";
 import * as tiempo from "./tiempo.js";
 
 const DIAS_CITA = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];

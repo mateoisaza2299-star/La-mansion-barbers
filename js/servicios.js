@@ -1,4 +1,4 @@
-import { formatoPrecio } from "./config.js";
+import { formatoPrecio } from "./config.js?v=27";
 
 const pendiente = "Por confirmar";
 

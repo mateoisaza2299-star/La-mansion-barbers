@@ -1,5 +1,5 @@
-import { reservasEnLinea } from "./config.js";
-import { obtenerAdmin } from "./admin-cliente.js";
+import { reservasEnLinea } from "./config.js?v=27";
+import { obtenerAdmin } from "./admin-cliente.js?v=27";
 
 const form = document.querySelector("[data-login]");
 const errorBox = document.querySelector("[data-login-error]");

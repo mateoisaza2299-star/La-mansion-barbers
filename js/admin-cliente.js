@@ -1,4 +1,4 @@
-import { negocio, reservasEnLinea } from "./config.js";
+import { negocio, reservasEnLinea } from "./config.js?v=27";
 
 let cliente = null;
 

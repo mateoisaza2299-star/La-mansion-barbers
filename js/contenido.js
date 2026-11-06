@@ -13,7 +13,7 @@ import {
   avisoDuracion,
   horasDelDia,
   partesBogota
-} from "./config.js";
+} from "./config.js?v=27";
 import { faq, faqPreparacion } from "./faq.js";
 
 const file = (location.pathname || "").split("/").pop() || "index.html";

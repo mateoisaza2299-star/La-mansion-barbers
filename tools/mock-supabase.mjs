@@ -50,7 +50,7 @@ function crearEstado() {
     politica_version: "1"
   };
   const sedes = [
-    { id: id.sede1, nombre: "La Mansión", direccion: "CR 3 No. 13-12, C.C. El Trébol, LC 18, Mosquera, Cundinamarca", telefono: "3118162854", orden: 1, activa: true }
+    { id: id.sede1, nombre: "La Mansión", direccion: "Carrera 3ra # 13-12, Local 18, Centro Comercial El Trébol, Mosquera", telefono: "3118162854", orden: 1, activa: true }
   ];
   const baseServicio = (extra) => ({ descripcion: "", precio: null, duracion_min: 30, cuenta_fidelidad: false, activo: true, ...extra });
   const servicios = [

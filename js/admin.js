@@ -1,5 +1,5 @@
-import { reservasEnLinea, formatPrecio, formatDuracion, esServicioVip, ordenarServicios } from "./config.js";
-import { obtenerAdmin } from "./admin-cliente.js";
+import { reservasEnLinea, formatPrecio, formatDuracion, esServicioVip, ordenarServicios } from "./config.js?v=27";
+import { obtenerAdmin } from "./admin-cliente.js?v=27";
 import { traducir, celularValido, nombreValido } from "./errores.js";
 import { hoyISO, sumarDias, fechaLegible, horaLegible, aMinutos, aHora, lunesDe, diaSemanaISO } from "./tiempo.js";
 import { nodo, hojaEstilos, marcaCasilla } from "./dom.js";
@@ -115,7 +115,7 @@ function tomarMensaje(modulo) {
 
 async function prepararMensajes() {
   let aviso;
-  const carga = import("./mensajes.js?v=14").then(tomarMensaje).catch(() => {});
+  const carga = import("./mensajes.js?v=27").then(tomarMensaje).catch(() => {});
   await Promise.race([
     carga,
     new Promise((resolve) => {

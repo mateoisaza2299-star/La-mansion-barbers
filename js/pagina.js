@@ -18,7 +18,7 @@ import {
   textoHorarioPublico,
   callePublica,
   urlSitio
-} from "./config.js";
+} from "./config.js?v=27";
 const textos = negocio.textos || {};
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const red = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -655,7 +655,7 @@ const categoriaPublica = (nombre) => nombre && !["Niños", "Mujer", "Color"].inc
 const cargarServiciosMenu = async () => {
   if (!reservasEnLinea()) return null;
   try {
-    const modulo = await import("./supabase.js");
+    const modulo = await import("./supabase.js?v=27");
     const supabase = await modulo.obtenerSupabase();
     if (!supabase) return null;
     const { data, error } = await supabase.from("servicios").select("*").eq("activo", true).order("orden");
@@ -735,7 +735,7 @@ const resumirHorario = (filas) => {
 const pintarHorarioPublico = async () => {
   if (!reservasEnLinea()) return;
   try {
-    const modulo = await import("./supabase.js");
+    const modulo = await import("./supabase.js?v=27");
     const supabase = await modulo.obtenerSupabase();
     if (!supabase) return;
     const { data, error } = await supabase.from("horario_local").select("dia,abre,cierra,activo").order("dia");
@@ -1132,7 +1132,7 @@ const pintarEsqueletoReserva = () => {
 const cargarReservas = () => {
   if (!reservaCarga) {
     pintarEsqueletoReserva();
-    reservaCarga = import("./reservas.js")
+    reservaCarga = import("./reservas.js?v=27")
       .then((mod) => mod.iniciarReservas())
       .then(() => {
         reservasListas = true;

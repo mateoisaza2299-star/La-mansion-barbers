@@ -1,5 +1,5 @@
-import { negocio, enlaceTelefono, enlaceDirecciones, formatPrecio, formatDuracion, esAdicional, ordenarServicios, reservasEnLinea } from "./config.js";
-import { obtenerSupabase } from "./supabase.js";
+import { negocio, enlaceTelefono, enlaceDirecciones, formatPrecio, formatDuracion, esAdicional, ordenarServicios, reservasEnLinea } from "./config.js?v=27";
+import { obtenerSupabase } from "./supabase.js?v=27";
 import { traducir, celularValido, nombreValido } from "./errores.js";
 import { hoyISO, sumarDias, fechaLegible, fechaCorta, horaLegible, aMinutos, instanteBogota } from "./tiempo.js";
 import { nodo, hojaEstilos, marcaCasilla } from "./dom.js";

@@ -1,4 +1,4 @@
-import { obtenerSupabase } from "./supabase.js";
+import { obtenerSupabase } from "./supabase.js?v=27";
 import { traducir } from "./errores.js";
 import * as tiempo from "./tiempo.js";
 

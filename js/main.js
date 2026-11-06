@@ -1,4 +1,4 @@
-import { obtenerSupabase } from "./supabase.js";
+import { obtenerSupabase } from "./supabase.js?v=27";
 import { initScrollChrome, initCounters } from "./movimiento.js";
 import {
   negocio,
@@ -10,7 +10,7 @@ import {
   minutosDe,
   direccionLinea,
   avisoDuracion
-} from "./config.js";
+} from "./config.js?v=27";
 
 (function () {
   const header = document.querySelector("[data-header]");

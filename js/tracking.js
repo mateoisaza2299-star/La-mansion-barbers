@@ -1,5 +1,5 @@
-import { negocio } from "./config.js";
-import { obtenerSupabase } from "./supabase.js";
+import { negocio } from "./config.js?v=27";
+import { obtenerSupabase } from "./supabase.js?v=27";
 
 const file = (window.location.pathname || "").split("/").pop() || "";
 const adminPage = file === "admin.html" || file === "admin-login.html";
