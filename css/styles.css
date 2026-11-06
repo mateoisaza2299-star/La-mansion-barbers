@@ -2674,16 +2674,16 @@ select:focus,
 .tira-seccion { padding: 1.35rem 0.7rem 0; }
 
 .tira {
-  --poste-pad: 7px;
-  --poste-borde: 3px;
-  --poste-blur: 10px;
+  --poste-pad: 4px;
+  --poste-borde: 4px;
+  --poste-blur: 9px;
   --poste-radio: 18px;
-  --poste-verde: #1e5648;
+  --poste-franja: 16px;
   --poste-franjas: repeating-linear-gradient(
     45deg,
-    var(--oro) 0 20px,
-    #f5efe0 20px 40px,
-    var(--poste-verde) 40px 60px
+    var(--oro) 0 var(--poste-franja),
+    #f5efe0 var(--poste-franja) calc(var(--poste-franja) * 2),
+    #0a0a0a calc(var(--poste-franja) * 2) calc(var(--poste-franja) * 3)
   );
   width: min(calc(100% - 12px), 560px, calc(70vh * 3 / 4 + 2 * var(--poste-pad)));
   margin-inline: auto;
@@ -2693,6 +2693,7 @@ select:focus,
   position: relative;
   padding: var(--poste-pad);
   border-radius: calc(var(--poste-radio) + var(--poste-pad));
+  box-shadow: 0 0 0 1px rgba(201, 162, 75, 0.6);
 }
 
 .tira-poste::before,
@@ -2721,11 +2722,15 @@ select:focus,
   inset: calc(var(--poste-pad) - var(--poste-borde));
   border-radius: calc(var(--poste-radio) + var(--poste-borde));
   pointer-events: none;
-  opacity: 0.55;
-  filter: blur(var(--poste-blur));
+  opacity: 0.45;
+  filter: blur(var(--poste-blur)) drop-shadow(0 0 4px rgba(201, 162, 75, 0.65));
 }
 
-.tira-halo::after { inset: 0; }
+.tira-halo::after {
+  inset: 0;
+  background-color: var(--oro);
+  background-blend-mode: multiply;
+}
 
 .tira-marco {
   position: relative;
@@ -2803,13 +2808,13 @@ select:focus,
 }
 
 @keyframes tira-poste-giro {
-  to { background-position: 84.853px 0; }
+  to { background-position: 67.882px 0; }
 }
 
 @media (max-width: 480px) {
   .tira {
-    --poste-pad: 5px;
-    --poste-borde: 2px;
+    --poste-pad: 3px;
+    --poste-borde: 3px;
     --poste-blur: 6px;
   }
   .tira-poste::before { will-change: auto; }

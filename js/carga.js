@@ -20,7 +20,7 @@ const despertar = () => {
   if (!document.querySelector("link[data-css]")) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = "css/styles.css?v=25";
+    link.href = "css/styles.css?v=26";
     link.setAttribute("data-css", "");
     document.head.appendChild(link);
   }
