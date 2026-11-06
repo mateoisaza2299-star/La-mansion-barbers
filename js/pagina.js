@@ -899,10 +899,9 @@ const prepararTira = () => {
   const pista = document.querySelector("[data-tira-pista]");
   const puntos = document.querySelector("[data-tira-puntos]");
   if (!tira || !pista || !puntos) return;
-  const rutas = ["img/galeria/fachada.webp"];
-  for (let i = 1; i <= 20; i += 1) {
-    if (i === 15) continue;
-    rutas.push("img/galeria/foto-" + String(i).padStart(2, "0") + ".webp");
+  const rutas = [];
+  for (let i = 1; i <= 14; i += 1) {
+    rutas.push("img/carrusel/carrusel-" + String(i).padStart(2, "0") + ".webp");
   }
   const imagenes = [];
   const botones = [];
@@ -941,8 +940,8 @@ const prepararTira = () => {
   rutas.forEach((ruta, indice) => {
     const img = document.createElement("img");
     img.alt = "Trabajo en La Mansion Barber Shop";
-    img.width = 800;
-    img.height = 1000;
+    img.width = 900;
+    img.height = 1200;
     img.decoding = "async";
     img.loading = indice < 2 ? "eager" : "lazy";
     img.dataset.ruta = ruta;

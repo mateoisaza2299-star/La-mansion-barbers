@@ -20,11 +20,11 @@ const despertar = () => {
   if (!document.querySelector("link[data-css]")) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = "css/styles.css?v=24";
+    link.href = "css/styles.css?v=25";
     link.setAttribute("data-css", "");
     document.head.appendChild(link);
   }
-  import("./pagina.js?v=24").then(() => window.__cuandoPagina.then(promoverImagenes)).catch(promoverImagenes);
+  import("./pagina.js?v=25").then(() => window.__cuandoPagina.then(promoverImagenes)).catch(promoverImagenes);
   return window.__cuandoPagina;
 };
 

@@ -2674,18 +2674,68 @@ select:focus,
 .tira-seccion { padding: 1.35rem 0.7rem 0; }
 
 .tira {
-  width: min(100%, 560px, calc(70vh * 4 / 5));
+  --poste-pad: 7px;
+  --poste-borde: 3px;
+  --poste-blur: 10px;
+  --poste-radio: 18px;
+  --poste-verde: #1e5648;
+  --poste-franjas: repeating-linear-gradient(
+    45deg,
+    var(--oro) 0 20px,
+    #f5efe0 20px 40px,
+    var(--poste-verde) 40px 60px
+  );
+  width: min(calc(100% - 12px), 560px, calc(70vh * 3 / 4 + 2 * var(--poste-pad)));
   margin-inline: auto;
 }
 
+.tira-poste {
+  position: relative;
+  padding: var(--poste-pad);
+  border-radius: calc(var(--poste-radio) + var(--poste-pad));
+}
+
+.tira-poste::before,
+.tira-halo::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: calc(var(--poste-radio) + var(--poste-borde));
+  padding: var(--poste-borde);
+  background-image: var(--poste-franjas);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+}
+
+.tira-poste::before {
+  z-index: 2;
+  inset: calc(var(--poste-pad) - var(--poste-borde));
+  animation: tira-poste-giro 14s linear infinite;
+}
+
+.tira-halo {
+  position: absolute;
+  z-index: 0;
+  inset: calc(var(--poste-pad) - var(--poste-borde));
+  border-radius: calc(var(--poste-radio) + var(--poste-borde));
+  pointer-events: none;
+  opacity: 0.55;
+  filter: blur(var(--poste-blur));
+}
+
+.tira-halo::after { inset: 0; }
+
 .tira-marco {
   position: relative;
-  aspect-ratio: 4 / 5;
+  z-index: 1;
+  aspect-ratio: 3 / 4;
   max-height: 70vh;
   overflow: hidden;
-  border-radius: 18px;
+  border-radius: var(--poste-radio);
   background: var(--grafito);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.38);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 16px 36px rgba(0, 0, 0, 0.38);
   touch-action: pan-y;
 }
 
@@ -2696,6 +2746,7 @@ select:focus,
   inset: 0;
   width: 100%;
   height: 100%;
+  aspect-ratio: 3 / 4;
   object-fit: cover;
   opacity: 0;
   transition: opacity 400ms var(--ease);
@@ -2751,6 +2802,27 @@ select:focus,
   .seccion.seccion-tras-tira { padding-top: 16px; }
 }
 
+@keyframes tira-poste-giro {
+  to { background-position: 84.853px 0; }
+}
+
+@media (max-width: 480px) {
+  .tira {
+    --poste-pad: 5px;
+    --poste-borde: 2px;
+    --poste-blur: 6px;
+  }
+  .tira-poste::before { will-change: auto; }
+}
+
+@media (min-width: 481px) {
+  .tira-poste::before { will-change: background-position; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tira-pista img { transition: none; }
+  .tira-poste::before {
+    animation: none;
+    will-change: auto;
+  }
 }
