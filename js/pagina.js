@@ -1251,8 +1251,11 @@ const prepararMapa = () => {
     const caer = () => {
       if (resuelto) return;
       resuelto = true;
-      iframe.remove();
-      marco.dataset.listo = "";
+      const estrecho = !window.matchMedia("(min-width: 900px)").matches;
+      if (!estrecho) {
+        iframe.remove();
+        marco.dataset.listo = "";
+      }
       marco.dataset.fallo = "1";
       if (!espera) return;
       espera.hidden = false;
@@ -1264,21 +1267,30 @@ const prepararMapa = () => {
       if (resuelto) return;
       resuelto = true;
       window.clearTimeout(timer);
-      if (espera) espera.hidden = true;
+      if (!espera) return;
+      if (!window.matchMedia("(min-width: 900px)").matches) {
+        espera.hidden = false;
+        const boton = espera.querySelector("[data-mapa-ver]");
+        if (boton) boton.textContent = "Abrir en Google Maps";
+        return;
+      }
+      espera.hidden = true;
     });
     iframe.addEventListener("error", caer);
     marco.appendChild(iframe);
   };
   const ver = marco.querySelector("[data-mapa-ver]");
+  const estrecho = !window.matchMedia("(min-width: 900px)").matches;
+  if (ver && estrecho) ver.textContent = "Abrir en Google Maps";
   if (ver) ver.addEventListener("click", () => {
-    if (marco.dataset.fallo === "1") {
+    if (marco.dataset.fallo === "1" || !window.matchMedia("(min-width: 900px)").matches) {
       const url = enlaceMapa();
       if (url) window.open(url, "_blank", "noopener");
       return;
     }
     cargar();
   });
-  if (ahorrar) return;
+  if (ahorrar && window.matchMedia("(min-width: 900px)").matches) return;
   if (!("IntersectionObserver" in window)) {
     cargar();
     return;

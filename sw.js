@@ -1,4 +1,4 @@
-const CACHE = "site-shell-v27";
+const CACHE = "site-shell-v28";
 
 const SHELL = [
   "index.html",
@@ -59,7 +59,7 @@ const esCodigo = (path) => /(^|\/)[^/]+\.(html|js|css)$/.test(path) || path === 
 const networkFirst = async (request, path) => {
   const cache = await caches.open(CACHE);
   try {
-    const fresh = await fetch(request);
+    const fresh = await fetch(request, { cache: "reload" });
     if (canStore(fresh)) cache.put(cacheRequest(path), fresh.clone());
     return fresh;
   } catch (error) {

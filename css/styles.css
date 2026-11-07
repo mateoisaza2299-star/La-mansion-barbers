@@ -2146,6 +2146,49 @@ body.reserva-lock .mapa-marco iframe { visibility: hidden; }
 
 .mapa-marco iframe { position: absolute; inset: 0; border: 0; }
 
+@media (max-width: 899.98px) {
+  .visita-grid { grid-template-columns: minmax(0, 1fr); }
+  .mapa-marco {
+    aspect-ratio: auto;
+    height: auto;
+    min-width: 0;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .mapa-marco::before {
+    content: "";
+    display: block;
+    height: 300px;
+    order: 1;
+  }
+  .mapa-marco iframe {
+    display: block;
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: 300px;
+    border: 0;
+    border-radius: var(--r-tarjeta);
+    object-fit: fill;
+  }
+  .mapa-espera {
+    order: 2;
+    min-height: 0;
+    height: auto;
+    padding: 0.75rem 0 0;
+  }
+  .mapa-espera .icono,
+  .mapa-espera p { display: none; }
+}
+
+@media (min-width: 768px) and (max-width: 899.98px) {
+  .mapa-marco::before,
+  .mapa-marco iframe { height: 360px; }
+}
+
 .mosaico {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
