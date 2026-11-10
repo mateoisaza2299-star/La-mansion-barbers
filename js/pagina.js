@@ -578,6 +578,44 @@ const refrescarNosotros = (fotos) => {
   });
 };
 
+const DESCRIPCIONES_SERVICIO = {
+  "servicio vip": "La experiencia completa de La Mansión. Todos los servicios de la carta más mascarilla LED de siete colores. Dos horas y media para salir renovado de pies a cabeza.",
+  "corte basico": "Corte a tu medida con máquina y tijera, acabado limpio y definido. El clásico bien hecho.",
+  "corte + cejas": "Corte completo más diseño y limpieza de cejas para una mirada marcada y un acabado impecable.",
+  "corte + perfilada de barba": "Corte y barba en sintonía. Perfilado con navaja para líneas nítidas que enmarcan tu rostro.",
+  "corte basico + limpieza facial": "Tu corte más una limpieza facial que elimina impurezas y deja la piel fresca y renovada.",
+  "corte basico + ritual de barba": "Corte más ritual de barba: toalla caliente, aceites y perfilado. Barba suave, cuidada y con presencia.",
+  "corte + ritual de barba + limpieza facial": "El combo premium: corte, ritual de barba y limpieza facial. Cuidado completo de cabello, barba y piel.",
+  "perfilada de barba": "Diseño y definición de barba con navaja. Líneas precisas y acabado de barbería profesional.",
+  "ritual de barba": "Toalla caliente, aceites y perfilado para dejar la barba suave y con presencia. El ritual, de principio a fin.",
+  "depilada de nariz": "Depilación precisa de vello nasal, rápida y limpia. El detalle que deja el rostro impecable.",
+  "corte clasico": "Corte a tu medida con máquina y tijera, acabado limpio y definido. El clásico bien hecho.",
+  "degradado": "Degradado con transición limpia, de corto a largo. Líneas precisas y un acabado definido.",
+  "corte y barba": "Corte y barba en sintonía. Perfilado para líneas nítidas que enmarcan tu rostro.",
+  "arreglo de barba": "Perfil, forma y definición de la barba. Líneas precisas y acabado de barbería.",
+  "barba completa": "Diseño y limpieza de toda la barba. Presencia marcada y acabado cuidado.",
+  "disenos": "Líneas, figuras y freestyle sobre el corte. Un detalle con carácter y acabado nítido.",
+  "cuidado facial": "Limpieza y cuidado de la piel del rostro. La piel queda fresca y renovada."
+};
+
+const claveServicio = (nombre) => String(nombre || "")
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .replace(/\s+/g, " ")
+  .trim();
+
+const descripcionServicio = (servicio) => {
+  const propia = DESCRIPCIONES_SERVICIO[claveServicio(servicio && servicio.nombre)];
+  if (propia) return propia;
+  const actual = String(servicio && servicio.descripcion || "").trim();
+  if (actual && actual.toLowerCase() !== "por confirmar") return actual;
+  const nombre = String(servicio && servicio.nombre || "").trim();
+  return nombre
+    ? nombre + ". Acabado de barbería, limpio y a tu medida."
+    : "Acabado de barbería, limpio y a tu medida.";
+};
+
 const servicioNodo = (servicio) => {
   const vip = esServicioVip(servicio);
   const article = document.createElement("article");
@@ -617,8 +655,12 @@ const servicioNodo = (servicio) => {
   panel.className = "servicio-panel";
   panel.id = id;
   panel.inert = true;
+  panel.setAttribute("aria-hidden", "true");
   const caja = document.createElement("div");
   caja.className = "servicio-panel-caja";
+  const texto = document.createElement("p");
+  texto.className = "servicio-desc";
+  texto.textContent = descripcionServicio(servicio);
   const reservar = document.createElement("button");
   reservar.type = "button";
   reservar.className = "btn";
@@ -626,12 +668,7 @@ const servicioNodo = (servicio) => {
   reservar.dataset.reservar = "1";
   reservar.dataset.servicio = servicio.id || "";
   reservar.dataset.servicioNombre = servicio.nombre || "";
-  if (servicio.descripcion) {
-    const texto = document.createElement("p");
-    texto.textContent = servicio.descripcion;
-    caja.appendChild(texto);
-  }
-  caja.appendChild(reservar);
+  caja.append(texto, reservar);
   panel.appendChild(caja);
   boton.addEventListener("click", () => {
     const abierto = boton.getAttribute("aria-expanded") === "true";
@@ -641,7 +678,10 @@ const servicioNodo = (servicio) => {
       const activo = fila === article && !abierto;
       fila.classList.toggle("is-abierta", activo);
       if (cabeza) cabeza.setAttribute("aria-expanded", activo ? "true" : "false");
-      if (cuerpo) cuerpo.inert = !activo;
+      if (cuerpo) {
+        cuerpo.inert = !activo;
+        cuerpo.setAttribute("aria-hidden", activo ? "false" : "true");
+      }
     });
   });
   article.append(boton, panel);
