@@ -97,7 +97,7 @@ export const negocio = {
     heroEtiqueta: "La Mansion Barber Shop / Mosquera",
     heroAntes: "¡Los verdaderos ",
     heroPalabra: "HOMBRES",
-    heroDespues: " van a la barbería!",
+    heroDespues: " van a la mansión!",
     heroLead: "Cortes, barba y cuidado personal.",
     agenda: "Reserva tu cita",
     verServicios: "Ver servicios",
